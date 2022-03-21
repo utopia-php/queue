@@ -1,0 +1,19 @@
+version: '3.1'
+
+services:
+  swoole:
+    container_name: swoole
+    build: ./tests/Queue/servers/Swoole/.
+    command: php /usr/src/code/tests/Queue/servers/Swoole/worker.php
+    volumes:
+      - ./:/usr/src/code
+    ports:
+      - "8001:80"
+    depends_on:
+      - redis
+
+  redis:
+    container_name: redis
+    image: "redis:alpine"
+    ports:
+      - "6378:6379"

@@ -1,0 +1,15 @@
+language: php
+php: 8.0
+
+notifications:
+  email:
+    - team@appwrite.io
+
+before_script: 
+  - pecl install --configureoptions 'enable-sockets="yes" enable-openssl="yes" enable-http2="yes" enable-mysqlnd="yes" enable-swoole-json="no" enable-swoole-curl="yes"' swoole
+  - composer install --ignore-platform-reqs
+
+script:
+  - docker-compose up -d
+  - vendor/bin/phpunit --configuration phpunit.xml
+  # - vendor/bin/psalm --show-info=true
