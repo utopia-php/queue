@@ -12,8 +12,15 @@ class Client
         $this->connection = $connection;
     }
 
-    public function queue(array $payload): bool
+    public function enqueue(array $payload): bool
     {
-        return $this->connection->rightPush($this->queue, $payload);
+        $payload = [
+            'pid' => \uniqid(more_entropy: true),
+            'queue' => $this->queue,
+            'timestamp' => \intval(\microtime()),
+            'payload' => $payload
+        ];
+
+        return $this->connection->leftPush($this->queue, $payload);
     }
 }

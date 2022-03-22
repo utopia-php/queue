@@ -6,6 +6,7 @@ use Swoole\Process;
 use Swoole\Process\Pool;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Connection;
+use Utopia\Queue\Job;
 
 /**
  * 
@@ -15,6 +16,7 @@ class SwooleAdapter extends Adapter
 {
     protected Pool $pool;
     protected Connection $connection;
+    protected bool $running = true;
 
     public function __construct(int $workerNum, Connection $connection)
     {
@@ -32,6 +34,8 @@ class SwooleAdapter extends Adapter
 
     public function shutdown(): void
     {
+        $this->running = false;
+        // $this->pool->stop();
         $this->pool->shutdown();
     }
 
@@ -39,10 +43,6 @@ class SwooleAdapter extends Adapter
     {
         $this->pool->on('start', function () use ($callback) {
             call_user_func($callback);
-
-            Process::signal('2', function () {
-                $this->shutdown();
-            });
         });
 
         return $this;
@@ -56,15 +56,22 @@ class SwooleAdapter extends Adapter
     public function onJob(callable $callback): self
     {
         $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
-            while (true) {
+            while ($this->running) {
                 /**
                  * Waiting for next Job.
                  */
-                $nextJob = $this->connection->rightPopLeftPush($this->queue, 'processing', 60);
+                $nextJob = $this->connection->rightPopLeftPush($this->queue, 'processing', 5);
                 if (!$nextJob) continue;
 
+                $job = new Job();
+                $job
+                    ->setPid($nextJob['pid'])
+                    ->setQueue($nextJob['queue'])
+                    ->setTimestamp(\intval($nextJob['timestamp']))
+                    ->setPayload($nextJob['payload']);
+
                 try {
-                    call_user_func($callback, $nextJob);
+                    call_user_func($callback, $job);
                 } catch (\Throwable $th) {
                     var_dump($th->getMessage());
                 }
