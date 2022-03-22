@@ -14,9 +14,10 @@ namespace Utopia\Queue;
  */
 abstract class Adapter
 {
-    protected int $workerNum;
-    protected string $queue;
-    protected string $namespace;
+    public int $workerNum;
+    public string $queue;
+    public string $namespace;
+    public Connection $connection;
 
     function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue') {
         $this->workerNum = $workerNum;

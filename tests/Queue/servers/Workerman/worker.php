@@ -4,8 +4,8 @@ require_once __DIR__ . '/../../../../vendor/autoload.php';
 
 use Utopia\Queue;
 
-$connection = new Queue\Connection\RedisSwoole('redis');
-$adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
+$connection = new Queue\Connection\Redis('redis');
+$adapter = new Queue\Adapter\Workerman($connection, 12, 'workerman');
 $server = new Queue\Server($adapter);
 $server
     ->error(function ($th) {

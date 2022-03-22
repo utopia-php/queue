@@ -1,7 +1,9 @@
 <?php
+
 namespace Utopia\Queue;
 
 use Throwable;
+use Utopia\CLI\Console;
 use Utopia\Queue\Adapter;
 
 /**
@@ -41,7 +43,7 @@ class Server
     {
         try {
             $this->adapter->start();
-        } catch(Throwable $error) {
+        } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "start");
             }
@@ -56,7 +58,7 @@ class Server
     {
         try {
             $this->adapter->shutdown();
-        } catch(Throwable $error) {
+        } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "shutdown");
             }
@@ -71,8 +73,11 @@ class Server
     public function onStart(callable $callback): self
     {
         try {
-            $this->adapter->onStart($callback);
-        } catch(Throwable $error) {
+            $this->adapter->onStart(function () use ($callback) {
+                Console::success("[Worker] Queue Workers are starting");
+                call_user_func($callback);
+            });
+        } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "onStart");
             }
@@ -88,8 +93,11 @@ class Server
     public function onWorkerStart(callable $callback): self
     {
         try {
-            $this->adapter->onWorkerStart($callback);
-        } catch(Throwable $error) {
+            $this->adapter->onWorkerStart(function (string $workerId) use ($callback) {
+                Console::success("[Worker] Worker {$workerId} is ready!");
+                call_user_func($callback);
+            });
+        } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "onWorkerStart");
             }
@@ -106,8 +114,43 @@ class Server
     public function onJob(callable $callback): self
     {
         try {
-            $this->adapter->onJob($callback);
-        } catch(Throwable $error) {
+            $this->adapter->onJob(function () use ($callback) {
+                while (true) {
+                    /**
+                     * Waiting for next Job.
+                     */
+                    $nextJob = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
+                    if (!$nextJob) continue;
+
+                    $job = new Job();
+                    $job
+                        ->setPid($nextJob['pid'])
+                        ->setQueue($nextJob['queue'])
+                        ->setTimestamp(\intval($nextJob['timestamp']))
+                        ->setPayload($nextJob['payload']);
+
+                    Console::info("[Job] Received Job ({$job->getPid()}).");
+
+                    /**
+                     * Move Job to Jobs and it's PID to the processing list.
+                     */
+                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$job->getPid()}", $nextJob);
+                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
+
+                    try {
+                        call_user_func($callback, $job);
+                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$job->getPid()}");
+                        Console::success("[Job] ({$job->getPid()}) successfully run.");
+                    } catch (\Throwable $th) {
+                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $job->getPid());
+                        Console::error("[Job] ({$job->getPid()}) failed to run.");
+                        Console::error("[Job] ({$job->getPid()}) {$th->getMessage()}");
+                    } finally {
+                        $this->adapter->connection->remove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
+                    }
+                }
+            });
+        } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "onJob");
             }
