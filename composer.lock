@@ -4,8 +4,111 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d1e53a48ffab792a12d0f954d9b8fd0e",
-    "packages": [],
+    "content-hash": "7c7755e35fa01f471111245792c3d62d",
+    "packages": [
+        {
+            "name": "utopia-php/cli",
+            "version": "0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/utopia-php/cli.git",
+                "reference": "6d164b752efeb1ca089e3a517bc274d8b383474b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/utopia-php/cli/zipball/6d164b752efeb1ca089e3a517bc274d8b383474b",
+                "reference": "6d164b752efeb1ca089e3a517bc274d8b383474b",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4",
+                "utopia-php/framework": "0.*.*"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.3",
+                "vimeo/psalm": "4.0.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Utopia\\CLI\\": "src/CLI"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Eldad Fux",
+                    "email": "eldad@appwrite.io"
+                }
+            ],
+            "description": "A simple CLI library to manage command line applications",
+            "keywords": [
+                "cli",
+                "command line",
+                "framework",
+                "php",
+                "upf",
+                "utopia"
+            ],
+            "support": {
+                "issues": "https://github.com/utopia-php/cli/issues",
+                "source": "https://github.com/utopia-php/cli/tree/0.12.0"
+            },
+            "time": "2022-02-18T22:10:41+00:00"
+        },
+        {
+            "name": "utopia-php/framework",
+            "version": "0.19.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/utopia-php/framework.git",
+                "reference": "f17afe77a21873b9be18ebc05283813468b4283a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/utopia-php/framework/zipball/f17afe77a21873b9be18ebc05283813468b4283a",
+                "reference": "f17afe77a21873b9be18ebc05283813468b4283a",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.5.10",
+                "vimeo/psalm": "4.13.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Utopia\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Eldad Fux",
+                    "email": "eldad@appwrite.io"
+                }
+            ],
+            "description": "A simple, light and advanced PHP framework",
+            "keywords": [
+                "framework",
+                "php",
+                "upf"
+            ],
+            "support": {
+                "issues": "https://github.com/utopia-php/framework/issues",
+                "source": "https://github.com/utopia-php/framework/tree/0.19.7"
+            },
+            "time": "2022-02-18T00:04:49+00:00"
+        }
+    ],
     "packages-dev": [
         {
             "name": "amphp/amp",

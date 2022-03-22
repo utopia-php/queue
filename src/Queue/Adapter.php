@@ -16,16 +16,12 @@ abstract class Adapter
 {
     protected int $workerNum;
     protected string $queue;
+    protected string $namespace;
 
-    function __construct(int $workerNum) {
+    function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue') {
         $this->workerNum = $workerNum;
-    }
-
-    public function setQueueName(string $queue): self
-    {
         $this->queue = $queue;
-
-        return $this;
+        $this->namespace = $namespace;
     }
 
     /**

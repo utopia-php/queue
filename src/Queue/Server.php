@@ -22,18 +22,15 @@ class Server
      * @var array
      */
     protected $errorCallbacks = [];
-
-
     protected Adapter $adapter;
 
     /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter 
      */
-    public function __construct(Adapter $adapter, string $queue)
+    public function __construct(Adapter $adapter)
     {
         $this->adapter = $adapter;
-        $this->adapter->setQueueName($queue);
     }
 
     /**

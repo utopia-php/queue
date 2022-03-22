@@ -6,8 +6,8 @@ use Utopia\Queue;
 use Utopia\Queue\Job;
 
 $connection = new Queue\Connection\RedisConnection('redis');
-$adapter = new Queue\Adapter\SwooleAdapter(12, $connection);
-$server = new Queue\Server($adapter, 'test');
+$adapter = new Queue\Adapter\SwooleAdapter($connection, 12, 'test');
+$server = new Queue\Server($adapter);
 $server
     ->error(function ($th) {
         echo $th->getMessage() . PHP_EOL;
@@ -16,11 +16,8 @@ $server
         echo "Queue Server started". PHP_EOL;
     })
     ->onJob(function (Job $job) {
-        echo "---".PHP_EOL;
-        echo "PID: {$job->getPid()}".PHP_EOL;
-        echo "Queue: {$job->getQueue()}".PHP_EOL;
-        echo "Timestamp: {$job->getTimestamp()}".PHP_EOL;
-        echo "Payload: ". PHP_EOL;
-        var_dump($job->getPayload());
+        if (array_key_exists('stop', $job->getPayload())) {
+            throw new Exception("Error Processing Request", 1);
+        }
     })
     ->start();

@@ -9,6 +9,15 @@ class Job
     protected int $timestamp;
     protected array $payload;
 
+    public function __construct(array $array = [])
+    {
+        if (empty($array)) return;
+
+        $this->pid = $array['pid'];
+        $this->queue = $array['queue'];
+        $this->timestamp = $array['timestamp'];
+        $this->payload = $array['payload'];
+    }
     public function setPid(string $pid): self
     {
         $this->pid = $pid;

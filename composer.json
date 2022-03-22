@@ -18,7 +18,8 @@
         "psr-4": {"Utopia\\Tests\\": "tests/Database"}
     },
     "require": {
-        "php": ">=8.0"
+        "php": ">=8.0",
+        "utopia-php/cli": "0.12.*"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
