@@ -2,7 +2,6 @@
 
 namespace Utopia\Queue\Adapter;
 
-use Swoole\Process;
 use Swoole\Process\Pool;
 use Utopia\CLI\Console;
 use Utopia\Queue\Adapter;
@@ -13,7 +12,7 @@ use Utopia\Queue\Job;
  * 
  * @package Utopia\Queue\Adapter
  */
-class SwooleAdapter extends Adapter
+class Swoole extends Adapter
 {
     protected Pool $pool;
     protected Connection $connection;

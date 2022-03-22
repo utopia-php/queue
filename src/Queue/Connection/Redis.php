@@ -2,17 +2,17 @@
 
 namespace Utopia\Queue\Connection;
 
-use Swoole\Coroutine\Redis;
+use Swoole\Coroutine\Redis as SwooleRedis;
 use Utopia\Queue\Connection;
 use Utopia\Queue\Job;
 
-class RedisConnection implements Connection
+class Redis implements Connection
 {
     protected string $host;
     protected int $port;
     protected ?string $user;
     protected ?string $password;
-    protected ?Redis $redis = null;
+    protected ?SwooleRedis $redis = null;
 
     public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null)
     {
@@ -149,13 +149,13 @@ class RedisConnection implements Connection
         return array_map(fn(array $job) => new Job($job), $results);
     }
 
-    protected function getRedis(): Redis
+    protected function getRedis(): SwooleRedis
     {
         if ($this->redis) {
             return $this->redis;
         }
 
-        $this->redis = new Redis([
+        $this->redis = new SwooleRedis([
             'user' => $this->user,
             'password' => $this->password
         ]);

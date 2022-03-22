@@ -3,10 +3,9 @@
 require_once __DIR__ . '/../../../../vendor/autoload.php';
 
 use Utopia\Queue;
-use Utopia\Queue\Job;
 
-$connection = new Queue\Connection\RedisConnection('redis');
-$adapter = new Queue\Adapter\SwooleAdapter($connection, 12, 'test');
+$connection = new Queue\Connection\Redis('redis');
+$adapter = new Queue\Adapter\Swoole($connection, 12, 'test');
 $server = new Queue\Server($adapter);
 $server
     ->error(function ($th) {
@@ -15,7 +14,7 @@ $server
     ->onStart(function() {
         echo "Queue Server started". PHP_EOL;
     })
-    ->onJob(function (Job $job) {
+    ->onJob(function (Queue\Job $job) {
         if (array_key_exists('stop', $job->getPayload())) {
             throw new Exception("Error Processing Request", 1);
         }

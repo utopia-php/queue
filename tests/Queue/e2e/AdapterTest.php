@@ -3,12 +3,8 @@
 namespace Utopia\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Swoole\Table;
-use Utopia\Queue\Adapter\SwooleAdapter;
 use Utopia\Queue\Client;
-use Utopia\Queue\Connection\RedisConnection;
-use Utopia\Queue\Job;
-use Utopia\Queue\Server;
+use Utopia\Queue\Connection\Redis;
 
 use function Swoole\Coroutine\run;
 
@@ -20,7 +16,7 @@ class SwooleTest extends TestCase
 
     public function testClient(): void
     {
-        $connection = new RedisConnection('localhost', 6378);
+        $connection = new Redis('localhost', 6378);
 
         run(function () use ($connection) {
             $client = new Client('test', $connection);
