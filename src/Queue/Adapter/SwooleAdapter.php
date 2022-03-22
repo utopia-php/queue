@@ -87,6 +87,7 @@ class SwooleAdapter extends Adapter
                 } catch (\Throwable $th) {
                     $this->connection->leftPush("{$this->namespace}.failed.{$this->queue}", $job->getPid());
                     Console::error("[Job] ({$job->getPid()}) failed to run.");
+                    Console::error("[Job] ({$job->getPid()}) {$th->getMessage()}");
                 } finally {
                     $this->connection->remove("{$this->namespace}.processing.{$this->queue}", $job->getPid());
                 }
