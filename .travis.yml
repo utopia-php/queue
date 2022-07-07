@@ -1,9 +1,14 @@
+language: php
+php: 8.0
 services:
   - docker
 
 notifications:
   email:
     - team@appwrite.io
+
+before_script: 
+  - composer install --ignore-platform-reqs
 
 script:
   - docker-compose up -d

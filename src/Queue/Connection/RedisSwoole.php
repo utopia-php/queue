@@ -130,7 +130,7 @@ class RedisSwoole implements Connection
         return $this->getRedis()->set($key, $value);
     }
 
-    public function get(string $key): array|string
+    public function get(string $key): array|string|null
     {
         return $this->getRedis()->get($key);
     }
@@ -153,7 +153,7 @@ class RedisSwoole implements Connection
     public function listRange(string $key, int $total, int $offset): array
     {
         $start = $offset - 1;
-        $end = ($total + $offset) -1;
+        $end = ($total + $offset) - 1;
         $results = $this->getRedis()->lrange($key, $start, $end);
 
         return array_map(fn (array $job) => new Job($job), $results);

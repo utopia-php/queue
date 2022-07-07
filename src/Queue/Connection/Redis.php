@@ -130,7 +130,7 @@ class Redis implements Connection
         return $this->getRedis()->set($key, $value);
     }
 
-    public function get(string $key): array|string
+    public function get(string $key): array|string|null
     {
         return $this->getRedis()->get($key);
     }

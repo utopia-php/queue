@@ -30,7 +30,7 @@ interface Connection
     public function remove(string $key): bool;
     public function move(string $queue, string $destination): bool;
     public function set(string $key, string $value): bool;
-    public function get(string $key): array|string;
+    public function get(string $key): array|string|null;
     public function setArray(string $key, array $value): bool;
     public function increment(string $key): int;
     public function decrement(string $key): int;
