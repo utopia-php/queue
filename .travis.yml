@@ -7,6 +7,6 @@ notifications:
 
 script:
   - docker-compose up -d
-  - docker compose exec tests vendor/bin/pint --test
-  - docker compose exec tests vendor/bin/phpstan analyse
-  - docker compose exec tests vendor/bin/phpunit
+  - docker-compose exec tests vendor/bin/pint --test
+  - docker-compose exec tests vendor/bin/phpstan analyse
+  - docker-compose exec tests vendor/bin/phpunit
