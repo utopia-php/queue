@@ -26,22 +26,22 @@ class SwooleTest extends TestCase
                     'value' => 123
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'value' => 'lorem'
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'value' => 'ispum'
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'value' => 'dolor'
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'stop' => true
                 ]));
@@ -60,22 +60,22 @@ class SwooleTest extends TestCase
                     'value' => 123
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'value' => 'lorem'
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'value' => 'ispum'
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'value' => 'dolor'
                 ]));
             });
-            go(function ()  use ($client) {
+            go(function () use ($client) {
                 $this->assertTrue($client->enqueue([
                     'stop' => true
                 ]));

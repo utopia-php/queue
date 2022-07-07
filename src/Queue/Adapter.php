@@ -19,7 +19,8 @@ abstract class Adapter
     public string $namespace;
     public Connection $connection;
 
-    function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue') {
+    public function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue')
+    {
         $this->workerNum = $workerNum;
         $this->queue = $queue;
         $this->namespace = $namespace;
@@ -27,40 +28,40 @@ abstract class Adapter
 
     /**
      * Starts the Server.
-     * @return void 
+     * @return void
      */
-    public abstract function start(): void;
+    abstract public function start(): void;
 
     /**
      * Shuts down the Server.
-     * @return void 
+     * @return void
      */
-    public abstract function shutdown(): void;
+    abstract public function shutdown(): void;
 
     /**
      * Is called when the Server starts.
-     * @param callable $callback 
-     * @return self 
+     * @param callable $callback
+     * @return self
      */
-    public abstract function onStart(callable $callback): self;
+    abstract public function onStart(callable $callback): self;
 
     /**
      * Is called when a Worker receives a Job.
-     * @param callable $callback 
-     * @return self 
+     * @param callable $callback
+     * @return self
      */
-    public abstract function onJob(callable $callback): self;
+    abstract public function onJob(callable $callback): self;
 
     /**
      * Is called when a Worker starts.
-     * @param callable $callback 
-     * @return self 
+     * @param callable $callback
+     * @return self
      */
-    public abstract function onWorkerStart(callable $callback): self;
+    abstract public function onWorkerStart(callable $callback): self;
 
     /**
      * Returns the native server object from the Adapter.
-     * @return mixed 
+     * @return mixed
      */
-    public abstract function getNative(): mixed;
+    abstract public function getNative(): mixed;
 }

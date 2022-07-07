@@ -11,7 +11,7 @@ $server
     ->error(function ($th) {
         echo $th->getMessage() . PHP_EOL;
     })
-    ->onStart(function() {
+    ->onStart(function () {
         echo "Queue Server started". PHP_EOL;
     })
     ->onJob(function (Queue\Job $job) {

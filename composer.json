@@ -17,6 +17,9 @@
     "autoload-dev": {
         "psr-4": {"Utopia\\Tests\\": "tests/Database"}
     },
+    "scripts":{
+        "test": "phpunit"
+    },
     "require": {
         "php": ">=8.0",
         "utopia-php/cli": "0.12.*"
@@ -24,11 +27,12 @@
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
         "phpunit/phpunit": "^9.5.5",
-        "vimeo/psalm": "^4.8.1",
-        "workerman/workerman": "^4.0"
+        "laravel/pint": "^0.2.3",
+        "workerman/workerman": "^4.0",
+        "phpstan/phpstan": "^1.8"
     },
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
-        "workerman/workerman": "Needed to support Workerman"
+        "workerman/workerman": "Needed to support Workerman."
     }
 }

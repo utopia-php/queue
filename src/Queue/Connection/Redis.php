@@ -25,7 +25,7 @@ class Redis implements Connection
     {
         $response = $this->rightPopLeftPush($queue, $destination, $timeout);
 
-        if (!$response){
+        if (!$response) {
             return false;
         }
 
@@ -146,7 +146,7 @@ class Redis implements Connection
         $end = ($total + $offset) -1;
         $results = $this->getRedis()->lrange($key, $start, $end);
 
-        return array_map(fn(array $job) => new Job($job), $results);
+        return array_map(fn (array $job) => new Job($job), $results);
     }
 
     protected function getRedis(): \Redis

@@ -4,7 +4,6 @@ namespace Utopia\Queue;
 
 use Throwable;
 use Utopia\CLI\Console;
-use Utopia\Queue\Adapter;
 
 /**
  * Utopia PHP Framework
@@ -28,7 +27,7 @@ class Server
 
     /**
      * Creates an instance of a Queue server.
-     * @param Adapter $adapter 
+     * @param Adapter $adapter
      */
     public function __construct(Adapter $adapter)
     {
@@ -37,7 +36,7 @@ class Server
 
     /**
      * Starts the Queue server.
-     * @return void 
+     * @return void
      */
     public function start(): void
     {
@@ -52,7 +51,7 @@ class Server
 
     /**
      * Shuts down the Queue server.
-     * @return void 
+     * @return void
      */
     public function shutdown(): void
     {
@@ -67,8 +66,8 @@ class Server
 
     /**
      * Is called when the Server starts.
-     * @param callable $callback 
-     * @return self 
+     * @param callable $callback
+     * @return self
      */
     public function onStart(callable $callback): self
     {
@@ -87,8 +86,8 @@ class Server
 
     /**
      * Is called when a Worker starts.
-     * @param callable $callback 
-     * @return self 
+     * @param callable $callback
+     * @return self
      */
     public function onWorkerStart(callable $callback): self
     {
@@ -108,8 +107,8 @@ class Server
 
     /**
      * Is called when a Worker receives a Job.
-     * @param callable $callback 
-     * @return self 
+     * @param callable $callback
+     * @return self
      */
     public function onJob(callable $callback): self
     {
@@ -120,7 +119,9 @@ class Server
                      * Waiting for next Job.
                      */
                     $nextJob = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
-                    if (!$nextJob) continue;
+                    if (!$nextJob) {
+                        continue;
+                    }
 
                     $job = new Job();
                     $job

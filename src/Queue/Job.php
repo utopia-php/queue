@@ -11,7 +11,9 @@ class Job
 
     public function __construct(array $array = [])
     {
-        if (empty($array)) return;
+        if (empty($array)) {
+            return;
+        }
 
         $this->pid = $array['pid'];
         $this->queue = $array['queue'];
