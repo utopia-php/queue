@@ -61,6 +61,6 @@ class Workerman extends Adapter
 
     public function getNative(): Pool
     {
-        return $this->pool;
+        return $this->worker;
     }
 }

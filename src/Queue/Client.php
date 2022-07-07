@@ -19,7 +19,7 @@ class Client
         $payload = [
             'pid' => \uniqid(more_entropy: true),
             'queue' => $this->queue,
-            'timestamp' => \intval(\microtime()),
+            'timestamp' => time(),
             'payload' => $payload
         ];
 
@@ -45,5 +45,25 @@ class Client
     public function getQueueSize(): int
     {
         return $this->connection->listSize("{$this->namespace}.queue.{$this->queue}");
+    }
+
+    public function sumTotalJobs(): int
+    {
+        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.total"));
+    }
+
+    public function sumSuccessfulJobs(): int
+    {
+        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.success"));
+    }
+
+    public function sumFailedJobs(): int
+    {
+        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.failed"));
+    }
+
+    public function sumProcessingJobs(): int
+    {
+        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.processing"));
     }
 }

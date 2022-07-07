@@ -5,11 +5,8 @@ notifications:
   email:
     - team@appwrite.io
 
-before_script: 
-  - pecl install --configureoptions 'enable-sockets="no" enable-openssl="no" enable-http2="no" enable-mysqlnd="no" enable-swoole-json="no" enable-swoole-curl="no"' swoole
-  - composer install --ignore-platform-reqs
-
 script:
   - docker-compose up -d
-  - vendor/bin/phpunit --configuration phpunit.xml
-  # - vendor/bin/psalm --show-info=true
+  - docker compose exec tests vendor/bin/pint --test
+  - docker compose exec tests vendor/bin/phpstan analyse
+  - docker compose exec tests vendor/bin/phpunit

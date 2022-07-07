@@ -22,7 +22,7 @@ class Server
      *
      * @var array
      */
-    protected $errorCallbacks = [];
+    protected array $errorCallbacks = [];
     protected Adapter $adapter;
 
     /**
@@ -119,6 +119,7 @@ class Server
                      * Waiting for next Job.
                      */
                     $nextJob = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
+
                     if (!$nextJob) {
                         continue;
                     }
@@ -138,16 +139,54 @@ class Server
                     $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$job->getPid()}", $nextJob);
                     $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
 
+                    /**
+                     * Increment Total Jobs Received from Stats.
+                     */
+                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+
                     try {
+                        /**
+                         * Increment Processing Jobs from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+
+
                         call_user_func($callback, $job);
+
+                        /**
+                         * Remove Jobs if successful.
+                         */
                         $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$job->getPid()}");
+
+                        /**
+                         * Increment Successful Jobs from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
+
                         Console::success("[Job] ({$job->getPid()}) successfully run.");
                     } catch (\Throwable $th) {
+                        /**
+                         * Move failed Job to Failed list.
+                         */
                         $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $job->getPid());
+
+                        /**
+                         * Increment Failed Jobs from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
+
                         Console::error("[Job] ({$job->getPid()}) failed to run.");
                         Console::error("[Job] ({$job->getPid()}) {$th->getMessage()}");
                     } finally {
-                        $this->adapter->connection->remove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
+                        /**
+                         * Remove Job from Processing.
+                         */
+                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
+
+                        /**
+                         * Decrease Processing Jobs from Stats.
+                         */
+                        $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
                     }
                 }
             });
@@ -163,7 +202,6 @@ class Server
     /**
      * Register callback. Will be executed when error occurs.
      * @param callable $callback
-     * @param Throwable $error
      * @return self
      */
     public function error(callable $callback): self

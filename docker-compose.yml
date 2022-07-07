@@ -1,6 +1,16 @@
 version: '3.1'
 
 services:
+  tests:
+    container_name: tests
+    build: .
+    volumes:
+      - ./:/usr/src/code
+    depends_on:
+      - redis
+      - swoole
+      - workerman
+
   swoole:
     container_name: swoole
     build: ./tests/Queue/servers/Swoole/.
@@ -23,4 +33,4 @@ services:
     container_name: redis
     image: "redis:alpine"
     ports:
-      - "6378:6379"
+      - "6379:6379"

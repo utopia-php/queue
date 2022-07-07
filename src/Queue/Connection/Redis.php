@@ -35,7 +35,7 @@ class Redis implements Connection
     {
         $response = $this->getRedis()->bRPopLPush($queue, $destination, $timeout);
 
-        if (($response ?? false) === false) {
+        if (!$response) {
             return false;
         }
 
@@ -130,14 +130,24 @@ class Redis implements Connection
         return $this->getRedis()->set($key, $value);
     }
 
-    public function get(string $key): array
+    public function get(string $key): array|string
     {
         return $this->getRedis()->get($key);
     }
 
     public function listSize(string $key): int
     {
-        return $this->getRedis()->lSize($key);
+        return $this->getRedis()->lLen($key);
+    }
+
+    public function increment(string $key): int
+    {
+        return $this->getRedis()->incr($key);
+    }
+
+    public function decrement(string $key): int
+    {
+        return $this->getRedis()->decr($key);
     }
 
     public function listRange(string $key, int $total, int $offset): array
