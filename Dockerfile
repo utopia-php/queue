@@ -5,13 +5,12 @@ WORKDIR /usr/local/src/
 COPY composer.lock /usr/local/src/
 COPY composer.json /usr/local/src/
 
-RUN composer install --ignore-platform-reqs --optimize-autoloader \
-    --no-plugins --no-scripts --prefer-dist \
-    `if [ "$TESTING" != "true" ]; then echo "--no-dev"; fi`
+RUN composer install --ignore-platform-reqs
 
 FROM phpswoole/swoole:php8.1-alpine
 
 WORKDIR /usr/local/src/
+
 RUN apk add autoconf build-base
 
 RUN set -ex \
@@ -21,6 +20,6 @@ RUN set -ex \
 
 COPY . .
 
-COPY --from=composer /usr/local/src/vendor /usr/src/code/vendor
+COPY --from=composer /usr/local/src/vendor /usr/local/src/vendor
 
 CMD ["sleep","3600"]
