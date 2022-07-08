@@ -107,7 +107,7 @@ class Redis implements Connection
 
     public function listRemove(string $queue, string $key): bool
     {
-        return !!$this->getRedis()->lRemove($queue, $key, 1);
+        return !!$this->getRedis()->lRem($queue, $key, 1);
     }
 
     public function remove(string $key): bool

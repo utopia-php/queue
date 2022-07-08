@@ -2,7 +2,6 @@
 
 namespace Utopia\Queue\Adapter;
 
-use Swoole\Process\Pool;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Connection;
 use Workerman\Worker;
@@ -59,7 +58,7 @@ class Workerman extends Adapter
         return $this;
     }
 
-    public function getNative(): Pool
+    public function getNative(): Worker
     {
         return $this->worker;
     }

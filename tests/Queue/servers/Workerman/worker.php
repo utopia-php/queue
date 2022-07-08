@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../../../vendor/autoload.php';
+require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
 
@@ -15,8 +16,6 @@ $server
         echo "Queue Server started". PHP_EOL;
     })
     ->onJob(function (Queue\Job $job) {
-        if (array_key_exists('stop', $job->getPayload())) {
-            throw new Exception("Error Processing Request", 1);
-        }
+        handleRequest($job);
     })
     ->start();

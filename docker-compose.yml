@@ -5,7 +5,7 @@ services:
     container_name: tests
     build: .
     volumes:
-      - ./:/usr/src/code
+      - ./:/usr/local/src
     depends_on:
       - redis
       - swoole
