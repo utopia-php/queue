@@ -3,11 +3,11 @@
 namespace Utopia\Queue;
 
 /**
- * Utopia PHP Framework
+ * Utopia PHP Queue
  *
  * @package Utopia\Queue
  *
- * @link https://github.com/utopia-php/framework
+ * @link https://github.com/utopia-php/queue
  * @author Torsten Dittmann <torsten@appwrite.io>
  * @version 1.0 RC1
  * @license The MIT License (MIT) <http://www.opensource.org/licenses/mit-license.php>
