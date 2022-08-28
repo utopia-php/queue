@@ -1,6 +1,6 @@
 # Utopia Queue
 
-[![Build Status](https://travis-ci.com/utopia-php/system.svg?branch=main)](https://travis-ci.com/utopia-php/queue)
+[![Build Status](https://travis-ci.com/utopia-php/queue.svg?branch=main)](https://travis-ci.com/utopia-php/queue)
 ![Total Downloads](https://img.shields.io/packagist/dt/utopia-php/queue.svg)
 [![Discord](https://img.shields.io/discord/564160730845151244?label=discord)](https://appwrite.io/discord)
 
