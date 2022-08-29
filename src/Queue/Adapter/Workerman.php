@@ -27,7 +27,7 @@ class Workerman extends Adapter
         call_user_func($this->onStartCallback);
     }
 
-    public function shutdown(): void
+    public function stop(): void
     {
         Worker::stopAll();
     }

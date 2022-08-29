@@ -36,7 +36,7 @@ abstract class Adapter
      * Shuts down the Server.
      * @return void
      */
-    abstract public function shutdown(): void;
+    abstract public function stop(): void;
 
     /**
      * Is called when the Server starts.
