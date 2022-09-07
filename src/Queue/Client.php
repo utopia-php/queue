@@ -14,16 +14,17 @@ class Client
         $this->connection = $connection;
     }
 
-    public function enqueue(array $payload): bool
+    public function job(): Job
     {
-        $payload = [
-            'pid' => \uniqid(more_entropy: true),
-            'queue' => $this->queue,
-            'timestamp' => time(),
-            'payload' => $payload
-        ];
+        $job = new Job();
+        $job->setPid(\uniqid(more_entropy: true));
+        $job->setQueue($this->queue);
+        return $job;
+    }
 
-        return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $payload);
+    public function enqueue(Job $job): bool
+    {
+        return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $job->asArray());
     }
 
     public function getJob(string $pid): Job|false

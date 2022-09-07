@@ -2,7 +2,9 @@
 
 namespace Utopia\Queue;
 
-class Job
+use Utopia\Hook;
+
+class Job extends Hook
 {
     protected string $pid;
     protected string $queue;
@@ -18,7 +20,11 @@ class Job
         $this->pid = $array['pid'];
         $this->queue = $array['queue'];
         $this->timestamp = $array['timestamp'];
-        $this->payload = $array['payload'];
+        $this->payload = $array['payload'] ?? [];
+        $this->groups = $array['groups'] ?? [];
+        $this->params = $array['params'] ?? [];
+        $this->desc = $array['desc'] ?? '';
+        $this->injections = $array['injections'] ?? [];
     }
     public function setPid(string $pid): self
     {
@@ -59,5 +65,18 @@ class Job
     public function getPayload(): array
     {
         return $this->payload;
+    }
+    public function asArray(): array
+    {
+        return [
+            'pid' => $this->pid,
+            'queue' => $this->queue,
+            'timestamp' => $this->timestamp,
+            'payload' => $this->payload,
+            'params' => $this->params,
+            'groups' => $this->groups,
+            'injections' => $this->injections,
+            'desc' => $this->desc,
+        ];
     }
 }
