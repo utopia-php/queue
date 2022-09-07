@@ -13,10 +13,7 @@ WORKDIR /usr/local/src/
 
 RUN apk add autoconf build-base
 
-RUN set -ex \
-    && pecl update-channels \
-    && pecl install redis-stable \
-    && docker-php-ext-enable redis
+RUN docker-php-ext-enable redis
 
 COPY . .
 

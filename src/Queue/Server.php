@@ -49,14 +49,14 @@ class Server
         $this->adapter = $adapter;
     }
 
-     /**
-     * If a resource has been created return it, otherwise create it and then return it
-     *
-     * @param string $name
-     * @param bool $fresh
-     * @return mixed
-     * @throws Exception
-     */
+    /**
+    * If a resource has been created return it, otherwise create it and then return it
+    *
+    * @param string $name
+    * @param bool $fresh
+    * @return mixed
+    * @throws Exception
+    */
     public function getResource(string $name, bool $fresh = false): mixed
     {
         if ($name === 'utopia') {
@@ -68,8 +68,10 @@ class Server
                 throw new Exception('Failed to find resource: "' . $name . '"');
             }
 
-            $this->resources[$name] = \call_user_func_array(self::$resourcesCallbacks[$name]['callback'],
-                $this->getResources(self::$resourcesCallbacks[$name]['injections']));
+            $this->resources[$name] = \call_user_func_array(
+                self::$resourcesCallbacks[$name]['callback'],
+                $this->getResources(self::$resourcesCallbacks[$name]['injections'])
+            );
         }
 
         self::$resourcesCallbacks[$name]['reset'] = false;
@@ -187,13 +189,12 @@ class Server
 
     /**
      * Is called when a Worker receives a Job.
-     * @param callable $callback
      * @return self
      */
     public function onJob(): self
     {
         try {
-            $this->adapter->onJob(function (){
+            $this->adapter->onJob(function () {
                 while (true) {
                     /**
                      * Waiting for next Job.
@@ -277,9 +278,7 @@ class Server
     /**
      * Get Arguments
      *
-     * @param Hook $hook
-     * @param array $values
-     * @param array $requestParams
+     * @param Job $job
      * @return array
      * @throws Exception
      */
@@ -311,7 +310,6 @@ class Server
      * @param string $key
      * @param array $param
      * @param mixed $value
-     * @param array $resources
      *
      * @throws Exception
      *

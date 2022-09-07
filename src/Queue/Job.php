@@ -25,6 +25,7 @@ class Job extends Hook
         $this->params = $array['params'] ?? [];
         $this->desc = $array['desc'] ?? '';
         $this->injections = $array['injections'] ?? [];
+        $this->action = $array['action'];
     }
     public function setPid(string $pid): self
     {
@@ -72,11 +73,12 @@ class Job extends Hook
             'pid' => $this->pid,
             'queue' => $this->queue,
             'timestamp' => $this->timestamp,
-            'payload' => $this->payload,
+            'payload' => $this->payload ?? null,
             'params' => $this->params,
             'groups' => $this->groups,
             'injections' => $this->injections,
             'desc' => $this->desc,
+            'action' => $this->action,
         ];
     }
 }
