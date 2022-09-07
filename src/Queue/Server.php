@@ -3,7 +3,10 @@
 namespace Utopia\Queue;
 
 use Throwable;
+use Utopia\Hook;
 use Utopia\CLI\Console;
+use Exception;
+use Utopia\Validator;
 
 /**
  * Utopia PHP Queue
@@ -26,6 +29,18 @@ class Server
     protected Adapter $adapter;
 
     /**
+     * @var array
+     */
+    protected array $resources = [
+        'error' => null,
+    ];
+
+    /**
+     * @var array
+     */
+    protected static array $resourcesCallbacks = [];
+
+    /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter
      */
@@ -33,6 +48,71 @@ class Server
     {
         $this->adapter = $adapter;
     }
+
+     /**
+     * If a resource has been created return it, otherwise create it and then return it
+     *
+     * @param string $name
+     * @param bool $fresh
+     * @return mixed
+     * @throws Exception
+     */
+    public function getResource(string $name, bool $fresh = false): mixed
+    {
+        if ($name === 'utopia') {
+            return $this;
+        }
+
+        if (!\array_key_exists($name, $this->resources) || $fresh || self::$resourcesCallbacks[$name]['reset']) {
+            if (!\array_key_exists($name, self::$resourcesCallbacks)) {
+                throw new Exception('Failed to find resource: "' . $name . '"');
+            }
+
+            $this->resources[$name] = \call_user_func_array(self::$resourcesCallbacks[$name]['callback'],
+                $this->getResources(self::$resourcesCallbacks[$name]['injections']));
+        }
+
+        self::$resourcesCallbacks[$name]['reset'] = false;
+
+        return $this->resources[$name];
+    }
+
+    /**
+     * Get Resources By List
+     *
+     * @param array $list
+     * @return array
+     */
+    public function getResources(array $list): array
+    {
+        $resources = [];
+
+        foreach ($list as $name) {
+            $resources[$name] = $this->getResource($name);
+        }
+
+        return $resources;
+    }
+
+    /**
+     * Set a new resource callback
+     *
+     * @param string $name
+     * @param callable $callback
+     * @param array $injections
+     *
+     * @throws Exception
+     *
+     * @return void
+     */
+    public static function setResource(string $name, callable $callback, array $injections = []): void
+    {
+        if ($name === 'utopia') {
+            throw new Exception("'utopia' is a reserved keyword.", 500);
+        }
+        self::$resourcesCallbacks[$name] = ['callback' => $callback, 'injections' => $injections, 'reset' => true];
+    }
+
 
     /**
      * Starts the Queue server.
@@ -110,10 +190,10 @@ class Server
      * @param callable $callback
      * @return self
      */
-    public function onJob(callable $callback): self
+    public function onJob(): self
     {
         try {
-            $this->adapter->onJob(function () use ($callback) {
+            $this->adapter->onJob(function (){
                 while (true) {
                     /**
                      * Waiting for next Job.
@@ -124,13 +204,9 @@ class Server
                         continue;
                     }
 
-                    $job = new Job();
-                    $job
-                        ->setPid($nextJob['pid'])
-                        ->setQueue($nextJob['queue'])
-                        ->setTimestamp(\intval($nextJob['timestamp']))
-                        ->setPayload($nextJob['payload']);
+                    $nextJob['timestamp'] = \intval($nextJob['timestamp']);
 
+                    $job = new Job($nextJob);
                     Console::info("[Job] Received Job ({$job->getPid()}).");
 
                     /**
@@ -150,8 +226,7 @@ class Server
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
-
-                        call_user_func($callback, $job);
+                        \call_user_func_array($job->getAction(), $this->getArguments($job));
 
                         /**
                          * Remove Jobs if successful.
@@ -197,6 +272,70 @@ class Server
         }
 
         return $this;
+    }
+
+    /**
+     * Get Arguments
+     *
+     * @param Hook $hook
+     * @param array $values
+     * @param array $requestParams
+     * @return array
+     * @throws Exception
+     */
+    protected function getArguments(Job $job): array
+    {
+        $arguments = [];
+        $payload = $job->getPayload();
+        foreach ($job->getParams() as $key => $param) { // Get value from route or request object
+            $value = $payload[$key] ?? $param['default'];
+            $value = ($value === '' || is_null($value)) ? $param['default'] : $value;
+
+            $this->validate($key, $param, $value);
+            $job->setParamValue($key, $value);
+            $arguments[$param['order']] = $value;
+        }
+
+        foreach ($job->getInjections() as $key => $injection) {
+            $arguments[$injection['order']] = $this->getResource($injection['name']);
+        }
+
+        return $arguments;
+    }
+
+    /**
+     * Validate Param
+     *
+     * Creates an validator instance and validate given value with given rules.
+     *
+     * @param string $key
+     * @param array $param
+     * @param mixed $value
+     * @param array $resources
+     *
+     * @throws Exception
+     *
+     * @return void
+     */
+    protected function validate(string $key, array $param, mixed $value): void
+    {
+        if ('' !== $value && !is_null($value)) {
+            $validator = $param['validator']; // checking whether the class exists
+
+            if (\is_callable($validator)) {
+                $validator = \call_user_func_array($validator, $this->getResources($param['injections']));
+            }
+
+            if (!$validator instanceof Validator) { // is the validator object an instance of the Validator class
+                throw new Exception('Validator object is not an instance of the Validator class', 500);
+            }
+
+            if (!$validator->isValid($value)) {
+                throw new Exception('Invalid ' .$key . ': ' . $validator->getDescription(), 400);
+            }
+        } elseif (!$param['optional']) {
+            throw new Exception('Param "' . $key . '" is not optional.', 400);
+        }
     }
 
     /**

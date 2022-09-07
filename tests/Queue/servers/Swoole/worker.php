@@ -15,7 +15,5 @@ $server
     ->onStart(function () {
         echo "Queue Server started". PHP_EOL;
     })
-    ->onJob(function (Queue\Job $job) {
-        handleRequest($job);
-    })
+    ->onJob()
     ->start();

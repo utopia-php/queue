@@ -6,14 +6,97 @@ use PHPUnit\Framework\TestCase;
 use Utopia\Queue\Client;
 use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Connection\RedisSwoole;
+use Utopia\Queue\Job;
+use Utopia\Validator\ArrayList;
+use Utopia\Validator\Boolean;
+use Utopia\Validator\FloatValidator;
+use Utopia\Validator\Integer;
+use Utopia\Validator\Text;
 
 use function Swoole\Coroutine\go;
 use function Swoole\Coroutine\run;
 
 class SwooleTest extends TestCase
 {
+    private $jobs;
+    
     public function setUp(): void
     {
+        $this->jobs = [];
+
+        $job = new Job();
+        $job->param('value', '', new Text(0));
+        $job->setPayload(['value' => 'lorem ipsum']);
+        $job->action(function($value) {
+            assert(is_string($value));
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->param('value', null, new Integer());
+        $job->setPayload(['value' => 123]);
+        $job->action(function($value) {
+            assert(is_numeric($value));
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->param('value', null, new FloatValidator());
+        $job->setPayload(['value' => 123.456]);
+        $job->action(function($value) {
+            assert(is_numeric($value));
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->param('value', true, new Boolean());
+        $job->setPayload(['value' => true]);
+        $job->action(function($value) {
+            assert(is_bool($value));
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->param('value', null, new Text(0), '', true);
+        $job->setPayload(['value' => null]);
+        $job->action(function($value) {
+            assert(is_null($value));
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->param('value', null, new ArrayList(new Integer()), '', true);
+        $job->setPayload(['value' => [1,2,3]]);
+        $job->action(function($value) {
+            assert(is_array($value));
+            assert(count($value) === 3);
+            assert(empty(array_diff([1,2,3], $value)));
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->param('value', [], new ArrayList(new Integer()), '', true);
+        $job->setPayload(['value' => [
+            'string' => 'ipsum',
+            'number' => 123,
+            'bool' => true,
+            'null' => null
+        ]]);
+        $job->action(function($value) {
+            assert(is_array($value));
+            assert(count($value) === 3);
+            assert($value['string'] === 'ipsum');
+            assert($value['number'] === 123);
+            assert($value['bool'] === true);
+            assert($value['null'] === null);
+        });
+        $this->jobs[] = $job;
+
+        $job = new Job();
+        $job->action(function() {
+            assert(false);
+        });
+        $this->jobs[] = $job;
     }
 
     public function testEvents(): void
@@ -23,53 +106,15 @@ class SwooleTest extends TestCase
         $client = new Client('workerman', $connection);
         $client->resetStats();
 
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_string',
-            'value' => 'lorem ipsum'
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_number',
-            'value' => 123
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_number',
-            'value' => 123.456
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_bool',
-            'value' => true
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_null',
-            'value' => null
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_array',
-            'value' => [
-                1,
-                2,
-                3
-            ]
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_assoc',
-            'value' => [
-                'string' => 'ipsum',
-                'number' => 123,
-                'bool' => true,
-                'null' => null
-            ]
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_exception'
-        ]));
+        foreach ($this->jobs as $job) { /** @var Job $job */
+            $newJob = $client->job();
+            $newJob->setPayload($job->getPayload());
+            foreach($job->getParams() as $key => $param) {
+                $newJob->param($key, $param['default'], $param['validator'], $param['description'], $param['optional'], $param['injections']);
+            }
+            $newJob->action($job->getAction());
+            $this->assertTrue($client->enqueue($newJob));
+        }
 
         sleep(1);
 
@@ -88,52 +133,15 @@ class SwooleTest extends TestCase
             $client = new Client('swoole', $connection);
             go(function () use ($client) {
                 $client->resetStats();
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_string',
-                    'value' => 'lorem ipsum'
-                ]));
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_number',
-                    'value' => 123
-                ]));
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_number',
-                    'value' => 123.456
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_bool',
-                    'value' => true
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_null',
-                    'value' => null
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_array',
-                    'value' => [
-                        1,
-                        2,
-                        3
-                    ]
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_assoc',
-                    'value' => [
-                        'string' => 'ipsum',
-                        'number' => 123,
-                        'bool' => true,
-                        'null' => null
-                    ]
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_exception'
-                ]));
-
+                foreach ($this->jobs as $job) { /** @var Job $job */
+                    $newJob = $client->job();
+                    $newJob->setPayload($job->getPayload());
+                    foreach($job->getParams() as $key => $param) {
+                        $newJob->param($key, $param['default'], $param['validator'], $param['description'], $param['optional'], $param['injections']);
+                    }
+                    $newJob->action($job->getAction());
+                    $this->assertTrue($client->enqueue($newJob));
+                }
                 sleep(1);
 
                 $this->assertEquals(8, $client->sumTotalJobs());
