@@ -14,20 +14,19 @@ class Client
         $this->connection = $connection;
     }
 
-    public function job(): Job
+    public function enqueue(array $payload): bool
     {
-        $job = new Job();
-        $job->setPid(\uniqid(more_entropy: true));
-        $job->setQueue($this->queue);
-        return $job;
+        $payload = [
+            'pid' => \uniqid(more_entropy: true),
+            'queue' => $this->queue,
+            'timestamp' => time(),
+            'payload' => $payload
+        ];
+
+        return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $payload);
     }
 
-    public function enqueue(Job $job): bool
-    {
-        return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $job->asArray());
-    }
-
-    public function getJob(string $pid): Job|false
+    public function getJob(string $pid): Message|false
     {
         $job = $this->connection->get("{$this->namespace}.jobs.{$this->queue}.{$pid}");
 
@@ -35,7 +34,7 @@ class Client
             return false;
         }
 
-        return new Job($job);
+        return new Message($job);
     }
 
     public function listJobs(int $total = 50, int $offset = 0): array

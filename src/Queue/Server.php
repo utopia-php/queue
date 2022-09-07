@@ -27,6 +27,7 @@ class Server
      */
     protected array $errorCallbacks = [];
     protected Adapter $adapter;
+    protected Job $job;
 
     /**
      * @var array
@@ -47,6 +48,12 @@ class Server
     public function __construct(Adapter $adapter)
     {
         $this->adapter = $adapter;
+    }
+
+    public function job(): Job
+    {
+        $this->job = new Job();
+        return $this->job;
     }
 
     /**
@@ -199,22 +206,25 @@ class Server
                     /**
                      * Waiting for next Job.
                      */
-                    $nextJob = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
+                    $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
 
-                    if (!$nextJob) {
+                    if (!$nextMessage) {
                         continue;
                     }
 
-                    $nextJob['timestamp'] = \intval($nextJob['timestamp']);
+                    $nextMessage['timestamp'] = \intval($nextMessage['timestamp']);
 
-                    $job = new Job($nextJob);
-                    Console::info("[Job] Received Job ({$job->getPid()}).");
+                    $message = new Message($nextMessage);
+
+                    self::setResource('message', fn() => $message);
+
+                    Console::info("[Job] Received Job ({$message->getPid()}).");
 
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
                      */
-                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$job->getPid()}", $nextJob);
-                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
+                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
+                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
                     /**
                      * Increment Total Jobs Received from Stats.
@@ -227,37 +237,37 @@ class Server
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
-                        \call_user_func_array($job->getAction(), $this->getArguments($job));
+                        \call_user_func_array($this->job->getAction(), $this->getArguments($message->getPayload()));
 
                         /**
                          * Remove Jobs if successful.
                          */
-                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$job->getPid()}");
+                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
 
                         /**
                          * Increment Successful Jobs from Stats.
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
 
-                        Console::success("[Job] ({$job->getPid()}) successfully run.");
+                        Console::success("[Job] ({$message->getPid()}) successfully run.");
                     } catch (\Throwable $th) {
                         /**
                          * Move failed Job to Failed list.
                          */
-                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $job->getPid());
+                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
 
                         /**
                          * Increment Failed Jobs from Stats.
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
 
-                        Console::error("[Job] ({$job->getPid()}) failed to run.");
-                        Console::error("[Job] ({$job->getPid()}) {$th->getMessage()}");
+                        Console::error("[Job] ({$message->getPid()}) failed to run.");
+                        Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
                     } finally {
                         /**
                          * Remove Job from Processing.
                          */
-                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $job->getPid());
+                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
                         /**
                          * Decrease Processing Jobs from Stats.
@@ -278,24 +288,23 @@ class Server
     /**
      * Get Arguments
      *
-     * @param Job $job
+     * @param array $payload
      * @return array
      * @throws Exception
      */
-    protected function getArguments(Job $job): array
+    protected function getArguments(array $payload = []): array
     {
         $arguments = [];
-        $payload = $job->getPayload();
-        foreach ($job->getParams() as $key => $param) { // Get value from route or request object
+        foreach ($this->job->getParams() as $key => $param) { // Get value from route or request object
             $value = $payload[$key] ?? $param['default'];
             $value = ($value === '' || is_null($value)) ? $param['default'] : $value;
 
             $this->validate($key, $param, $value);
-            $job->setParamValue($key, $value);
+            $this->job->setParamValue($key, $value);
             $arguments[$param['order']] = $value;
         }
 
-        foreach ($job->getInjections() as $key => $injection) {
+        foreach ($this->job->getInjections() as $key => $injection) {
             $arguments[$injection['order']] = $this->getResource($injection['name']);
         }
 
