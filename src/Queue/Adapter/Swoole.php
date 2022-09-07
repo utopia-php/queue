@@ -25,7 +25,7 @@ class Swoole extends Adapter
         $this->pool->start();
     }
 
-    public function stop(): void
+    public function shutdown(): void
     {
         $this->pool->shutdown();
     }
