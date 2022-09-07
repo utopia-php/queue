@@ -11,7 +11,7 @@ $adapter = new Queue\Adapter\Workerman($connection, 12, 'workerman');
 $server = new Queue\Server($adapter);
 $server->job()
     ->inject('message')
-    ->action(function(Message $message) {
+    ->action(function (Message $message) {
         handleRequest($message);
     });
 $server

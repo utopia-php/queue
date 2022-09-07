@@ -12,7 +12,7 @@ $server = new Queue\Server($adapter);
 
 $server->job()
     ->inject('message')
-    ->action(function(Message $message){
+    ->action(function (Message $message) {
         handleRequest($message);
     });
 

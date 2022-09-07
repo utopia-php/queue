@@ -3,7 +3,6 @@
 namespace Utopia\Queue;
 
 use Throwable;
-use Utopia\Hook;
 use Utopia\CLI\Console;
 use Exception;
 use Utopia\Validator;
@@ -216,7 +215,7 @@ class Server
 
                     $message = new Message($nextMessage);
 
-                    self::setResource('message', fn() => $message);
+                    self::setResource('message', fn () => $message);
 
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
