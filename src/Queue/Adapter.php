@@ -18,9 +18,10 @@ abstract class Adapter
 
     /**
      * Starts the Server.
+     * @param callable $callback
      * @return void
      */
-    abstract public function start(): void;
+    abstract public function start(callable $callback): self;
 
     /**
      * Shuts down the Server.
@@ -29,25 +30,11 @@ abstract class Adapter
     abstract public function shutdown(): void;
 
     /**
-     * Is called when the Server starts.
-     * @param callable $callback
-     * @return self
-     */
-    abstract public function onStart(callable $callback): self;
-
-    /**
-     * Is called when a Worker receives a Job.
-     * @param callable $callback
-     * @return self
-     */
-    abstract public function onJob(callable $callback): self;
-
-    /**
      * Is called when a Worker starts.
      * @param callable $callback
      * @return self
      */
-    abstract public function onWorkerStart(callable $callback): self;
+    abstract public function workerStart(callable $callback): self;
 
     /**
      * Returns the native server object from the Adapter.

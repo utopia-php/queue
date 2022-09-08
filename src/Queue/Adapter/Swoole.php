@@ -9,7 +9,6 @@ use Utopia\Queue\Connection;
 class Swoole extends Adapter
 {
     protected Pool $pool;
-    protected mixed $onWorkerStartCallback = null;
 
     public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
@@ -19,10 +18,14 @@ class Swoole extends Adapter
         $this->pool = new Pool($workerNum);
     }
 
-    public function start(): void
+    public function start(callable $callback): self
     {
         $this->pool->set(['enable_coroutine' => true]);
         $this->pool->start();
+        $this->pool->on('start', function () use ($callback) {
+            call_user_func($callback);
+        });
+        return $this;
     }
 
     public function shutdown(): void
@@ -30,29 +33,10 @@ class Swoole extends Adapter
         $this->pool->shutdown();
     }
 
-    public function onStart(callable $callback): self
-    {
-        $this->pool->on('start', function () use ($callback) {
-            call_user_func($callback);
-        });
-
-        return $this;
-    }
-
-    public function onWorkerStart(callable $callback): self
-    {
-        $this->onWorkerStartCallback = $callback;
-
-        return $this;
-    }
-
-    public function onJob(callable $callback): self
+    public function workerStart(callable $callback): self
     {
         $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
-            if (!is_null($this->onWorkerStartCallback)) {
-                call_user_func($this->onWorkerStartCallback);
-            }
-            call_user_func($callback);
+            call_user_func($callback, $workerId);
         });
 
         return $this;

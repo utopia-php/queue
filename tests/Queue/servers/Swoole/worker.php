@@ -20,8 +20,11 @@ $server
     ->error(function ($th) {
         echo $th->getMessage() . PHP_EOL;
     })
-    ->onStart(function () {
+    ->workerStart(function () {
+        echo "Worker Started" . PHP_EOL;
+    })
+    ->start(function () {
         echo "Queue Server started". PHP_EOL;
     })
-    ->onJob()
-    ->start();
+    ;
+    // ->onJob()
