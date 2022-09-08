@@ -114,7 +114,7 @@ class Server
     /**
      * Shuts down the Queue server.
      * @param callable $callback
-     * @return void
+     * @return self
      */
     public function shutdown(callable $callback): self
     {

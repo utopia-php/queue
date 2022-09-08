@@ -26,9 +26,11 @@ class Workerman extends Adapter
         return $this;
     }
 
-    public function shutdown(): void
+    public function shutdown(callable $callback): self
     {
         Worker::stopAll();
+        call_user_func($callback);
+        return $this;
     }
 
     public function workerStart(callable $callback): self

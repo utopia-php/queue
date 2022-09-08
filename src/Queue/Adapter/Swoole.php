@@ -28,10 +28,11 @@ class Swoole extends Adapter
         return $this;
     }
 
-    public function shutdown(callable $callback): void
+    public function shutdown(callable $callback): self
     {
         $this->pool->shutdown();
         call_user_func($callback);
+        return $this;
     }
 
     public function workerStart(callable $callback): self
