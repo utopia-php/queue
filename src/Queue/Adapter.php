@@ -25,9 +25,10 @@ abstract class Adapter
 
     /**
      * Shuts down the Server.
+     * @param callable $callback
      * @return void
      */
-    abstract public function shutdown(): void;
+    abstract public function shutdown(callable $callback): void;
 
     /**
      * Is called when a Worker starts.

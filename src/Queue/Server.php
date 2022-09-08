@@ -113,17 +113,19 @@ class Server
 
     /**
      * Shuts down the Queue server.
+     * @param callable $callback
      * @return void
      */
-    public function shutdown(): void
+    public function shutdown(callable $callback): self
     {
         try {
-            $this->adapter->shutdown();
+            $this->adapter->shutdown($callback);
         } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "shutdown");
             }
         }
+        return $this;
     }
 
     /**
