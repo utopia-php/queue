@@ -19,7 +19,7 @@ abstract class Adapter
     /**
      * Starts the Server.
      * @param callable $callback
-     * @return void
+     * @return self
      */
     abstract public function start(callable $callback): self;
 
