@@ -55,10 +55,6 @@ class Server
     */
     public function getResource(string $name, bool $fresh = false): mixed
     {
-        if ($name === 'utopia') {
-            return $this;
-        }
-
         if (!\array_key_exists($name, $this->resources) || $fresh || self::$resourcesCallbacks[$name]['reset']) {
             if (!\array_key_exists($name, self::$resourcesCallbacks)) {
                 throw new Exception('Failed to find resource: "' . $name . '"');
@@ -105,9 +101,6 @@ class Server
      */
     public static function setResource(string $name, callable $callback, array $injections = []): void
     {
-        if ($name === 'utopia') {
-            throw new Exception("'utopia' is a reserved keyword.", 500);
-        }
         self::$resourcesCallbacks[$name] = ['callback' => $callback, 'injections' => $injections, 'reset' => true];
     }
 
