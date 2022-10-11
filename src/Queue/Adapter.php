@@ -18,10 +18,22 @@ abstract class Adapter
 
     /**
      * Starts the Server.
+     * @return self
+     */
+    abstract public function start(): self;
+
+    /**
+     * Stops the Server.
+     * @return self
+     */
+    abstract public function stop(): self;
+
+    /**
+     * Server init callback
      * @param callable $callback
      * @return self
      */
-    abstract public function start(callable $callback): self;
+    abstract public function init(callable $callback): self;
 
     /**
      * Shuts down the Server.

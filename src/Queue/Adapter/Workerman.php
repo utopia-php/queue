@@ -9,6 +9,8 @@ use Workerman\Worker;
 class Workerman extends Adapter
 {
     protected Worker $worker;
+    protected $shutdownCallback = null;
+    protected $initCallback = null;
 
     public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
@@ -19,19 +21,33 @@ class Workerman extends Adapter
         $this->connection = $connection;
     }
 
-    public function start(callable $callback): self
+    public function start(): self
     {
         Worker::runAll();
-        call_user_func($callback);
+        if(is_callable($this->initCallback)) {
+            call_user_func($this->initCallback);
+        }
+        return $this;
+    }
 
+    public function stop(): self
+    {
+        Worker::stopAll();
+        if(is_callable($this->shutdownCallback)) {
+            call_user_func($this->shutdownCallback);
+        }
+        return $this;
+    }
+
+    public function init(callable $callback): self
+    {
+        $this->initCallback = $callback;
         return $this;
     }
 
     public function shutdown(callable $callback): self
     {
-        Worker::stopAll();
-        call_user_func($callback);
-
+        $this->shutdownCallback = $callback;
         return $this;
     }
 
