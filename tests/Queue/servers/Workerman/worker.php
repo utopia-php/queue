@@ -14,6 +14,7 @@ $server->job()
     ->action(function (Message $message) {
         handleRequest($message);
     });
+
 $server
     ->error(function ($th) {
         echo $th->getMessage() . PHP_EOL;
@@ -21,7 +22,4 @@ $server
     ->workerStart(function () {
         echo "Worker Started" . PHP_EOL;
     })
-    ->start(function () {
-        echo "Queue Server started". PHP_EOL;
-    })
-    ;
+    ->start();

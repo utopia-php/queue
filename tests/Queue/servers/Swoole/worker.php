@@ -23,8 +23,4 @@ $server
     ->workerStart(function () {
         echo "Worker Started" . PHP_EOL;
     })
-    ->start(function () {
-        echo "Queue Server started". PHP_EOL;
-    })
-    ;
-    // ->onJob()
+    ->start();
