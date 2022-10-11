@@ -21,21 +21,28 @@ abstract class Adapter
      * @param callable $callback
      * @return self
      */
-    abstract public function start(callable $callback): self;
+    abstract public function start(callable $callback = null): self;
 
     /**
      * Shuts down the Server.
      * @param callable $callback
      * @return self
      */
-    abstract public function shutdown(callable $callback): self;
+    abstract public function shutdown(callable $callback = null): self;
 
     /**
      * Is called when a Worker starts.
      * @param callable $callback
      * @return self
      */
-    abstract public function workerStart(callable $callback): self;
+    abstract public function workerStart(callable $callback = null): self;
+
+    /**
+     * Is called when a Worker stops.
+     * @param callable $callback
+     * @return self
+     */
+    abstract public function workerStop(callable $callback = null): self;
 
     /**
      * Returns the native server object from the Adapter.

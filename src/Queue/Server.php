@@ -109,7 +109,7 @@ class Server
      * @param callable $callback
      * @return self
      */
-    public function shutdown(callable $callback): self
+    public function shutdown(callable $callback = null): self
     {
         try {
             $this->adapter->shutdown($callback);

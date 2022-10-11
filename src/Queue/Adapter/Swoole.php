@@ -18,28 +18,45 @@ class Swoole extends Adapter
         $this->pool = new Pool($workerNum);
     }
 
-    public function start(callable $callback): self
+    public function start(callable $callback = null): self
     {
         $this->pool->set(['enable_coroutine' => true]);
         $this->pool->start();
-        $this->pool->on('start', function () use ($callback) {
-            call_user_func($callback);
-        });
+        if (!is_null($callback)) {
+            $this->pool->on('start', function () use ($callback) {
+                call_user_func($callback);
+            });
+        }
         return $this;
     }
 
-    public function shutdown(callable $callback): self
+    public function shutdown(callable $callback = null): self
     {
         $this->pool->shutdown();
-        call_user_func($callback);
+        if (!is_null($callback)) {
+            call_user_func($callback);
+        }
         return $this;
     }
 
-    public function workerStart(callable $callback): self
+    public function workerStart(callable $callback = null): self
     {
-        $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
-            call_user_func($callback, $workerId);
-        });
+        if (!is_null($callback)) {
+            $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
+                call_user_func($callback, $workerId);
+            });
+        }
+
+        return $this;
+    }
+
+    public function workerStop(callable $callback = null): self
+    {
+        if (!is_null($callback)) {
+            $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
+                call_user_func($callback, $workerId);
+            });
+        }
 
         return $this;
     }
