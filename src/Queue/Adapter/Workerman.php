@@ -19,41 +19,35 @@ class Workerman extends Adapter
         $this->connection = $connection;
     }
 
-    public function start(callable $callback = null): self
+    public function start(callable $callback): self
     {
         Worker::runAll();
-        if (!is_null($callback)) {
-            call_user_func($callback);
-        }
+        call_user_func($callback);
+
         return $this;
     }
 
-    public function shutdown(callable $callback = null): self
+    public function shutdown(callable $callback): self
     {
         Worker::stopAll();
-        if (!is_null($callback)) {
-            call_user_func($callback);
-        }
-        return $this;
-    }
-
-    public function workerStart(callable $callback = null): self
-    {
-        if (!is_null($callback)) {
-            $this->worker->onWorkerStart = function ($worker) use ($callback) {
-                call_user_func($callback, $worker->workerId);
-            };
-        }
+        call_user_func($callback);
 
         return $this;
     }
-    public function workerStop(callable $callback = null): self
+
+    public function workerStart(callable $callback): self
     {
-        if (!is_null($callback)) {
-            $this->worker->onWorkerStop = function ($worker) use ($callback) {
-                call_user_func($callback, $worker->workerId);
-            };
-        }
+        $this->worker->onWorkerStart = function ($worker) use ($callback) {
+            call_user_func($callback, $worker->workerId);
+        };
+
+        return $this;
+    }
+    public function workerStop(callable $callback): self
+    {
+        $this->worker->onWorkerStop = function ($worker) use ($callback) {
+            call_user_func($callback, $worker->workerId);
+        };
 
         return $this;
     }
