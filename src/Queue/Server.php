@@ -145,80 +145,6 @@ class Server
     {
         try {
             $this->adapter->start();
-
-            while (true) {
-                /**
-                 * Waiting for next Job.
-                 */
-                $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
-
-                if (!$nextMessage) {
-                    continue;
-                }
-
-                $nextMessage['timestamp'] = \intval($nextMessage['timestamp']);
-
-                $message = new Message($nextMessage);
-
-                self::setResource('message', fn () => $message);
-
-                Console::info("[Job] Received Job ({$message->getPid()}).");
-
-                /**
-                 * Move Job to Jobs and it's PID to the processing list.
-                 */
-                $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
-                $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
-
-                /**
-                 * Increment Total Jobs Received from Stats.
-                 */
-                $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
-
-                try {
-                    /**
-                     * Increment Processing Jobs from Stats.
-                     */
-                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
-
-                    \call_user_func_array($this->job->getAction(), $this->getArguments($message->getPayload()));
-
-                    /**
-                     * Remove Jobs if successful.
-                     */
-                    $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
-
-                    /**
-                     * Increment Successful Jobs from Stats.
-                     */
-                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
-
-                    Console::success("[Job] ({$message->getPid()}) successfully run.");
-                } catch (\Throwable $th) {
-                    /**
-                     * Move failed Job to Failed list.
-                     */
-                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
-
-                    /**
-                     * Increment Failed Jobs from Stats.
-                     */
-                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
-
-                    Console::error("[Job] ({$message->getPid()}) failed to run.");
-                    Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
-                } finally {
-                    /**
-                     * Remove Job from Processing.
-                     */
-                    $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
-
-                    /**
-                     * Decrease Processing Jobs from Stats.
-                     */
-                    $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
-                }
-            }
         } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "onStart");
@@ -235,7 +161,85 @@ class Server
     public function workerStart(callable $callback = null): self
     {
         try {
-            $this->adapter->workerStart($callback);
+            $this->adapter->workerStart(function (string $workerId) use ($callback) {
+                Console::success("[Worker] Worker {$workerId} is ready!");
+                if (!is_null($callback)) {
+                    call_user_func($callback);
+                }
+                while (true) {
+                    /**
+                     * Waiting for next Job.
+                     */
+                    $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
+
+                    if (!$nextMessage) {
+                        continue;
+                    }
+
+                    $nextMessage['timestamp'] = \intval($nextMessage['timestamp']);
+
+                    $message = new Message($nextMessage);
+
+                    self::setResource('message', fn () => $message);
+
+                    Console::info("[Job] Received Job ({$message->getPid()}).");
+
+                    /**
+                     * Move Job to Jobs and it's PID to the processing list.
+                     */
+                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
+                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+
+                    /**
+                     * Increment Total Jobs Received from Stats.
+                     */
+                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+
+                    try {
+                        /**
+                         * Increment Processing Jobs from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+
+                        \call_user_func_array($this->job->getAction(), $this->getArguments($message->getPayload()));
+
+                        /**
+                         * Remove Jobs if successful.
+                         */
+                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
+
+                        /**
+                         * Increment Successful Jobs from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
+
+                        Console::success("[Job] ({$message->getPid()}) successfully run.");
+                    } catch (\Throwable $th) {
+                        /**
+                         * Move failed Job to Failed list.
+                         */
+                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
+
+                        /**
+                         * Increment Failed Jobs from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
+
+                        Console::error("[Job] ({$message->getPid()}) failed to run.");
+                        Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
+                    } finally {
+                        /**
+                         * Remove Job from Processing.
+                         */
+                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+
+                        /**
+                         * Decrease Processing Jobs from Stats.
+                         */
+                        $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+                    }
+                }
+            });
         } catch (Throwable $error) {
             foreach ($this->errorCallbacks as $errorCallback) {
                 $errorCallback($error, "onWorkerStart");
