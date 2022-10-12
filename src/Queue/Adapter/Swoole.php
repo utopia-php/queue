@@ -29,7 +29,7 @@ class Swoole extends Adapter
     public function stop(): self
     {
         $this->pool->shutdown();
-        if(is_callable($this->shutdownCallback)) {
+        if (is_callable($this->shutdownCallback)) {
             call_user_func($this->shutdownCallback);
         }
         return $this;
