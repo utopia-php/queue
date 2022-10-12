@@ -9,8 +9,8 @@ use Workerman\Worker;
 class Workerman extends Adapter
 {
     protected Worker $worker;
-    protected $shutdownCallback = null;
-    protected $initCallback = null;
+    protected mixed $shutdownCallback = null;
+    protected mixed $initCallback = null;
 
     public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {

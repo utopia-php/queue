@@ -9,7 +9,7 @@ use Utopia\Queue\Connection;
 class Swoole extends Adapter
 {
     protected Pool $pool;
-    protected $shutdownCallback;
+    protected mixed $shutdownCallback;
 
     public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
