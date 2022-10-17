@@ -17,9 +17,13 @@ $server->job()
     });
 
 $server
-    ->error(function ($th) {
+    ->error()
+    ->inject('error')
+    ->action(function ($th) {
         echo $th->getMessage() . PHP_EOL;
-    })
+    });
+
+$server
     ->workerStart(function () {
         echo "Worker Started" . PHP_EOL;
     })

@@ -151,8 +151,9 @@ class Server
         try {
             $this->adapter->stop();
         } catch (Throwable $error) {
+            self::setResource('error', fn() => $error);
             foreach ($this->errorHooks as $hook) {
-                call_user_func($hook->getAction(), $error);
+                call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
         }
         return $this;
@@ -179,8 +180,9 @@ class Server
         try {
             $this->adapter->start();
         } catch (Throwable $error) {
+            self::setResource('error', fn() => $error);
             foreach ($this->errorHooks as $hook) {
-                call_user_func($hook->getAction(), $error);
+                call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
         }
         return $this;
@@ -310,8 +312,9 @@ class Server
                 }
             });
         } catch (Throwable $error) {
+            self::setResource('error', fn() => $error);
             foreach ($this->errorHooks as $hook) {
-                call_user_func($hook->getAction(), $error);
+                call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
         }
 
@@ -333,8 +336,9 @@ class Server
                 }
             });
         } catch (Throwable $error) {
+            self::setResource('error', fn() => $error);
             foreach ($this->errorHooks as $hook) {
-                call_user_func($hook->getAction(), $error);
+                call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
         }
 
@@ -402,9 +406,8 @@ class Server
     }
 
     /**
-     * Register callback. Will be executed when error occurs.
-     * @param callable $callback
-     * @return self
+     * Register hook. Will be executed when error occurs.
+     * @return Hook
      */
     public function error(): Hook
     {
