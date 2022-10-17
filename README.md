@@ -21,20 +21,52 @@ Init in your application:
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+// Create a worker using swoole adapter
 use Utopia\Queue;
+use Utopia\Queue\Message;
 
+$connection = new Queue\Connection\RedisSwoole('redis');
+$adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
+$server = new Queue\Server($adapter);
+
+$server->job()
+    ->inject('message')
+    ->action(function (Message $message) {
+        var_dump($message);
+    });
+
+$server
+    ->error()
+    ->inject('error')
+    ->action(function ($error) {
+        echo $error->getMessage() . PHP_EOL;
+    });
+
+$server
+    ->workerStart(function () {
+        echo "Worker Started" . PHP_EOL;
+    })
+    ->start();
+
+
+// Enqueue messages to the worker using swoole adapter
+$connection = new RedisSwoole('redis', 6379);
+run(function () use ($connection) {
+    $client = new Client('swoole', $connection);
+    go(function () use ($client) {
+        $client->resetStats();
+
+        $client->enqueue([
+            'type' => 'test_number',
+            'value' => 123
+        ]);
+    });
+});
 ```
 
 ## System Requirements
 
 Utopia Framework requires PHP 8.0 or later. We recommend using the latest PHP version whenever possible.
-
-## Authors
-
-**Torsten Dittmann**
-
-+ [https://twitter.com/dittmanntorsten](https://twitter.com/dittmanntorsten)
-+ [https://github.com/torstendittmann](https://github.com/torstendittmann)
 
 ## Copyright and license
 
