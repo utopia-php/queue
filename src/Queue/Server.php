@@ -23,7 +23,7 @@ class Server
      * @var Job
      */
     protected Job $job;
-    
+
     /**
      * Hooks that will run when error occur
      *
@@ -151,7 +151,7 @@ class Server
         try {
             $this->adapter->stop();
         } catch (Throwable $error) {
-            self::setResource('error', fn() => $error);
+            self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
                 call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
@@ -180,7 +180,7 @@ class Server
         try {
             $this->adapter->start();
         } catch (Throwable $error) {
-            self::setResource('error', fn() => $error);
+            self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
                 call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
@@ -211,7 +211,7 @@ class Server
                         continue;
                     }
 
-                    $nextMessage['timestamp'] = \intval($nextMessage['timestamp']);
+                    $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 
                     $message = new Message($nextMessage);
 
@@ -238,16 +238,16 @@ class Server
 
                         if ($this->job->getHook()) {
                             foreach ($this->initHooks as $hook) { // Global init hooks
-                                if(in_array('*', $hook->getGroups())) {
+                                if (in_array('*', $hook->getGroups())) {
                                     $arguments = $this->getArguments($hook, $message->getPayload());
                                     \call_user_func_array($hook->getAction(), $arguments);
                                 }
                             }
                         }
-            
+
                         foreach ($this->job->getGroups() as $group) {
                             foreach ($this->initHooks as $hook) { // Group init hooks
-                                if(in_array($group, $hook->getGroups())) {
+                                if (in_array($group, $hook->getGroups())) {
                                     $arguments = $this->getArguments($hook, $message->getPayload());
                                     \call_user_func_array($hook->getAction(), $arguments);
                                 }
@@ -268,16 +268,16 @@ class Server
 
                         if ($this->job->getHook()) {
                             foreach ($this->shutdownHooks as $hook) { // Global init hooks
-                                if(in_array('*', $hook->getGroups())) {
+                                if (in_array('*', $hook->getGroups())) {
                                     $arguments = $this->getArguments($hook, $message->getPayload());
                                     \call_user_func_array($hook->getAction(), $arguments);
                                 }
                             }
                         }
-            
+
                         foreach ($this->job->getGroups() as $group) {
                             foreach ($this->shutdownHooks as $hook) { // Group init hooks
-                                if(in_array($group, $hook->getGroups())) {
+                                if (in_array($group, $hook->getGroups())) {
                                     $arguments = $this->getArguments($hook, $message->getPayload());
                                     \call_user_func_array($hook->getAction(), $arguments);
                                 }
@@ -312,7 +312,7 @@ class Server
                 }
             });
         } catch (Throwable $error) {
-            self::setResource('error', fn() => $error);
+            self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
                 call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
@@ -336,7 +336,7 @@ class Server
                 }
             });
         } catch (Throwable $error) {
-            self::setResource('error', fn() => $error);
+            self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
                 call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }

@@ -49,22 +49,22 @@ class Client
 
     public function sumTotalJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.total") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.total") ?? 0);
     }
 
     public function sumSuccessfulJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.success") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.success") ?? 0);
     }
 
     public function sumFailedJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.failed") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.failed") ?? 0);
     }
 
     public function sumProcessingJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.processing") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.processing") ?? 0);
     }
 
     public function resetStats(): void
