@@ -5,6 +5,7 @@ namespace Utopia\Queue;
 use Throwable;
 use Utopia\CLI\Console;
 use Exception;
+use Utopia\Hook;
 use Utopia\Validator;
 
 class Server
@@ -17,6 +18,9 @@ class Server
     protected array $errorCallbacks = [];
     protected Adapter $adapter;
     protected Job $job;
+
+    protected array $initHooks = [];
+    protected array $shutdownHooks = [];
 
     /**
      * @var array
@@ -46,13 +50,13 @@ class Server
     }
 
     /**
-    * If a resource has been created return it, otherwise create it and then return it
-    *
-    * @param string $name
-    * @param bool $fresh
-    * @return mixed
-    * @throws Exception
-    */
+     * If a resource has been created return it, otherwise create it and then return it
+     *
+     * @param string $name
+     * @param bool $fresh
+     * @return mixed
+     * @throws Exception
+     */
     public function getResource(string $name, bool $fresh = false): mixed
     {
         if (!\array_key_exists($name, $this->resources) || $fresh || self::$resourcesCallbacks[$name]['reset']) {
@@ -105,14 +109,14 @@ class Server
     }
 
     /**
-     * Shuts down the Queue server.
-     * @param callable $callback
-     * @return self
+     * Shutdown Hooks
+     * @return Hook
      */
-    public function shutdown(callable $callback): self
+    public function shutdown(): Hook
     {
-        $this->adapter->shutdown($callback);
-        return $this;
+        $hook = new Hook();
+        $this->shutdownHooks[] = $hook;
+        return $hook;
     }
 
     /**
@@ -131,10 +135,16 @@ class Server
         return $this;
     }
 
-    public function init(callable $callback): self
+    /**
+     * Init Hooks
+     *
+     * @return Hook
+     */
+    public function init(): Hook
     {
-        $this->adapter->init($callback);
-        return $this;
+        $hook = new Hook();
+        $this->initHooks[] = $hook;
+        return $hook;
     }
 
     /**
@@ -201,7 +211,25 @@ class Server
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
-                        \call_user_func_array($this->job->getAction(), $this->getArguments($message->getPayload()));
+                        if ($this->job->getHook()) {
+                            foreach ($this->initHooks as $hook) { // Global init hooks
+                                if(in_array('*', $hook->getGroups())) {
+                                    $arguments = $this->getArguments($hook, $message->getPayload());
+                                    \call_user_func_array($hook->getAction(), $arguments);
+                                }
+                            }
+                        }
+            
+                        foreach ($this->job->getGroups() as $group) {
+                            foreach ($this->initHooks as $hook) { // Group init hooks
+                                if(in_array($group, $hook->getGroups())) {
+                                    $arguments = $this->getArguments($hook, $message->getPayload());
+                                    \call_user_func_array($hook->getAction(), $arguments);
+                                }
+                            }
+                        }
+
+                        \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
 
                         /**
                          * Remove Jobs if successful.
@@ -212,6 +240,24 @@ class Server
                          * Increment Successful Jobs from Stats.
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
+
+                        if ($this->job->getHook()) {
+                            foreach ($this->shutdownHooks as $hook) { // Global init hooks
+                                if(in_array('*', $hook->getGroups())) {
+                                    $arguments = $this->getArguments($hook, $message->getPayload());
+                                    \call_user_func_array($hook->getAction(), $arguments);
+                                }
+                            }
+                        }
+            
+                        foreach ($this->job->getGroups() as $group) {
+                            foreach ($this->shutdownHooks as $hook) { // Group init hooks
+                                if(in_array($group, $hook->getGroups())) {
+                                    $arguments = $this->getArguments($hook, $message->getPayload());
+                                    \call_user_func_array($hook->getAction(), $arguments);
+                                }
+                            }
+                        }
 
                         Console::success("[Job] ({$message->getPid()}) successfully run.");
                     } catch (\Throwable $th) {
@@ -275,23 +321,24 @@ class Server
     /**
      * Get Arguments
      *
+     * @param Hook $hook
      * @param array $payload
      * @return array
      * @throws Exception
      */
-    protected function getArguments(array $payload = []): array
+    protected function getArguments(Hook $hook, array $payload = []): array
     {
         $arguments = [];
-        foreach ($this->job->getParams() as $key => $param) { // Get value from route or request object
+        foreach ($hook->getParams() as $key => $param) { // Get value from route or request object
             $value = $payload[$key] ?? $param['default'];
             $value = ($value === '' || is_null($value)) ? $param['default'] : $value;
 
             $this->validate($key, $param, $value);
-            $this->job->setParamValue($key, $value);
+            $hook->setParamValue($key, $value);
             $arguments[$param['order']] = $value;
         }
 
-        foreach ($this->job->getInjections() as $key => $injection) {
+        foreach ($hook->getInjections() as $key => $injection) {
             $arguments[$injection['order']] = $this->getResource($injection['name']);
         }
 

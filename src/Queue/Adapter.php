@@ -29,20 +29,6 @@ abstract class Adapter
     abstract public function stop(): self;
 
     /**
-     * Server init callback
-     * @param callable $callback
-     * @return self
-     */
-    abstract public function init(callable $callback): self;
-
-    /**
-     * Shuts down the Server.
-     * @param callable $callback
-     * @return self
-     */
-    abstract public function shutdown(callable $callback): self;
-
-    /**
      * Is called when a Worker starts.
      * @param callable $callback
      * @return self

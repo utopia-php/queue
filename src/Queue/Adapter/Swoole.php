@@ -35,22 +35,6 @@ class Swoole extends Adapter
         return $this;
     }
 
-    public function init(callable $callback): self
-    {
-        $this->pool->on('start', function () use ($callback) {
-            call_user_func($callback);
-        });
-
-        return $this;
-    }
-
-    public function shutdown(callable $callback): self
-    {
-        $this->shutdownCallback = $callback;
-
-        return $this;
-    }
-
     public function workerStart(callable $callback): self
     {
         $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {

@@ -9,8 +9,6 @@ use Workerman\Worker;
 class Workerman extends Adapter
 {
     protected Worker $worker;
-    protected mixed $shutdownCallback = null;
-    protected mixed $initCallback = null;
 
     public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
@@ -36,18 +34,6 @@ class Workerman extends Adapter
         if (is_callable($this->shutdownCallback)) {
             call_user_func($this->shutdownCallback);
         }
-        return $this;
-    }
-
-    public function init(callable $callback): self
-    {
-        $this->initCallback = $callback;
-        return $this;
-    }
-
-    public function shutdown(callable $callback): self
-    {
-        $this->shutdownCallback = $callback;
         return $this;
     }
 
