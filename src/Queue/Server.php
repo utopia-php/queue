@@ -11,15 +11,38 @@ use Utopia\Validator;
 class Server
 {
     /**
-     * Callbacks that will be executed when an error occurs
+     * Queue Adapter
+     *
+     * @var Adapter
+     */
+    protected Adapter $adapter;
+
+    /**
+     * Job
+     *
+     * @var Job
+     */
+    protected Job $job;
+    
+    /**
+     * Hooks that will run when error occur
      *
      * @var array
      */
-    protected array $errorCallbacks = [];
-    protected Adapter $adapter;
-    protected Job $job;
+    protected array $errorHooks = [];
 
+    /**
+     * Hooks that will run before running job
+     *
+     * @var array
+     */
     protected array $initHooks = [];
+
+    /**
+     * Hooks that will run after running job
+     *
+     * @var array
+     */
     protected array $shutdownHooks = [];
 
     /**
@@ -128,8 +151,8 @@ class Server
         try {
             $this->adapter->stop();
         } catch (Throwable $error) {
-            foreach ($this->errorCallbacks as $errorCallback) {
-                $errorCallback($error, "stop");
+            foreach ($this->errorHooks as $hook) {
+                call_user_func($hook->getAction(), $error);
             }
         }
         return $this;
@@ -156,8 +179,8 @@ class Server
         try {
             $this->adapter->start();
         } catch (Throwable $error) {
-            foreach ($this->errorCallbacks as $errorCallback) {
-                $errorCallback($error, "onStart");
+            foreach ($this->errorHooks as $hook) {
+                call_user_func($hook->getAction(), $error);
             }
         }
         return $this;
@@ -287,8 +310,8 @@ class Server
                 }
             });
         } catch (Throwable $error) {
-            foreach ($this->errorCallbacks as $errorCallback) {
-                $errorCallback($error, "onWorkerStart");
+            foreach ($this->errorHooks as $hook) {
+                call_user_func($hook->getAction(), $error);
             }
         }
 
@@ -310,8 +333,8 @@ class Server
                 }
             });
         } catch (Throwable $error) {
-            foreach ($this->errorCallbacks as $errorCallback) {
-                $errorCallback($error, "onWorkerStart");
+            foreach ($this->errorHooks as $hook) {
+                call_user_func($hook->getAction(), $error);
             }
         }
 
@@ -324,7 +347,6 @@ class Server
      * @param Hook $hook
      * @param array $payload
      * @return array
-     * @throws Exception
      */
     protected function getArguments(Hook $hook, array $payload = []): array
     {
@@ -384,9 +406,10 @@ class Server
      * @param callable $callback
      * @return self
      */
-    public function error(callable $callback): self
+    public function error(): Hook
     {
-        \array_push($this->errorCallbacks, $callback);
-        return $this;
+        $hook = new Hook();
+        $this->errorHooks[] = $hook;
+        return $hook;
     }
 }
