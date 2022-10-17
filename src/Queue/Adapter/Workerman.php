@@ -22,18 +22,12 @@ class Workerman extends Adapter
     public function start(): self
     {
         Worker::runAll();
-        if (is_callable($this->initCallback)) {
-            call_user_func($this->initCallback);
-        }
         return $this;
     }
 
     public function stop(): self
     {
         Worker::stopAll();
-        if (is_callable($this->shutdownCallback)) {
-            call_user_func($this->shutdownCallback);
-        }
         return $this;
     }
 

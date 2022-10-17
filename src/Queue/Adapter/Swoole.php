@@ -9,7 +9,6 @@ use Utopia\Queue\Connection;
 class Swoole extends Adapter
 {
     protected Pool $pool;
-    protected mixed $shutdownCallback;
 
     public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
@@ -29,9 +28,6 @@ class Swoole extends Adapter
     public function stop(): self
     {
         $this->pool->shutdown();
-        if (is_callable($this->shutdownCallback)) {
-            call_user_func($this->shutdownCallback);
-        }
         return $this;
     }
 
