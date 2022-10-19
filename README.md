@@ -11,17 +11,19 @@ Although this library is part of the [Utopia Framework](https://github.com/utopi
 ## Getting Started
 
 Install using composer:
+
 ```bash
 composer require utopia-php/queue
 ```
 
 Init in your application:
+
 ```php
 <?php
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-// Create a worker using swoole adapter
+// Create a worker using the Swoole adapter
 use Utopia\Queue;
 use Utopia\Queue\Message;
 
@@ -49,19 +51,15 @@ $server
     ->start();
 
 
-// Enqueue messages to the worker using swoole adapter
+// Enqueue messages to the worker using the Redis adapter
 $connection = new Redis('redis', 6379);
-run(function () use ($connection) {
-    $client = new Client('swoole', $connection);
-    go(function () use ($client) {
-        $client->resetStats();
+$client = new Client('swoole', $connection);
+$client->resetStats();
 
-        $client->enqueue([
-            'type' => 'test_number',
-            'value' => 123
-        ]);
-    });
-});
+$client->enqueue([
+    'type' => 'test_number',
+    'value' => 123
+]);
 ```
 
 ## System Requirements
