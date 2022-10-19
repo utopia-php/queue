@@ -25,7 +25,7 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 use Utopia\Queue;
 use Utopia\Queue\Message;
 
-$connection = new Queue\Connection\RedisSwoole('redis');
+$connection = new Queue\Connection\Redis('redis');
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
 $server = new Queue\Server($adapter);
 
@@ -50,7 +50,7 @@ $server
 
 
 // Enqueue messages to the worker using swoole adapter
-$connection = new RedisSwoole('redis', 6379);
+$connection = new Redis('redis', 6379);
 run(function () use ($connection) {
     $client = new Client('swoole', $connection);
     go(function () use ($client) {
