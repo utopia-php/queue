@@ -26,7 +26,7 @@ class Client
         return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $payload);
     }
 
-    public function getJob(string $pid): Job|false
+    public function getJob(string $pid): Message|false
     {
         $job = $this->connection->get("{$this->namespace}.jobs.{$this->queue}.{$pid}");
 
@@ -34,7 +34,7 @@ class Client
             return false;
         }
 
-        return new Job($job);
+        return new Message($job);
     }
 
     public function listJobs(int $total = 50, int $offset = 0): array
@@ -49,22 +49,22 @@ class Client
 
     public function sumTotalJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.total") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.total") ?? 0);
     }
 
     public function sumSuccessfulJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.success") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.success") ?? 0);
     }
 
     public function sumFailedJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.failed") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.failed") ?? 0);
     }
 
     public function sumProcessingJobs(): int
     {
-        return \intval($this->connection->get("{$this->namespace}.stats.{$this->queue}.processing") ?? 0);
+        return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.processing") ?? 0);
     }
 
     public function resetStats(): void

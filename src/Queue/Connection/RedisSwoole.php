@@ -4,7 +4,7 @@ namespace Utopia\Queue\Connection;
 
 use Swoole\Coroutine\Redis;
 use Utopia\Queue\Connection;
-use Utopia\Queue\Job;
+use Utopia\Queue\Message;
 
 class RedisSwoole implements Connection
 {
@@ -156,7 +156,7 @@ class RedisSwoole implements Connection
         $end = ($total + $offset) - 1;
         $results = $this->getRedis()->lrange($key, $start, $end);
 
-        return array_map(fn (array $job) => new Job($job), $results);
+        return array_map(fn (array $job) => new Message($job), $results);
     }
 
     protected function getRedis(): Redis

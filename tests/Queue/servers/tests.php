@@ -2,7 +2,7 @@
 
 use Utopia\Queue;
 
-function handleRequest(Queue\Job $job): void
+function handleRequest(Queue\Message $job): void
 {
     ['type' => $type, 'value' => $value] = $job->getPayload();
 

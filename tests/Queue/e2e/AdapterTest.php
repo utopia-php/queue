@@ -12,8 +12,51 @@ use function Swoole\Coroutine\run;
 
 class SwooleTest extends TestCase
 {
+    private array $payloads;
+
     public function setUp(): void
     {
+        $this->payloads = [];
+        $this->payloads[] = [
+            'type' => 'test_string',
+            'value' => 'lorem ipsum'
+        ];
+        $this->payloads[] = [
+            'type' => 'test_number',
+            'value' => 123
+        ];
+        $this->payloads[] = [
+            'type' => 'test_number',
+            'value' => 123.456
+        ];
+        $this->payloads[] = [
+            'type' => 'test_bool',
+            'value' => true
+        ];
+        $this->payloads[] = [
+            'type' => 'test_null',
+            'value' => null
+        ];
+        $this->payloads[] = [
+            'type' => 'test_array',
+            'value' => [
+                1,
+                2,
+                3
+            ]
+        ];
+        $this->payloads[] = [
+            'type' => 'test_assoc',
+            'value' => [
+                'string' => 'ipsum',
+                'number' => 123,
+                'bool' => true,
+                'null' => null
+            ]
+        ];
+        $this->payloads[] = [
+            'type' => 'test_exception'
+        ];
     }
 
     public function testEvents(): void
@@ -23,53 +66,9 @@ class SwooleTest extends TestCase
         $client = new Client('workerman', $connection);
         $client->resetStats();
 
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_string',
-            'value' => 'lorem ipsum'
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_number',
-            'value' => 123
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_number',
-            'value' => 123.456
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_bool',
-            'value' => true
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_null',
-            'value' => null
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_array',
-            'value' => [
-                1,
-                2,
-                3
-            ]
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_assoc',
-            'value' => [
-                'string' => 'ipsum',
-                'number' => 123,
-                'bool' => true,
-                'null' => null
-            ]
-        ]));
-
-        $this->assertTrue($client->enqueue([
-            'type' => 'test_exception'
-        ]));
+        foreach ($this->payloads as $payload) {
+            $this->assertTrue($client->enqueue($payload));
+        }
 
         sleep(1);
 
@@ -88,51 +87,10 @@ class SwooleTest extends TestCase
             $client = new Client('swoole', $connection);
             go(function () use ($client) {
                 $client->resetStats();
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_string',
-                    'value' => 'lorem ipsum'
-                ]));
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_number',
-                    'value' => 123
-                ]));
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_number',
-                    'value' => 123.456
-                ]));
 
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_bool',
-                    'value' => true
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_null',
-                    'value' => null
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_array',
-                    'value' => [
-                        1,
-                        2,
-                        3
-                    ]
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_assoc',
-                    'value' => [
-                        'string' => 'ipsum',
-                        'number' => 123,
-                        'bool' => true,
-                        'null' => null
-                    ]
-                ]));
-
-                $this->assertTrue($client->enqueue([
-                    'type' => 'test_exception'
-                ]));
+                foreach ($this->payloads as $payload) {
+                    $this->assertTrue($client->enqueue($payload));
+                }
 
                 sleep(1);
 
