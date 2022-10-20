@@ -26,13 +26,13 @@
     "require": {
         "php": ">=8.0",
         "utopia-php/cli": "0.13.*",
-        "utopia-php/framework": "0.*.*"
+        "utopia-php/framework": "0.*.*",
+        "workerman/workerman": "^4.0"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
         "phpunit/phpunit": "^9.5.5",
         "laravel/pint": "^0.2.3",
-        "workerman/workerman": "^4.0",
         "phpstan/phpstan": "^1.8"
     },
     "suggest": {
