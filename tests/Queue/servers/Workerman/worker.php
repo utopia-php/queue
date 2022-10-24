@@ -5,10 +5,10 @@ require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
 use Utopia\Queue\Message;
+use Utopia\Tests\Connection;
 
-$redis = new \Redis();
-$redis->connect('redis', 6379);
-$connection = new Queue\Connection\Redis($redis);
+$redis = new Connection('redis', 6379);
+$connection = new Queue\Connection\Redis($redis->get());
 $adapter = new Queue\Adapter\Workerman($connection, 12, 'workerman');
 $server = new Queue\Server($adapter);
 $server->job()
