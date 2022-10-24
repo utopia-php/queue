@@ -60,7 +60,10 @@ class SwooleTest extends TestCase
 
     public function testEvents(): void
     {
-        $connection = new Redis('redis', 6379);
+        $redis = new \Redis();
+        $redis->connect('redis', 6379);
+
+        $connection = new Redis($redis);
 
         $client = new Client('workerman', $connection);
         $client->resetStats();
@@ -80,7 +83,10 @@ class SwooleTest extends TestCase
 
     public function testSwoole(): void
     {
-        $connection = new Redis('redis', 6379);
+        $redis = new \Redis();
+        $redis->connect('redis', 6379);
+
+        $connection = new Redis($redis);
 
         run(function () use ($connection) {
             $client = new Client('swoole', $connection);

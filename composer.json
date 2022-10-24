@@ -25,6 +25,7 @@
     },
     "require": {
         "php": ">=8.0",
+        "ext-redis": "*",
         "utopia-php/cli": "0.13.*",
         "utopia-php/framework": "0.*.*"
     },

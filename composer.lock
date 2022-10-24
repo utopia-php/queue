@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0c802dad7960b1c9ae6d26f5f367cf4a",
+    "content-hash": "3ad6bf0c928112a75840a5cc23070f1f",
     "packages": [
         {
             "name": "utopia-php/cli",
@@ -61,16 +61,16 @@
         },
         {
             "name": "utopia-php/framework",
-            "version": "0.23.0",
+            "version": "0.23.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/framework.git",
-                "reference": "f58bd087f72b0740d597b27f93c1d33fe7f6267f"
+                "reference": "d595df075aa9ee46147a388c63064b03aeeac466"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/framework/zipball/f58bd087f72b0740d597b27f93c1d33fe7f6267f",
-                "reference": "f58bd087f72b0740d597b27f93c1d33fe7f6267f",
+                "url": "https://api.github.com/repos/utopia-php/framework/zipball/d595df075aa9ee46147a388c63064b03aeeac466",
+                "reference": "d595df075aa9ee46147a388c63064b03aeeac466",
                 "shasum": ""
             },
             "require": {
@@ -98,9 +98,9 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/framework/issues",
-                "source": "https://github.com/utopia-php/framework/tree/0.23.0"
+                "source": "https://github.com/utopia-php/framework/tree/0.23.1"
             },
-            "time": "2022-10-19T07:26:19+00:00"
+            "time": "2022-10-19T10:35:44+00:00"
         }
     ],
     "packages-dev": [
@@ -2071,7 +2071,8 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=8.0"
+        "php": ">=8.0",
+        "ext-redis": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.2.0"
