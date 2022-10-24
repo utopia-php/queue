@@ -52,7 +52,9 @@ $server
 
 
 // Enqueue messages to the worker using the Redis adapter
-$connection = new Redis('redis', 6379);
+$redis = new \Redis();
+$redis->connect('redis', 6379);
+$connection = new Redis($redis);
 $client = new Client('swoole', $connection);
 $client->resetStats();
 
