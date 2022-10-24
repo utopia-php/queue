@@ -5,11 +5,15 @@ require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
 use Utopia\Queue\Message;
-use Utopia\Tests\Connection;
 
+$connection = new Queue\Connection\Redis(
+    function () {
+        $redis = new \Redis();
+        $redis->connect('redis', 6379);
 
-$redis = new Connection('redis', 6379);
-$connection = new Queue\Connection\Redis($redis->get());
+        return $redis;
+    }
+);
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
 $server = new Queue\Server($adapter);
 
