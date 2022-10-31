@@ -193,13 +193,13 @@ class Server
      * @param callable $callback
      * @return self
      */
-    public function workerStart(callable $callback = null): self
+    public function workerStart(callable $callback = null, array $resources = []): self
     {
         try {
-            $this->adapter->workerStart(function (string $workerId) use ($callback) {
+            $this->adapter->workerStart(function (string $workerId) use ($callback, $resources) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
                 if (!is_null($callback)) {
-                    call_user_func($callback);
+                    call_user_func_array($callback, $this->getResources($resources));
                 }
                 while (true) {
                     /**
