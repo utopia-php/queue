@@ -23,7 +23,9 @@ $server
     });
 
 $server
-    ->workerStart(function () {
+    ->workerStart()
+    ->action(function () {
         echo "Worker Started" . PHP_EOL;
-    })
-    ->start();
+    });
+
+$server->start();
