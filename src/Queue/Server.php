@@ -46,6 +46,13 @@ class Server
     protected array $shutdownHooks = [];
 
     /**
+     * Hook that is called when worker starts
+     *
+     * @var Hook
+     */
+    protected Hook $workerStartHook;
+
+    /**
      * @var array
      */
     protected array $resources = [
@@ -178,28 +185,10 @@ class Server
     public function start(): self
     {
         try {
-            $this->adapter->start();
-        } catch (Throwable $error) {
-            self::setResource('error', fn () => $error);
-            foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
-            }
-        }
-        return $this;
-    }
-
-    /**
-     * Is called when a Worker starts.
-     * @param callable $callback
-     * @return self
-     */
-    public function workerStart(callable $callback = null): self
-    {
-        try {
-            $this->adapter->workerStart(function (string $workerId) use ($callback) {
+            $this->adapter->workerStart(function (string $workerId) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
-                if (!is_null($callback)) {
-                    call_user_func($callback);
+                if (!is_null($this->workerStartHook)) {
+                    call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
                 while (true) {
                     /**
@@ -311,14 +300,26 @@ class Server
                     }
                 }
             });
+
+            $this->adapter->start();
         } catch (Throwable $error) {
             self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
                 call_user_func_array($hook->getAction(), $this->getArguments($hook));
             }
         }
-
         return $this;
+    }
+
+    /**
+     * Is called when a Worker starts.
+     * @return Hook
+     */
+    public function workerStart(): Hook
+    {
+        $hook = new Hook();
+        $this->workerStartHook = $hook;
+        return $hook;
     }
 
     /**
