@@ -169,6 +169,6 @@ class Redis implements Connection
 
         $this->redis->connect($this->host, $this->port);
 
-        return $this->getRedis();
+        return $this->redis;
     }
 }
