@@ -28,10 +28,11 @@ use Utopia\Queue;
 use Utopia\Queue\Message;
 
 $connection = new Queue\Connection\Redis('redis');
-$adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
+$adapter = new Queue\Adapter\Swoole($connection, 12, 'my-queue');
 $server = new Queue\Server($adapter);
 
-$server->job()
+$server
+    ->job()
     ->inject('message')
     ->action(function (Message $message) {
         var_dump($message);
@@ -55,8 +56,7 @@ $server->start();
 
 // Enqueue messages to the worker using the Redis adapter
 $connection = new Redis('redis', 6379);
-$client = new Client('swoole', $connection);
-$client->resetStats();
+$client = new Client('my-queue', $connection);
 
 $client->enqueue([
     'type' => 'test_number',
