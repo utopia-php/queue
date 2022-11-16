@@ -28,6 +28,13 @@ use Utopia\Queue;
 use Utopia\Queue\Message;
 
 $connection = new Queue\Connection\Redis('redis');
+
+if ($connection->ping()) {
+    var_dump('Connection is ready.');
+} else {
+    var_dump('Connection is not ready.');
+}
+
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'my-queue');
 $server = new Queue\Server($adapter);
 

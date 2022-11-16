@@ -63,7 +63,7 @@ class SwooleTest extends TestCase
         $connection = new Redis('redis', 6379);
 
         $this->assertTrue($connection->ping());
-        
+
         $client = new Client('workerman', $connection);
         $client->resetStats();
 
