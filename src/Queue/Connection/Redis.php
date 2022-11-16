@@ -159,6 +159,17 @@ class Redis implements Connection
         return array_map(fn (array $job) => new Message($job), $results);
     }
 
+    public function ping(): bool
+    {
+        try {
+            $this->getRedis()->ping();
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     protected function getRedis(): \Redis
     {
         if ($this->redis) {

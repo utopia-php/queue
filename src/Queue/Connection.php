@@ -24,4 +24,5 @@ interface Connection
     public function setArray(string $key, array $value): bool;
     public function increment(string $key): int;
     public function decrement(string $key): int;
+    public function ping(): bool;
 }
