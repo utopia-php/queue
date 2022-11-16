@@ -298,6 +298,8 @@ class Server
                          */
                         $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
                     }
+
+                    $this->resources = [];
                 }
             });
 
