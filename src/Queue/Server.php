@@ -145,6 +145,7 @@ class Server
     public function shutdown(): Hook
     {
         $hook = new Hook();
+        $hook->groups(['*']);
         $this->shutdownHooks[] = $hook;
         return $hook;
     }
@@ -174,6 +175,7 @@ class Server
     public function init(): Hook
     {
         $hook = new Hook();
+        $hook->groups(['*']);
         $this->initHooks[] = $hook;
         return $hook;
     }
@@ -320,6 +322,7 @@ class Server
     public function workerStart(): Hook
     {
         $hook = new Hook();
+        $hook->groups(['*']);
         $this->workerStartHook = $hook;
         return $hook;
     }
@@ -415,6 +418,7 @@ class Server
     public function error(): Hook
     {
         $hook = new Hook();
+        $hook->groups(['*']);
         $this->errorHooks[] = $hook;
         return $hook;
     }
