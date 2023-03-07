@@ -25,7 +25,7 @@
     },
     "require": {
         "php": ">=8.0",
-        "utopia-php/cli": "0.14.*",
+        "utopia-php/cli": "0.15.*",
         "utopia-php/framework": "0.*.*"
     },
     "require-dev": {
