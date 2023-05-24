@@ -289,7 +289,11 @@ class Server
 
                         Console::error("[Job] ({$message->getPid()}) failed to run.");
                         Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
-                        throw $th;
+
+                        self::setResource('error', fn () => $th);
+                        foreach ($this->errorHooks as $hook) {
+                            call_user_func_array($hook->getAction(), $this->getArguments($hook));
+                        }
                     } finally {
                         /**
                          * Remove Job from Processing.
