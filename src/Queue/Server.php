@@ -289,6 +289,7 @@ class Server
 
                         Console::error("[Job] ({$message->getPid()}) failed to run.");
                         Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
+                        throw $th;
                     } finally {
                         /**
                          * Remove Job from Processing.
