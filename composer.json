@@ -26,7 +26,7 @@
     "require": {
         "php": ">=8.0",
         "utopia-php/cli": "0.15.*",
-        "utopia-php/framework": "0.*.*"
+        "utopia-php/framework": "dev-fix-v2-swoole-coroutines as 0.31.0"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
