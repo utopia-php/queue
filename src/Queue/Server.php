@@ -332,10 +332,10 @@ class Server
         return $hook;
     }
 
-     /**
-     * Returns Worker starts hook.
-     * @return Hook
-     */
+    /**
+    * Returns Worker starts hook.
+    * @return Hook
+    */
     public function getWorkerStart(): Hook
     {
         return $this->workerStartHook;
