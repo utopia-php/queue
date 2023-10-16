@@ -333,6 +333,15 @@ class Server
     }
 
     /**
+    * Returns Worker starts hook.
+    * @return Hook
+    */
+    public function getWorkerStart(): Hook
+    {
+        return $this->workerStartHook;
+    }
+
+    /**
      * Is called when a Worker stops.
      * @param callable $callback
      * @return self
