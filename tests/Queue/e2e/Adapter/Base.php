@@ -121,5 +121,16 @@ abstract class Base extends TestCase
         $this->assertEquals(0, $client->sumProcessingJobs());
         $this->assertEquals(5, $client->sumFailedJobs());
         $this->assertEquals(0, $client->sumSuccessfulJobs());
+
+        $client->resetStats();
+
+        $client->retry(2);
+
+        sleep(1);
+
+        $this->assertEquals(2, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(2, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
     }
 }
