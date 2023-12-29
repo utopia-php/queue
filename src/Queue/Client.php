@@ -26,31 +26,34 @@ class Client
         return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $payload);
     }
 
-    public function retryFailedJobs(): void
+    public function retry(int $limit = null): void
     {
-        $pids = [];
+        $start = \time();
+        $processed = 0;
 
         while (true) {
-            $jobIds = $this->connection->listRange("{$this->namespace}.failed.{$this->queue}", 100, count($pids));
+            $pid = $this->connection->rightPop("{$this->namespace}.failed.{$this->queue}", 5);
 
-            foreach ($jobIds as $jobId) {
-                $pids[] = $jobId;
-            }
-
-            if (count($jobIds) < 100) {
+            if ($pid === false) {
                 break;
             }
-        }
 
-        foreach ($pids as $pid) {
             $job = $this->getJob($pid);
 
             if ($job === false) {
-                continue;
+                break;
             }
 
-            $this->connection->listRemove("{$this->namespace}.failed.{$this->queue}", $pid);
+            if ($job->getTimestamp() >= $start) {
+                break;
+            }
+
+            if ($limit !== null && $processed >= $limit) {
+                break;
+            }
+
             $this->enqueue($job->getPayload());
+            $processed++;
         }
     }
 

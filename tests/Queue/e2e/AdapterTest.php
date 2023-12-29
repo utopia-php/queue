@@ -140,7 +140,7 @@ class SwooleTest extends TestCase
         $this->assertEquals(0, $client->sumFailedJobs());
         $this->assertEquals(0, $client->sumSuccessfulJobs());
 
-        $client->retryFailedJobs();
+        $client->retry();
 
         sleep(1);
 
@@ -189,7 +189,7 @@ class SwooleTest extends TestCase
         $this->assertEquals(0, $client->sumFailedJobs());
         $this->assertEquals(0, $client->sumSuccessfulJobs());
 
-        $client->retryFailedJobs();
+        $client->retry();
 
         sleep(1);
 
