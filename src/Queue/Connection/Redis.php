@@ -3,7 +3,6 @@
 namespace Utopia\Queue\Connection;
 
 use Utopia\Queue\Connection;
-use Utopia\Queue\Message;
 
 class Redis implements Connection
 {
@@ -155,7 +154,7 @@ class Redis implements Connection
         $start = $offset;
         $end = $start + $total - 1;
         $results = $this->getRedis()->lRange($key, $start, $end);
-        
+
         return $results;
     }
 
