@@ -5,8 +5,6 @@ namespace Tests\E2E\Adapter;
 use Utopia\Queue\Client;
 use Utopia\Queue\Connection\Redis;
 
-use function Co\run;
-
 class SwooleTest extends Base
 {
     protected function getClient(): Client
