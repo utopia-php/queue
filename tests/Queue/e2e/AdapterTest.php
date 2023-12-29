@@ -103,4 +103,99 @@ class SwooleTest extends TestCase
             });
         });
     }
+
+    /**
+     * @depends testSwoole
+     */
+    public function testRetrySwoole(): void
+    {
+        $connection = new Redis('redis', 6379);
+        $client = new Client('swoole', $connection);
+        $client->resetStats();
+
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+
+        sleep(1);
+
+        $this->assertEquals(4, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(4, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
+
+        $client->resetStats();
+
+        $this->assertEquals(0, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(0, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
+
+        $client->retryFailedJobs();
+
+        sleep(1);
+
+        // Retry will retry ALL failed jobs regardless of if they are still tracked in stats
+        // Meaning this test has 5 failed jobs due to the previous tests.
+        $this->assertEquals(5, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(5, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
+    }
+
+    /**
+     * @depends testEvents
+     */
+    public function testRetryEvents(): void
+    {
+        $connection = new Redis('redis', 6379);
+
+        $client = new Client('workerman', $connection);
+        $client->resetStats();
+
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+        $client->enqueue([
+            'type' => 'test_exception'
+        ]);
+
+        sleep(1);
+
+        $this->assertEquals(4, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(4, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
+
+        $client->resetStats();
+
+        $this->assertEquals(0, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(0, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
+
+        $client->retryFailedJobs();
+
+        sleep(1);
+
+        $this->assertEquals(5, $client->sumTotalJobs());
+        $this->assertEquals(0, $client->sumProcessingJobs());
+        $this->assertEquals(5, $client->sumFailedJobs());
+        $this->assertEquals(0, $client->sumSuccessfulJobs());
+    }
 }

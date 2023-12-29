@@ -69,7 +69,7 @@ class Redis implements Connection
             return false;
         }
 
-        return json_decode($response, true);
+        return json_decode($response, true) ?? false;
     }
 
     public function rightPop(string $queue, int $timeout): string|false
@@ -91,7 +91,7 @@ class Redis implements Connection
             return false;
         }
 
-        return json_decode($response[1], true);
+        return json_decode($response[1], true) ?? false;
     }
 
     public function leftPop(string $queue, int $timeout): string|false
@@ -152,11 +152,11 @@ class Redis implements Connection
 
     public function listRange(string $key, int $total, int $offset): array
     {
-        $start = $offset - 1;
-        $end = ($total + $offset) -1;
-        $results = $this->getRedis()->lrange($key, $start, $end);
-
-        return array_map(fn (array $job) => new Message($job), $results);
+        $start = $offset;
+        $end = $start + $total - 1;
+        $results = $this->getRedis()->lRange($key, $start, $end);
+        
+        return $results;
     }
 
     public function ping(): bool

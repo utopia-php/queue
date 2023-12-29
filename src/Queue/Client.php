@@ -26,13 +26,43 @@ class Client
         return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $payload);
     }
 
+    public function retryFailedJobs(): void
+    {
+        $pids = [];
+
+        while (true) {
+            $jobIds = $this->connection->listRange("{$this->namespace}.failed.{$this->queue}", 100, count($pids));
+
+            foreach ($jobIds as $jobId) {
+                $pids[] = $jobId;
+            }
+
+            if (count($jobIds) < 100) {
+                break;
+            }
+        }
+
+        foreach ($pids as $pid) {
+            $job = $this->getJob($pid);
+
+            if ($job === false) {
+                continue;
+            }
+
+            $this->connection->listRemove("{$this->namespace}.failed.{$this->queue}", $pid);
+            $this->enqueue($job->getPayload());
+        }
+    }
+
     public function getJob(string $pid): Message|false
     {
-        $job = $this->connection->get("{$this->namespace}.jobs.{$this->queue}.{$pid}");
+        $value = $this->connection->get("{$this->namespace}.jobs.{$this->queue}.{$pid}");
 
-        if ($job === false) {
+        if ($value === false) {
             return false;
         }
+
+        $job = json_decode($value, true);
 
         return new Message($job);
     }
