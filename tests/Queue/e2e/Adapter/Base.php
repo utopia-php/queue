@@ -5,6 +5,8 @@ namespace Tests\E2E\Adapter;
 use PHPUnit\Framework\TestCase;
 use Utopia\Queue\Client;
 
+use function Co\run;
+
 abstract class Base extends TestCase
 {
     protected array $payloads;
@@ -75,6 +77,27 @@ abstract class Base extends TestCase
         $this->assertEquals(0, $client->sumProcessingJobs());
         $this->assertEquals(1, $client->sumFailedJobs());
         $this->assertEquals(7, $client->sumSuccessfulJobs());
+    }
+
+    protected function testConcurrency(): void
+    {
+        run(function () {
+            $client = $this->getClient();
+            go(function () use ($client) {
+                $client->resetStats();
+
+                foreach ($this->payloads as $payload) {
+                    $this->assertTrue($client->enqueue($payload));
+                }
+
+                sleep(1);
+
+                $this->assertEquals(8, $client->sumTotalJobs());
+                $this->assertEquals(0, $client->sumProcessingJobs());
+                $this->assertEquals(1, $client->sumFailedJobs());
+                $this->assertEquals(7, $client->sumSuccessfulJobs());
+            });
+        });
     }
 
     /**
