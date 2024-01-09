@@ -34,20 +34,24 @@ class Client
         while (true) {
             $pid = $this->connection->rightPop("{$this->namespace}.failed.{$this->queue}", 5);
 
+            // No more jobs to retry
             if ($pid === false) {
                 break;
             }
 
             $job = $this->getJob($pid);
 
+            // Job doesn't exist
             if ($job === false) {
                 break;
             }
 
+            // Job was already retried
             if ($job->getTimestamp() >= $start) {
                 break;
             }
 
+            // We're reached the max amount of jobs to retry
             if ($limit !== null && $processed >= $limit) {
                 break;
             }
