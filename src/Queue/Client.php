@@ -26,6 +26,10 @@ class Client
         return $this->connection->leftPushArray("{$this->namespace}.queue.{$this->queue}", $payload);
     }
 
+    /**
+     * This function will take jobs from the failed queue and re-enqueue them.
+     * the limit param will limit the amount of jobs to retry, if not set it will retry all jobs.
+     */
     public function retry(int $limit = null): void
     {
         $start = \time();
