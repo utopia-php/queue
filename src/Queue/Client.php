@@ -88,22 +88,22 @@ class Client
         return $this->connection->listSize("{$this->namespace}.queue.{$this->queue}");
     }
 
-    public function sumTotalJobs(): int
+    public function countTotalJobs(): int
     {
         return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.total") ?? 0);
     }
 
-    public function sumSuccessfulJobs(): int
+    public function countSuccessfulJobs(): int
     {
         return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.success") ?? 0);
     }
 
-    public function sumFailedJobs(): int
+    public function countFailedJobs(): int
     {
         return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.failed") ?? 0);
     }
 
-    public function sumProcessingJobs(): int
+    public function countProcessingJobs(): int
     {
         return (int)($this->connection->get("{$this->namespace}.stats.{$this->queue}.processing") ?? 0);
     }
