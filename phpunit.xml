@@ -10,7 +10,7 @@
         >
     <testsuites>
         <testsuite name="E2E">
-            <directory>./tests/Queue/e2e/</directory>
+            <directory>./tests/Queue/E2E/Adapter</directory>
         </testsuite>
     </testsuites>
 </phpunit>

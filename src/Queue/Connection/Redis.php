@@ -3,7 +3,6 @@
 namespace Utopia\Queue\Connection;
 
 use Utopia\Queue\Connection;
-use Utopia\Queue\Message;
 
 class Redis implements Connection
 {
@@ -69,7 +68,7 @@ class Redis implements Connection
             return false;
         }
 
-        return json_decode($response, true);
+        return json_decode($response, true) ?? false;
     }
 
     public function rightPop(string $queue, int $timeout): string|false
@@ -91,7 +90,7 @@ class Redis implements Connection
             return false;
         }
 
-        return json_decode($response[1], true);
+        return json_decode($response[1], true) ?? false;
     }
 
     public function leftPop(string $queue, int $timeout): string|false
@@ -152,11 +151,11 @@ class Redis implements Connection
 
     public function listRange(string $key, int $total, int $offset): array
     {
-        $start = $offset - 1;
-        $end = ($total + $offset) -1;
-        $results = $this->getRedis()->lrange($key, $start, $end);
+        $start = $offset;
+        $end = $start + $total - 1;
+        $results = $this->getRedis()->lRange($key, $start, $end);
 
-        return array_map(fn (array $job) => new Message($job), $results);
+        return $results;
     }
 
     public function ping(): bool
