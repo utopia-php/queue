@@ -136,7 +136,6 @@ abstract class Base extends TestCase
         sleep(1);
 
         // Retry will retry ALL failed jobs regardless of if they are still tracked in stats
-        // Meaning this test has 5 failed jobs due to the previous tests.
         $this->assertEquals(4, $client->countTotalJobs());
         $this->assertEquals(0, $client->countProcessingJobs());
         $this->assertEquals(4, $client->countFailedJobs());
