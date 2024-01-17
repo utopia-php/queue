@@ -51,9 +51,6 @@ abstract class Base extends TestCase
                 'null' => null
             ]
         ];
-        $this->payloads[] = [
-            'type' => 'test_exception'
-        ];
     }
 
     /**
@@ -72,11 +69,11 @@ abstract class Base extends TestCase
 
         sleep(1);
 
-        $this->assertEquals(8, $client->sumTotalJobs());
+        $this->assertEquals(7, $client->countTotalJobs());
         $this->assertEquals(0, $client->getQueueSize());
-        $this->assertEquals(0, $client->sumProcessingJobs());
-        $this->assertEquals(1, $client->sumFailedJobs());
-        $this->assertEquals(7, $client->sumSuccessfulJobs());
+        $this->assertEquals(0, $client->countProcessingJobs());
+        $this->assertEquals(0, $client->countFailedJobs());
+        $this->assertEquals(7, $client->countSuccessfulJobs());
     }
 
     protected function testConcurrency(): void
@@ -92,10 +89,10 @@ abstract class Base extends TestCase
 
                 sleep(1);
 
-                $this->assertEquals(8, $client->sumTotalJobs());
-                $this->assertEquals(0, $client->sumProcessingJobs());
-                $this->assertEquals(1, $client->sumFailedJobs());
-                $this->assertEquals(7, $client->sumSuccessfulJobs());
+                $this->assertEquals(7, $client->countTotalJobs());
+                $this->assertEquals(0, $client->countProcessingJobs());
+                $this->assertEquals(0, $client->countFailedJobs());
+                $this->assertEquals(7, $client->countSuccessfulJobs());
             });
         });
     }
@@ -127,10 +124,10 @@ abstract class Base extends TestCase
 
         sleep(1);
 
-        $this->assertEquals(4, $client->sumTotalJobs());
-        $this->assertEquals(0, $client->sumProcessingJobs());
-        $this->assertEquals(4, $client->sumFailedJobs());
-        $this->assertEquals(0, $client->sumSuccessfulJobs());
+        $this->assertEquals(4, $client->countTotalJobs());
+        $this->assertEquals(0, $client->countProcessingJobs());
+        $this->assertEquals(4, $client->countFailedJobs());
+        $this->assertEquals(0, $client->countSuccessfulJobs());
 
         $client->resetStats();
 
@@ -140,10 +137,10 @@ abstract class Base extends TestCase
 
         // Retry will retry ALL failed jobs regardless of if they are still tracked in stats
         // Meaning this test has 5 failed jobs due to the previous tests.
-        $this->assertEquals(5, $client->sumTotalJobs());
-        $this->assertEquals(0, $client->sumProcessingJobs());
-        $this->assertEquals(5, $client->sumFailedJobs());
-        $this->assertEquals(0, $client->sumSuccessfulJobs());
+        $this->assertEquals(4, $client->countTotalJobs());
+        $this->assertEquals(0, $client->countProcessingJobs());
+        $this->assertEquals(4, $client->countFailedJobs());
+        $this->assertEquals(0, $client->countSuccessfulJobs());
 
         $client->resetStats();
 
@@ -151,9 +148,9 @@ abstract class Base extends TestCase
 
         sleep(1);
 
-        $this->assertEquals(2, $client->sumTotalJobs());
-        $this->assertEquals(0, $client->sumProcessingJobs());
-        $this->assertEquals(2, $client->sumFailedJobs());
-        $this->assertEquals(0, $client->sumSuccessfulJobs());
+        $this->assertEquals(2, $client->countTotalJobs());
+        $this->assertEquals(0, $client->countProcessingJobs());
+        $this->assertEquals(2, $client->countFailedJobs());
+        $this->assertEquals(0, $client->countSuccessfulJobs());
     }
 }

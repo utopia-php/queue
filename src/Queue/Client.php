@@ -27,8 +27,8 @@ class Client
     }
 
     /**
-     * This function will take jobs from the failed queue and re-enqueue them.
-     * the limit param will limit the amount of jobs to retry, if not set it will retry all jobs.
+     * Take all jobs from the failed queue and re-enqueue them.
+     * @param int|null $limit The amount of jobs to retry
      */
     public function retry(int $limit = null): void
     {
