@@ -25,8 +25,8 @@
     },
     "require": {
         "php": ">=8.0",
-        "utopia-php/cli": "0.15.*",
-        "utopia-php/framework": "0.*.*"
+        "utopia-php/cli": "0.17.*",
+        "utopia-php/framework": "0.34.*"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
