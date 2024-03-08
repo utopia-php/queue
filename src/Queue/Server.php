@@ -5,8 +5,8 @@ namespace Utopia\Queue;
 use Throwable;
 use Utopia\CLI\Console;
 use Exception;
-use Utopia\Hook;
-use Utopia\Validator;
+use Utopia\Http\Hook;
+use Utopia\Http\Validator;
 
 class Server
 {
