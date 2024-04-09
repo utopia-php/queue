@@ -26,7 +26,7 @@ jobs:
           context: .
           file: php-${{ matrix.php-versions }}.Dockerfile
           push: false
-          tags: queue-dev
+          tags: queue-dev-${{ matrix.php-versions }}
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
