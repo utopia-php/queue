@@ -56,7 +56,7 @@ abstract class Base extends TestCase
     /**
      * @return Client
      */
-    abstract protected function getClient(): Client;
+    abstract protected function getClient(string $suffix = ''): Client;
 
     public function testEvents(): void
     {
@@ -151,5 +151,38 @@ abstract class Base extends TestCase
         $this->assertEquals(0, $client->countProcessingJobs());
         $this->assertEquals(2, $client->countFailedJobs());
         $this->assertEquals(0, $client->countSuccessfulJobs());
+    }
+
+    public function testMultiQueueServer(): void
+    {
+        $client = $this->getClient();
+        $client->resetStats();
+
+        $this->assertTrue($client->enqueue([
+            'type' => 'test_string',
+            'value' => 'lorem ipsum'
+        ]));
+
+        sleep(1);
+
+        $this->assertEquals(1, $client->countTotalJobs());
+        $this->assertEquals(0, $client->getQueueSize());
+        $this->assertEquals(0, $client->countProcessingJobs());
+        $this->assertEquals(0, $client->countFailedJobs());
+        $this->assertEquals(1, $client->countSuccessfulJobs());
+
+        $client = $this->getClient('_v2');
+        $client->resetStats();
+
+        $this->assertTrue($client->enqueue([
+            'type' => 'test_string',
+            'value' => 'lorem ipsum'
+        ]));
+
+        $this->assertEquals(1, $client->countTotalJobs());
+        $this->assertEquals(0, $client->getQueueSize());
+        $this->assertEquals(0, $client->countProcessingJobs());
+        $this->assertEquals(0, $client->countFailedJobs());
+        $this->assertEquals(1, $client->countSuccessfulJobs());
     }
 }

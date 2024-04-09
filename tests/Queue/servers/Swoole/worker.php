@@ -7,7 +7,7 @@ use Utopia\Queue;
 use Utopia\Queue\Message;
 
 $connection = new Queue\Connection\Redis('redis');
-$adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
+$adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole,swoole_v2');
 $server = new Queue\Server($adapter);
 
 $server->job()

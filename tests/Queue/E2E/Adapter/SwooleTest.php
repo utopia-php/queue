@@ -7,10 +7,10 @@ use Utopia\Queue\Connection\Redis;
 
 class SwooleTest extends Base
 {
-    protected function getClient(): Client
+    protected function getClient(string $suffix = ''): Client
     {
         $connection = new Redis('redis', 6379);
-        $client = new Client('swoole', $connection);
+        $client = new Client('swoole' . $suffix, $connection);
 
         return $client;
     }
