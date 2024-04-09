@@ -6,7 +6,7 @@ services:
     image: queue-dev
     build: 
       context: .
-      dockerfile: Dockerfile-php-${PHP_VERSION:-8.3}
+      dockerfile: ${PHP_VERSION:-8.3}.Dockerfile
     volumes:
       - ./:/usr/local/src
     depends_on:

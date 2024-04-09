@@ -17,6 +17,20 @@ jobs:
 
       - run: git checkout HEAD^2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: php-${{ matrix.php-versions }}.Dockerfile
+          push: false
+          tags: queue-dev
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Compose install
         run: |
           docker run --rm -v $PWD:/app composer sh -c \
