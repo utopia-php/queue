@@ -5,15 +5,28 @@ namespace Utopia\Queue;
 abstract class Adapter
 {
     public int $workerNum;
-    public string $queue;
+
+    /**
+     * @var array<string> $queues
+     */
+    public array $queues;
     public string $namespace;
     public Connection $connection;
 
     public function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
         $this->workerNum = $workerNum;
-        $this->queue = $queue;
+        $this->queues = [$queue];
         $this->namespace = $namespace;
+    }
+
+    public function addQueue(string $queue): self
+    {
+        if (!(\in_array($queue, $this->queues))) {
+            $this->queues[] = $queue;
+        }
+
+        return $this;
     }
 
     /**

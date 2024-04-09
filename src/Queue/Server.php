@@ -5,6 +5,7 @@ namespace Utopia\Queue;
 use Throwable;
 use Utopia\CLI\Console;
 use Exception;
+use Utopia\Balancer\Algorithm\Random;
 use Utopia\Balancer\Algorithm\RoundRobin;
 use Utopia\Balancer\Balancer;
 use Utopia\Balancer\Option;
@@ -190,39 +191,23 @@ class Server
     public function start(): self
     {
         try {
-            $this->adapter->workerStart(function (string $workerId) {
-                Console::success("[Worker] Worker {$workerId} is ready!");
+            $balancer = new Balancer(new RoundRobin(-1));
+            foreach ($this->adapter->queues as $queue) {
+                $balancer->addOption(new Option([ 'queue' => $queue ]));
+            }
+
+            $this->adapter->workerStart(function (string $workerId) use ($balancer) {
+                $queue = $balancer->run()->getState('queue');
+                Console::success("[Worker] Worker {$workerId} is ready for queue: " . $queue);
                 if (!is_null($this->workerStartHook)) {
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
-
-                $queues = [];
-                if (!(\str_contains($this->adapter->queue, ','))) {
-                    $queues[] = $this->adapter->queue;
-                } else {
-                    foreach (\explode(',', $this->adapter->queue) as $queue) {
-                        $queues[] = $queue;
-                    }
-                }
-
-                $balancer = new Balancer(new RoundRobin(-1));
-
-
-                foreach ($queues as $queue) {
-                    $balancer->addOption(new Option([ 'queue' => $queue ]));
-                }
-
+                
                 while (true) {
-                    $queue = $balancer->run()->getState('queue', $this->adapter->queue);
-
                     /**
                      * Waiting for next Job.
                      */
                     $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$queue}", 5);
-
-                    if (!$nextMessage) {
-                        continue;
-                    }
 
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 

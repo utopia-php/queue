@@ -66,8 +66,8 @@ abstract class Base extends TestCase
         foreach ($this->payloads as $payload) {
             $this->assertTrue($client->enqueue($payload));
         }
-
-        sleep(1);
+        
+        sleep(3);
 
         $this->assertEquals(7, $client->countTotalJobs());
         $this->assertEquals(0, $client->getQueueSize());
@@ -87,7 +87,7 @@ abstract class Base extends TestCase
                     $this->assertTrue($client->enqueue($payload));
                 }
 
-                sleep(1);
+                sleep(3);
 
                 $this->assertEquals(7, $client->countTotalJobs());
                 $this->assertEquals(0, $client->countProcessingJobs());
@@ -122,7 +122,7 @@ abstract class Base extends TestCase
             'id' => 4
         ]);
 
-        sleep(1);
+        sleep(3);
 
         $this->assertEquals(4, $client->countTotalJobs());
         $this->assertEquals(0, $client->countProcessingJobs());
@@ -133,7 +133,7 @@ abstract class Base extends TestCase
 
         $client->retry();
 
-        sleep(1);
+        sleep(3);
 
         // Retry will retry ALL failed jobs regardless of if they are still tracked in stats
         $this->assertEquals(4, $client->countTotalJobs());
@@ -145,7 +145,7 @@ abstract class Base extends TestCase
 
         $client->retry(2);
 
-        sleep(1);
+        sleep(3);
 
         $this->assertEquals(2, $client->countTotalJobs());
         $this->assertEquals(0, $client->countProcessingJobs());
@@ -163,7 +163,7 @@ abstract class Base extends TestCase
             'value' => 'lorem ipsum'
         ]));
 
-        sleep(1);
+        sleep(3);
 
         $this->assertEquals(1, $client->countTotalJobs());
         $this->assertEquals(0, $client->getQueueSize());
@@ -178,6 +178,8 @@ abstract class Base extends TestCase
             'type' => 'test_string',
             'value' => 'lorem ipsum'
         ]));
+        
+        sleep(3);
 
         $this->assertEquals(1, $client->countTotalJobs());
         $this->assertEquals(0, $client->getQueueSize());

@@ -7,7 +7,8 @@ use Utopia\Queue;
 use Utopia\Queue\Message;
 
 $connection = new Queue\Connection\Redis('redis');
-$adapter = new Queue\Adapter\Workerman($connection, 12, 'workerman,workerman_v2');
+$adapter = new Queue\Adapter\Workerman($connection, 12, 'workerman');
+$adapter->addQueue('workerman_v2');
 $server = new Queue\Server($adapter);
 $server->job()
     ->inject('message')
