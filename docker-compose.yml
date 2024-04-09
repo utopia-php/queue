@@ -3,7 +3,7 @@ version: '3.1'
 services:
   tests:
     container_name: tests
-    image: tests-dev
+    image: queue-dev
     build: 
       context: .
       dockerfile: Dockerfile-php-${PHP_VERSION:-8.3}
@@ -16,7 +16,7 @@ services:
 
   swoole:
     container_name: swoole
-    image: tests-dev
+    image: queue-dev
     command: php /usr/src/code/tests/Queue/servers/Swoole/worker.php
     volumes:
       - ./:/usr/src/code
@@ -25,7 +25,7 @@ services:
 
   workerman:
     container_name: workerman
-    image: tests-dev
+    image: queue-dev
     command: php /usr/src/code/tests/Queue/servers/Workerman/worker.php start
     volumes:
       - ./:/usr/src/code
