@@ -25,7 +25,7 @@ jobs:
       - name: Build
         run: |
           export PHP_VERSION=${{ matrix.php-versions }}
-          docker compose build
+          docker compose build tests
           docker compose up -d
           sleep 10
 
