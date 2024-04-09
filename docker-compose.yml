@@ -3,7 +3,9 @@ version: '3.1'
 services:
   tests:
     container_name: tests
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile-php-${PHP_VERSION:-8.3}
     volumes:
       - ./:/usr/local/src
     depends_on:
@@ -13,7 +15,9 @@ services:
 
   swoole:
     container_name: swoole
-    build: ./tests/Queue/servers/Swoole/.
+    build:
+      context: ./tests/Queue/servers/Swoole/.
+      dockerfile: Dockerfile-php-${PHP_VERSION:-8.3}
     command: php /usr/src/code/tests/Queue/servers/Swoole/worker.php
     volumes:
       - ./:/usr/src/code
@@ -22,7 +26,9 @@ services:
 
   workerman:
     container_name: workerman
-    build: ./tests/Queue/servers/Workerman/.
+    build:
+      context: ./tests/Queue/servers/Workerman/.
+      dockerfile: Dockerfile-php-${PHP_VERSION:-8.3}
     command: php /usr/src/code/tests/Queue/servers/Workerman/worker.php start
     volumes:
       - ./:/usr/src/code
