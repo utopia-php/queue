@@ -1,0 +1,46 @@
+name: "Tests"
+
+on: [ pull_request ]
+jobs:
+  lint:
+    name: Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-versions: ['8.0', '8.1', '8.2', '8.3'] # add PHP versions as required
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - run: git checkout HEAD^2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: php-${{ matrix.php-versions }}.Dockerfile
+          push: false
+          tags: queue-dev-${{ matrix.php-versions }}
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Compose install
+        run: |
+          docker run --rm -v $PWD:/app composer sh -c \
+          "composer install --profile --ignore-platform-reqs"
+
+      - name: Build
+        run: |
+          export PHP_VERSION=${{ matrix.php-versions }}
+          docker compose up -d
+          sleep 10
+
+      - name: Run Tests
+        run: docker compose exec tests vendor/bin/phpunit --configuration phpunit.xml
