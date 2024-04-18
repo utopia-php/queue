@@ -2,7 +2,7 @@
 
 namespace Utopia\Queue;
 
-use Utopia\Hook;
+use Utopia\Http\Hook;
 
 class Job extends Hook
 {

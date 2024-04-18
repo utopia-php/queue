@@ -25,8 +25,9 @@
     },
     "require": {
         "php": ">=8.0",
-        "utopia-php/cli": "0.15.*",
-        "utopia-php/framework": "0.*.*"
+        "utopia-php/cli": "0.17.*",
+        "utopia-php/framework": "0.*.*",
+        "utopia-php/di": "dev-main"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
@@ -38,5 +39,11 @@
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman."
-    }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/utopia-php/di"
+        }
+    ]
 }
