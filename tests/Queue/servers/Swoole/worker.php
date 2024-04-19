@@ -62,7 +62,7 @@ class Text extends Validator
 }
 
 $container = new Container();
-$connection = new Queue\Connection\Redis('redis');
+$connection = new Queue\Adapter\Swoole\Redis('redis');
 $adapter = new Queue\Adapter\Swoole\Server($connection, 1, 'swoole');
 $server = new Queue\Worker($adapter);
 $server->setContainer($container);

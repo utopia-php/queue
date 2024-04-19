@@ -104,7 +104,7 @@ class Worker extends Base
                     );
 
                     $this->adapter->onJob(function () use ($job, $message, $nextMessage, $context) {
-                        $this->lifecycle($job, $message, $nextMessage, $context);
+                        $this->lifecycle($job, $message, $nextMessage, $context, $this->adapter->connection);
                     });
                 }
             });
@@ -129,11 +129,13 @@ class Worker extends Base
         return $this;
     }
 
-    protected function lifecycle(Job $job, Message $message, array $nextMessage, Container $context): static
+    protected function lifecycle(Job $job, Message $message, array $nextMessage, Container $context, Connection $connection): static
     {
         Console::info("[Job] Received Job ({$message->getPid()}).");
 
         $groups = $job->getGroups();
+
+        $connection->getConnection();
 
         /**
          * Move Job to Jobs and it's PID to the processing list.
@@ -247,6 +249,8 @@ class Worker extends Base
              * Decrease Processing Jobs from Stats.
              */
             $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+
+            $connection->putConnection();
         }
 
         return $this;
