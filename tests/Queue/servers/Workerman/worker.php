@@ -10,7 +10,7 @@ use Utopia\Queue\Server;
 
 $container = new Container();
 $connection = new Queue\Connection\Redis('redis');
-$adapter = new Queue\Adapter\Workerman($connection, 12, 'workerman');
+$adapter = new Queue\Adapter\Workerman\Server($connection, 12, 'workerman');
 $server = new Server($adapter);
 $server->setContainer($container);
 

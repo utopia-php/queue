@@ -37,6 +37,7 @@
         "phpstan/phpstan": "^1.8"
     },
     "suggest": {
+        "ext-redis": "Needed to support Redis connections",
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman."
     },
