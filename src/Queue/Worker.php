@@ -9,7 +9,7 @@ use Utopia\DI\Container;
 use Utopia\DI\Dependency;
 use Utopia\Servers\Base;
 
-class Server extends Base
+class Worker extends Base
 {
     /**
      * Queue Adapter

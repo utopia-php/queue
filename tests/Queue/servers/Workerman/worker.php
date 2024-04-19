@@ -7,20 +7,21 @@ use Utopia\DI\Container;
 use Utopia\Queue;
 use Utopia\Queue\Message;
 use Utopia\Queue\Server;
+use Utopia\Queue\Worker;
 
 $container = new Container();
 $connection = new Queue\Connection\Redis('redis');
 $adapter = new Queue\Adapter\Workerman\Server($connection, 12, 'workerman');
-$server = new Server($adapter);
+$server = new Worker($adapter);
 $server->setContainer($container);
 
-Server::job()
+Worker::job()
     ->inject('message')
     ->action(function (Message $message) {
         handleRequest($message);
     });
 
-Server::error()
+Worker::error()
     ->inject('error')
     ->action(function ($th) {
         echo $th->getMessage() . PHP_EOL;

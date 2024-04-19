@@ -6,7 +6,7 @@ require_once __DIR__ . '/../tests.php';
 use Utopia\DI\Container;
 use Utopia\Queue;
 use Utopia\Queue\Message;
-use Utopia\Queue\Server;
+use Utopia\Queue\Worker;
 use Utopia\Servers\Validator;
 
 class Text extends Validator
@@ -64,7 +64,7 @@ class Text extends Validator
 $container = new Container();
 $connection = new Queue\Connection\Redis('redis');
 $adapter = new Queue\Adapter\Swoole\Server($connection, 1, 'swoole');
-$server = new Queue\Server($adapter);
+$server = new Queue\Worker($adapter);
 $server->setContainer($container);
 
 // Server::init()
@@ -85,13 +85,13 @@ $server->setContainer($container);
 //         echo "Job start" . PHP_EOL;
 //     });
 
-Server::job()
+Worker::job()
     ->inject('message')
     ->action(function (Message $message) {
         handleRequest($message);
     });
 
-Server::error()
+Worker::error()
     ->inject('error')
     ->action(function ($th) {
         echo $th->getMessage() . PHP_EOL;
