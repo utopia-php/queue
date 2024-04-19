@@ -26,7 +26,7 @@
     "require": {
         "php": ">=8.0",
         "utopia-php/cli": "0.17.*",
-        "utopia-php/framework": "0.*.*",
+        "utopia-php/servers": "dev-dev",
         "utopia-php/di": "dev-main"
     },
     "require-dev": {
@@ -41,6 +41,10 @@
         "workerman/workerman": "Needed to support Workerman."
     },
     "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/utopia-php/servers"
+        },
         {
             "type": "vcs",
             "url": "https://github.com/utopia-php/di"

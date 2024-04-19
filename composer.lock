@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "21e2f04315452ede5b939075405fdc84",
+    "content-hash": "7ae591bf6380d4469179b803c24cdae8",
     "packages": [
         {
             "name": "utopia-php/cli",
@@ -61,12 +61,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/di.git",
-                "reference": "0bb7af5693bc131f4d2ce34d3f732d41e6637679"
+                "reference": "fb3c45b268018b87dcbbf87ad943ced9eea3bbe2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/di/zipball/0bb7af5693bc131f4d2ce34d3f732d41e6637679",
-                "reference": "0bb7af5693bc131f4d2ce34d3f732d41e6637679",
+                "url": "https://api.github.com/repos/utopia-php/di/zipball/fb3c45b268018b87dcbbf87ad943ced9eea3bbe2",
+                "reference": "fb3c45b268018b87dcbbf87ad943ced9eea3bbe2",
                 "shasum": ""
             },
             "require": {
@@ -115,7 +115,7 @@
                 "source": "https://github.com/utopia-php/di/tree/main",
                 "issues": "https://github.com/utopia-php/di/issues"
             },
-            "time": "2024-04-08T22:41:41+00:00"
+            "time": "2024-04-18T20:06:02+00:00"
         },
         {
             "name": "utopia-php/framework",
@@ -164,6 +164,77 @@
                 "source": "https://github.com/utopia-php/http/tree/0.34.2"
             },
             "time": "2024-02-20T11:36:56+00:00"
+        },
+        {
+            "name": "utopia-php/servers",
+            "version": "dev-dev",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/utopia-php/servers.git",
+                "reference": "43881ed83f97cb31af7f940db74c520c70b914ab"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/utopia-php/servers/zipball/43881ed83f97cb31af7f940db74c520c70b914ab",
+                "reference": "43881ed83f97cb31af7f940db74c520c70b914ab",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0",
+                "utopia-php/di": "dev-main"
+            },
+            "require-dev": {
+                "laravel/pint": "^0.2.3",
+                "phpstan/phpstan": "^1.8",
+                "phpunit/phpunit": "^9.5.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Utopia\\Servers\\": "src/Servers"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\E2E\\": "tests/Servers/Unit"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ],
+                "lint": [
+                    "vendor/bin/pint --test"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Team Appwrite",
+                    "email": "team@appwrite.io"
+                }
+            ],
+            "description": "A base library for building Utopia style servers.",
+            "keywords": [
+                "framework",
+                "php",
+                "servers",
+                "upf",
+                "utopia"
+            ],
+            "support": {
+                "source": "https://github.com/utopia-php/servers/tree/dev",
+                "issues": "https://github.com/utopia-php/servers/issues"
+            },
+            "time": "2024-04-18T20:51:43+00:00"
         }
     ],
     "packages-dev": [
@@ -2140,6 +2211,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
+        "utopia-php/servers": 20,
         "utopia-php/di": 20
     },
     "prefer-stable": false,

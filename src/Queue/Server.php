@@ -3,12 +3,13 @@
 namespace Utopia\Queue;
 
 use Throwable;
-use Utopia\CLI\Console;
 use Exception;
-use Utopia\Http\Hook;
-use Utopia\Validator;
+use Utopia\CLI\Console;
+use Utopia\DI\Dependency;
+use Utopia\Servers\Base;
+use Utopia\Servers\Hook;
 
-class Server
+class Server extends Base
 {
     /**
      * Queue Adapter
@@ -22,28 +23,7 @@ class Server
      *
      * @var Job
      */
-    protected Job $job;
-
-    /**
-     * Hooks that will run when error occur
-     *
-     * @var array
-     */
-    protected array $errorHooks = [];
-
-    /**
-     * Hooks that will run before running job
-     *
-     * @var array
-     */
-    protected array $initHooks = [];
-
-    /**
-     * Hooks that will run after running job
-     *
-     * @var array
-     */
-    protected array $shutdownHooks = [];
+    protected static Job $job;
 
     /**
      * Hook that is called when worker starts
@@ -73,10 +53,13 @@ class Server
         $this->adapter = $adapter;
     }
 
-    public function job(): Job
+    /**
+     * Add a job hook
+     */
+    public static function job(): Job
     {
-        $this->job = new Job();
-        return $this->job;
+        self::$job = new Job();
+        return self::$job;
     }
 
     /**
@@ -139,18 +122,6 @@ class Server
     }
 
     /**
-     * Shutdown Hooks
-     * @return Hook
-     */
-    public function shutdown(): Hook
-    {
-        $hook = new Hook();
-        $hook->groups(['*']);
-        $this->shutdownHooks[] = $hook;
-        return $hook;
-    }
-
-    /**
      * Stops the Queue server.
      * @return self
      */
@@ -168,19 +139,6 @@ class Server
     }
 
     /**
-     * Init Hooks
-     *
-     * @return Hook
-     */
-    public function init(): Hook
-    {
-        $hook = new Hook();
-        $hook->groups(['*']);
-        $this->initHooks[] = $hook;
-        return $hook;
-    }
-
-    /**
      * Starts the Queue Server
      * @return self
      */
@@ -189,9 +147,11 @@ class Server
         try {
             $this->adapter->workerStart(function (string $workerId) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
-                if (!is_null($this->workerStartHook)) {
-                    call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
-                }
+
+                // if (!is_null($this->workerStartHook)) {
+                //     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
+                // }
+
                 while (true) {
                     /**
                      * Waiting for next Job.
@@ -204,9 +164,17 @@ class Server
 
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 
+                    $context = clone $this->container;
+                    $job = clone self::$job;
+                    $groups = $job->getGroups();
                     $message = new Message($nextMessage);
 
-                    self::setResource('message', fn () => $message);
+                    $dependency = new Dependency();
+                    $context->set(
+                        $dependency
+                            ->setName('message')
+                            ->setCallback(fn () => $message)
+                    );
 
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
@@ -227,25 +195,21 @@ class Server
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
-                        if ($this->job->getHook()) {
-                            foreach ($this->initHooks as $hook) { // Global init hooks
-                                if (in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
-                                }
+                        foreach (self::$init as $hook) { // Global init hooks
+                            if (in_array('*', $hook->getGroups())) {
+                                $this->prepare($context, $hook, [], $message->getPayload())->inject($hook, true);
                             }
                         }
 
-                        foreach ($this->job->getGroups() as $group) {
-                            foreach ($this->initHooks as $hook) { // Group init hooks
+                        foreach ($groups as $group) {
+                            foreach (self::$init as $hook) { // Group init hooks
                                 if (in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                                    $this->prepare($context, $hook, [], $message->getPayload())->inject($hook, true);
                                 }
                             }
                         }
 
-                        \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
+                        $this->prepare($context, $job, [], $message->getPayload())->inject($job, true);
 
                         /**
                          * Remove Jobs if successful.
@@ -257,21 +221,17 @@ class Server
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
 
-                        if ($this->job->getHook()) {
-                            foreach ($this->shutdownHooks as $hook) { // Global init hooks
-                                if (in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                        foreach ($groups as $group) {
+                            foreach (self::$shutdown as $hook) { // Group shutdown hooks
+                                if (in_array($group, $hook->getGroups())) {
+                                    $this->prepare($context, $hook, [], $message->getPayload())->inject($hook, true);
                                 }
                             }
                         }
-
-                        foreach ($this->job->getGroups() as $group) {
-                            foreach ($this->shutdownHooks as $hook) { // Group init hooks
-                                if (in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
-                                }
+            
+                        foreach (self::$shutdown as $hook) { // Global shutdown hooks
+                            if (in_array('*', $hook->getGroups())) {
+                                $this->prepare($context, $hook, [], $message->getPayload())->inject($hook, true);
                             }
                         }
 
@@ -290,9 +250,34 @@ class Server
                         Console::error("[Job] ({$message->getPid()}) failed to run.");
                         Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
 
-                        self::setResource('error', fn () => $th);
-                        foreach ($this->errorHooks as $hook) {
-                            call_user_func_array($hook->getAction(), $this->getArguments($hook));
+                        $dependency = new Dependency();
+                        $context->set(
+                            $dependency
+                                ->setName('error')
+                                ->setCallback(fn () => $th)
+                        )
+                        ;
+
+                        foreach ($groups as $group) {
+                            foreach (self::$errors as $error) { // Group error hooks
+                                if (in_array($group, $error->getGroups())) {
+                                    try {
+                                        $this->prepare($context, $error, [], $message->getPayload())->inject($error, true);
+                                    } catch (\Throwable $e) {
+                                        throw new Exception('Group error handler had an error: ' . $e->getMessage(). ' on: ' . $e->getFile().':'.$e->getLine(), 500, $e);
+                                    }
+                                }
+                            }
+                        }
+
+                        foreach (self::$errors as $error) { // Global error hooks
+                            if (in_array('*', $error->getGroups())) {
+                                try {
+                                    $this->prepare($context, $error, [], $message->getPayload())->inject($error, true);
+                                } catch (\Throwable $e) {
+                                    throw new Exception('Global error handler had an error: ' . $e->getMessage(). ' on: ' . $e->getFile().':'.$e->getLine(), 500, $e);
+                                }
+                            }
                         }
                     } finally {
                         /**
@@ -313,9 +298,9 @@ class Server
             $this->adapter->start();
         } catch (Throwable $error) {
             self::setResource('error', fn () => $error);
-            foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
-            }
+            // foreach ($this->errorHooks as $hook) {
+            //     call_user_func_array($hook->getAction(), $this->getArguments($hook));
+            // }
         }
         return $this;
     }
@@ -346,94 +331,31 @@ class Server
      * @param callable $callback
      * @return self
      */
-    public function workerStop(callable $callback = null): self
-    {
-        try {
-            $this->adapter->workerStop(function (string $workerId) use ($callback) {
-                Console::success("[Worker] Worker {$workerId} is ready!");
-                if (!is_null($callback)) {
-                    call_user_func($callback);
-                }
-            });
-        } catch (Throwable $error) {
-            self::setResource('error', fn () => $error);
-            foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
-            }
-        }
+    // public function workerStop(callable $callback = null): self
+    // {
+    //     $container = clone $this->container;
+        
+    //     try {
+    //         $this->adapter->workerStop(function (string $workerId) use ($this, $container, $callback) {
+    //             Console::success("[Worker] Worker {$workerId} is ready!");
+    //             if (!is_null($callback)) {
+    //                 call_user_func($callback);
+    //                 $this->prepare($container, $hook, [], [])->inject($hook, true);
+    //             }
+    //         });
+    //     } catch (Throwable $error) {
+    //         self::setResource('error', fn () => $error);
+    //         foreach (self::$errors as $error) { // Global error hooks
+    //             if (in_array('*', $error->getGroups())) {
+    //                 try {
+    //                     $this->prepare($container, $error, [], [])->inject($error, true);
+    //                 } catch (\Throwable $e) {
+    //                     throw new Exception('Error handler had an error: ' . $e->getMessage(). ' on: ' . $e->getFile().':'.$e->getLine(), 500, $e);
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        return $this;
-    }
-
-    /**
-     * Get Arguments
-     *
-     * @param Hook $hook
-     * @param array $payload
-     * @return array
-     */
-    protected function getArguments(Hook $hook, array $payload = []): array
-    {
-        $arguments = [];
-        foreach ($hook->getParams() as $key => $param) { // Get value from route or request object
-            $value = $payload[$key] ?? $param['default'];
-            $value = ($value === '' || is_null($value)) ? $param['default'] : $value;
-
-            $this->validate($key, $param, $value);
-            $hook->setParamValue($key, $value);
-            $arguments[$param['order']] = $value;
-        }
-
-        foreach ($hook->getInjections() as $key => $injection) {
-            $arguments[$injection['order']] = $this->getResource($injection['name']);
-        }
-
-        return $arguments;
-    }
-
-    /**
-     * Validate Param
-     *
-     * Creates an validator instance and validate given value with given rules.
-     *
-     * @param string $key
-     * @param array $param
-     * @param mixed $value
-     *
-     * @throws Exception
-     *
-     * @return void
-     */
-    protected function validate(string $key, array $param, mixed $value): void
-    {
-        if ('' !== $value && !is_null($value)) {
-            $validator = $param['validator']; // checking whether the class exists
-
-            if (\is_callable($validator)) {
-                $validator = \call_user_func_array($validator, $this->getResources($param['injections']));
-            }
-
-            if (!$validator instanceof Validator) { // is the validator object an instance of the Validator class
-                throw new Exception('Validator object is not an instance of the Validator class', 500);
-            }
-
-            if (!$validator->isValid($value)) {
-                throw new Exception('Invalid ' .$key . ': ' . $validator->getDescription(), 400);
-            }
-        } elseif (!$param['optional']) {
-            throw new Exception('Param "' . $key . '" is not optional.', 400);
-        }
-    }
-
-    /**
-     * Register hook. Will be executed when error occurs.
-     * @return Hook
-     */
-    public function error(): Hook
-    {
-        $hook = new Hook();
-        $hook->groups(['*']);
-        $this->errorHooks[] = $hook;
-        return $hook;
-    }
+    //     return $this;
+    // }
 }
