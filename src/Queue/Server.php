@@ -228,7 +228,7 @@ class Server extends Base
                                 }
                             }
                         }
-            
+
                         foreach (self::$shutdown as $hook) { // Global shutdown hooks
                             if (in_array('*', $hook->getGroups())) {
                                 $this->prepare($context, $hook, [], $message->getPayload())->inject($hook, true);
@@ -334,7 +334,7 @@ class Server extends Base
     // public function workerStop(callable $callback = null): self
     // {
     //     $container = clone $this->container;
-        
+
     //     try {
     //         $this->adapter->workerStop(function (string $workerId) use ($this, $container, $callback) {
     //             Console::success("[Worker] Worker {$workerId} is ready!");
