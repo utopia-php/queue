@@ -97,10 +97,4 @@ Server::error()
         echo $th->getMessage() . PHP_EOL;
     });
 
-$server
-    ->workerStart()
-    ->action(function () {
-        echo "Worker Started" . PHP_EOL;
-    });
-
 $server->start();
