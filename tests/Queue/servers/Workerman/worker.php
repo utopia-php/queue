@@ -6,7 +6,6 @@ require_once __DIR__ . '/../tests.php';
 use Utopia\DI\Container;
 use Utopia\Queue;
 use Utopia\Queue\Message;
-use Utopia\Queue\Server;
 use Utopia\Queue\Worker;
 
 $container = new Container();

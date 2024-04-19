@@ -132,7 +132,7 @@ class Worker extends Base
     protected function lifecycle(Job $job, Message $message, array $nextMessage, Container $context): static
     {
         Console::info("[Job] Received Job ({$message->getPid()}).");
-        
+
         $groups = $job->getGroups();
 
         /**
@@ -150,9 +150,8 @@ class Worker extends Base
          * Increment Processing Jobs from Stats.
          */
         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
-        
-        try {
 
+        try {
             foreach (self::$init as $hook) { // Global init hooks
                 if (in_array('*', $hook->getGroups())) {
                     $this->prepare($context, $hook, [], $message->getPayload())->inject($hook, true);
