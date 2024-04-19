@@ -129,10 +129,20 @@ class Server extends Base
     {
         try {
             $this->adapter->stop();
-        } catch (Throwable $error) {
-            self::setResource('error', fn () => $error);
-            foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
+        } catch (Throwable $th) {
+            $context = clone $this->container;
+
+            $dependency = new Dependency();
+            $context->set(
+                $dependency
+                    ->setName('error')
+                    ->setCallback(fn () => $th)
+            );
+
+            foreach (self::$shutdown as $hook) { // Global shutdown hooks
+                if (in_array('*', $hook->getGroups())) {
+                    $this->prepare($context, $hook, [], [])->inject($hook, true);
+                }
             }
         }
         return $this;
