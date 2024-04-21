@@ -35,3 +35,11 @@ services:
     image: "redis:alpine"
     ports:
       - "9303:6379"
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=redis
+    ports:
+      - "9304:5540"
