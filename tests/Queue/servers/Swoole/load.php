@@ -104,13 +104,12 @@ Worker::job()
     ->inject('message')
     ->action(function ($id, $time, $message) use ($jobs, $sleep) {
         // usleep(100000);
-        if($time) {
+        if ($time) {
             $currentTimestamp = time();
             $timeDiff = ($currentTimestamp - $time) - $sleep;
             $humanReadableDiff = formatTimeDiff($timeDiff);
             Console::warning('Time took to process until job #'.$id . '/'. $jobs . ' jobs: '.$humanReadableDiff);
         }
-
     });
 
 Worker::error()
