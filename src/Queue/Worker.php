@@ -140,18 +140,18 @@ class Worker extends Base
         /**
          * Move Job to Jobs and it's PID to the processing list.
          */
-        $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
-        $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+        $connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
+        $connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
         /**
          * Increment Total Jobs Received from Stats.
          */
-        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+        $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
 
         /**
          * Increment Processing Jobs from Stats.
          */
-        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+        $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
         try {
             foreach (self::$init as $hook) { // Global init hooks
@@ -173,12 +173,12 @@ class Worker extends Base
             /**
              * Remove Jobs if successful.
              */
-            $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
+            $connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
 
             /**
              * Increment Successful Jobs from Stats.
              */
-            $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
+            $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
 
 
             foreach ($groups as $group) {
@@ -200,12 +200,12 @@ class Worker extends Base
             /**
              * Move failed Job to Failed list.
              */
-            $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
+            $connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
 
             /**
              * Increment Failed Jobs from Stats.
              */
-            $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
+            $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
 
             Console::error("[Job] ({$message->getPid()}) failed to run.");
             Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
@@ -243,12 +243,12 @@ class Worker extends Base
             /**
              * Remove Job from Processing.
              */
-            $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+            $connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
             /**
              * Decrease Processing Jobs from Stats.
              */
-            $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+            $connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
             $connection->putConnection();
         }
