@@ -10,17 +10,21 @@ class Redis extends ConnectionRedis
 {
     protected RedisPool $pool;
 
-    protected int $poolSize = 50;
+    protected int $poolSize = 5;
 
     public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null)
     {
-        parent::__construct($host, $port, $user, $password);
+        $this->host = $host;
+        $this->port = $port;
+        $this->user = $user;
+        $this->password = $password;
+
+        $auth = (empty($this->user) || empty($this->password)) ? $this->user.$this->password : implode(':', array_filter([$this->user, $this->password]));
 
         $this->pool = new RedisPool((new RedisConfig())
             ->withHost($this->host)
-            ->withPort((int)$this->port)
-            ->withAuth((string)$this->password)
-        , $this->poolSize);
+            ->withPort($this->port)
+            ->withAuth($auth), $this->poolSize);
     }
 
     public function getConnection(): void
@@ -30,10 +34,19 @@ class Redis extends ConnectionRedis
 
     public function putConnection(): void
     {
-        if(is_null($this->redis)) {
+        if (is_null($this->redis)) {
             return;
         }
 
         $this->pool->put($this->redis);
+    }
+
+    protected function getRedis(): \Redis
+    {
+        if (empty($this->redis)) {
+            $this->redis = $this->pool->get();
+        }
+
+        return $this->redis;
     }
 }
