@@ -78,6 +78,23 @@ class Worker extends Base
     {
         try {
             $this->adapter->onWorkerStart(function (string $workerId) {
+                // Check if the connection is ready
+                $retryAttempts = 30;
+                $retryDelay = 1; // seconds
+
+                while (!$this->adapter->connection->ping()) {
+                    if ($retryAttempts <= 0) {
+                    Console::error("[Worker] connection is not ready. Exiting...");
+                    return $this;
+                    }
+
+                    $retryAttempts--;
+
+                    Console::warning("[Worker] connection is not ready. Retrying in {$retryDelay} seconds [{$retryAttempts} left] ...");
+                    
+                    sleep($retryDelay);
+                }
+
                 Console::success("[Worker] Worker {$workerId} is ready!");
 
                 while (true) {

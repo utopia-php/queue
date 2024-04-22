@@ -71,7 +71,7 @@ class Text extends Validator
         return true;
     }
 }
-$jobs = 100000;
+$jobs = 10000000;
 $sleep = 0;
 $connection = new Redis('redis', 6379);
 $client = new Client('swoole', $connection);
@@ -92,9 +92,9 @@ Console::log('Finished loading queue');
 sleep($sleep);
 
 $container = new Container();
-$connection = new Queue\Adapter\Swoole\Redis('redis');
+// $connection = new Queue\Adapter\Swoole\Redis('redis');
 $connection = new Queue\Connection\Redis('redis');
-$adapter = new Queue\Adapter\Swoole\Server($connection, 9000, 'swoole');
+$adapter = new Queue\Adapter\Swoole\Server($connection, 1000, 'swoole');
 $server = new Queue\Worker($adapter);
 $server->setContainer($container);
 
