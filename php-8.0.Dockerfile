@@ -7,19 +7,9 @@ COPY composer.json /usr/local/src/
 
 RUN composer install --ignore-platform-reqs
 
-FROM phpswoole/swoole:php8.0-alpine
+FROM appwrite/utopia-base:php-8.0-0.1.0 as final
 
 WORKDIR /usr/local/src/
-
-RUN apk add autoconf build-base
-
-RUN docker-php-ext-enable redis
-
-ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
-
-RUN docker-php-ext-configure pcntl --enable-pcntl
-
-RUN docker-php-ext-install pcntl
 
 COPY . .
 
