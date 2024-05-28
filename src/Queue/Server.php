@@ -65,6 +65,13 @@ class Server
     protected static array $resourcesCallbacks = [];
 
     /**
+     * Concurrency Managers
+     * 
+     * @var array
+     */
+    protected static array $concurrencyManagers = [];
+
+    /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter
      */
@@ -139,6 +146,28 @@ class Server
     }
 
     /**
+     * Register a concurrency manager
+     * 
+     * @param string $name
+     * @param ConcurrencyManager $manager
+     */
+    public static function setConcurrencyManager(string $name, ConcurrencyManager $manager): void
+    {
+        self::$concurrencyManagers[$name] = $manager;
+    }
+
+    /**
+     * Get a concurrency manager
+     * 
+     * @param string $name
+     * @return ConcurrencyManager|null
+     */
+    public static function getConcurrencyManager(string $name): ?ConcurrencyManager
+    {
+        return self::$concurrencyManagers[$name] ?? null;
+    }
+
+    /**
      * Shutdown Hooks
      * @return Hook
      */
@@ -210,100 +239,111 @@ class Server
 
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
-                    /**
-                     * Move Job to Jobs and it's PID to the processing list.
-                     */
-                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
-                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+                    // Get the concurrency manager for this job
+                    $concurrencyManager = self::getConcurrencyManager('default'); // Replace 'default' with your logic to select the manager
 
-                    /**
-                     * Increment Total Jobs Received from Stats.
-                     */
-                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+                    if ($concurrencyManager && $concurrencyManager->canProcessJob($message)) {
+                        $concurrencyManager->startJob($message);
 
-                    try {
                         /**
-                         * Increment Processing Jobs from Stats.
+                         * Move Job to Jobs and it's PID to the processing list.
                          */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+                        $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
+                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
-                        if ($this->job->getHook()) {
-                            foreach ($this->initHooks as $hook) { // Global init hooks
-                                if (in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                        /**
+                         * Increment Total Jobs Received from Stats.
+                         */
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+
+                        try {
+                            /**
+                             * Increment Processing Jobs from Stats.
+                             */
+                            $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+
+                            if ($this->job->getHook()) {
+                                foreach ($this->initHooks as $hook) { // Global init hooks
+                                    if (in_array('*', $hook->getGroups())) {
+                                        $arguments = $this->getArguments($hook, $message->getPayload());
+                                        \call_user_func_array($hook->getAction(), $arguments);
+                                    }
                                 }
                             }
-                        }
 
-                        foreach ($this->job->getGroups() as $group) {
-                            foreach ($this->initHooks as $hook) { // Group init hooks
-                                if (in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            foreach ($this->job->getGroups() as $group) {
+                                foreach ($this->initHooks as $hook) { // Group init hooks
+                                    if (in_array($group, $hook->getGroups())) {
+                                        $arguments = $this->getArguments($hook, $message->getPayload());
+                                        \call_user_func_array($hook->getAction(), $arguments);
+                                    }
                                 }
                             }
-                        }
 
-                        \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
+                            \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
 
-                        /**
-                         * Remove Jobs if successful.
-                         */
-                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
+                            /**
+                             * Remove Jobs if successful.
+                             */
+                            $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
 
-                        /**
-                         * Increment Successful Jobs from Stats.
-                         */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
+                            /**
+                             * Increment Successful Jobs from Stats.
+                             */
+                            $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
 
-                        if ($this->job->getHook()) {
-                            foreach ($this->shutdownHooks as $hook) { // Global init hooks
-                                if (in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            if ($this->job->getHook()) {
+                                foreach ($this->shutdownHooks as $hook) { // Global init hooks
+                                    if (in_array('*', $hook->getGroups())) {
+                                        $arguments = $this->getArguments($hook, $message->getPayload());
+                                        \call_user_func_array($hook->getAction(), $arguments);
+                                    }
                                 }
                             }
-                        }
 
-                        foreach ($this->job->getGroups() as $group) {
-                            foreach ($this->shutdownHooks as $hook) { // Group init hooks
-                                if (in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            foreach ($this->job->getGroups() as $group) {
+                                foreach ($this->shutdownHooks as $hook) { // Group init hooks
+                                    if (in_array($group, $hook->getGroups())) {
+                                        $arguments = $this->getArguments($hook, $message->getPayload());
+                                        \call_user_func_array($hook->getAction(), $arguments);
+                                    }
                                 }
                             }
+
+                            Console::success("[Job] ({$message->getPid()}) successfully run.");
+                        } catch (\Throwable $th) {
+                            /**
+                             * Move failed Job to Failed list.
+                             */
+                            $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
+
+                            /**
+                             * Increment Failed Jobs from Stats.
+                             */
+                            $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
+
+                            Console::error("[Job] ({$message->getPid()}) failed to run.");
+                            Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
+
+                            self::setResource('error', fn () => $th);
+                            foreach ($this->errorHooks as $hook) {
+                                call_user_func_array($hook->getAction(), $this->getArguments($hook));
+                            }
+                        } finally {
+                            /**
+                             * Remove Job from Processing.
+                             */
+                            $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+
+                            /**
+                             * Decrease Processing Jobs from Stats.
+                             */
+                            $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
                         }
-
-                        Console::success("[Job] ({$message->getPid()}) successfully run.");
-                    } catch (\Throwable $th) {
-                        /**
-                         * Move failed Job to Failed list.
-                         */
-                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
-
-                        /**
-                         * Increment Failed Jobs from Stats.
-                         */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
-
-                        Console::error("[Job] ({$message->getPid()}) failed to run.");
-                        Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
-
-                        self::setResource('error', fn () => $th);
-                        foreach ($this->errorHooks as $hook) {
-                            call_user_func_array($hook->getAction(), $this->getArguments($hook));
-                        }
-                    } finally {
-                        /**
-                         * Remove Job from Processing.
-                         */
-                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
-
-                        /**
-                         * Decrease Processing Jobs from Stats.
-                         */
-                        $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+                    } else {
+                        // Re-queue the job
+                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
+                        Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
                     }
 
                     $this->resources = [];
