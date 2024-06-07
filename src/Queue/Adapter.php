@@ -33,14 +33,21 @@ abstract class Adapter
      * @param callable $callback
      * @return self
      */
-    abstract public function workerStart(callable $callback): self;
+    abstract public function onWorkerStart(callable $callback): self;
 
     /**
      * Is called when a Worker stops.
      * @param callable $callback
      * @return self
      */
-    abstract public function workerStop(callable $callback): self;
+    abstract public function onWorkerStop(callable $callback): self;
+
+    /**
+     * Is called when a job is processed.
+     * @param callable $callback
+     * @return self
+     */
+    abstract public function onJob(callable $callback): self;
 
     /**
      * Returns the native server object from the Adapter.

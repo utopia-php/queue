@@ -181,4 +181,12 @@ class Redis implements Connection
 
         return $this->redis;
     }
+
+    public function getConnection(): void
+    {
+    }
+
+    public function putConnection(): void
+    {
+    }
 }
