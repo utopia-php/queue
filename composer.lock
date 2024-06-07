@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "28429f5229ee1b7a6baefe37eaee0832",
+    "content-hash": "ea226502601a964fa455bc36130cd5e6",
     "packages": [
         {
             "name": "utopia-php/cli",
@@ -57,16 +57,16 @@
         },
         {
             "name": "utopia-php/di",
-            "version": "dev-main",
+            "version": "dev-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/di.git",
-                "reference": "a0c8be65c19570c80e904d58f54bdd901d1d5d9c"
+                "reference": "ee69270a68df00a44af86f1deffb0b7c12aca944"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/di/zipball/a0c8be65c19570c80e904d58f54bdd901d1d5d9c",
-                "reference": "a0c8be65c19570c80e904d58f54bdd901d1d5d9c",
+                "url": "https://api.github.com/repos/utopia-php/di/zipball/ee69270a68df00a44af86f1deffb0b7c12aca944",
+                "reference": "ee69270a68df00a44af86f1deffb0b7c12aca944",
                 "shasum": ""
             },
             "require": {
@@ -79,7 +79,6 @@
                 "phpunit/phpunit": "^9.5.25",
                 "swoole/ide-helper": "4.8.3"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -112,10 +111,10 @@
                 "upf"
             ],
             "support": {
-                "source": "https://github.com/utopia-php/di/tree/main",
+                "source": "https://github.com/utopia-php/di/tree/dev",
                 "issues": "https://github.com/utopia-php/di/issues"
             },
-            "time": "2024-04-22T21:22:44+00:00"
+            "time": "2024-06-07T18:31:56+00:00"
         },
         {
             "name": "utopia-php/framework",
@@ -171,17 +170,17 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/servers.git",
-                "reference": "e7eee7f82399c89adc28cf79912a9a41d7bb3233"
+                "reference": "e751e03860df4dca60a3e31a32ee62613a3d0280"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/servers/zipball/e7eee7f82399c89adc28cf79912a9a41d7bb3233",
-                "reference": "e7eee7f82399c89adc28cf79912a9a41d7bb3233",
+                "url": "https://api.github.com/repos/utopia-php/servers/zipball/e751e03860df4dca60a3e31a32ee62613a3d0280",
+                "reference": "e751e03860df4dca60a3e31a32ee62613a3d0280",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.0",
-                "utopia-php/di": "dev-main"
+                "utopia-php/di": "dev-dev"
             },
             "require-dev": {
                 "laravel/pint": "^0.2.3",
@@ -234,7 +233,7 @@
                 "source": "https://github.com/utopia-php/servers/tree/dev",
                 "issues": "https://github.com/utopia-php/servers/issues"
             },
-            "time": "2024-04-22T21:23:28+00:00"
+            "time": "2024-06-07T18:38:46+00:00"
         }
     ],
     "packages-dev": [
@@ -244,12 +243,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/doctrine/instantiator.git",
-                "reference": "6c0ee619435c5d4f3bc515ab1514cf4cf1006c6e"
+                "reference": "9955122a490d18ce723cf9014b196c126222c180"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/doctrine/instantiator/zipball/6c0ee619435c5d4f3bc515ab1514cf4cf1006c6e",
-                "reference": "6c0ee619435c5d4f3bc515ab1514cf4cf1006c6e",
+                "url": "https://api.github.com/repos/doctrine/instantiator/zipball/9955122a490d18ce723cf9014b196c126222c180",
+                "reference": "9955122a490d18ce723cf9014b196c126222c180",
                 "shasum": ""
             },
             "require": {
@@ -307,7 +306,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2023-12-09T14:19:21+00:00"
+            "time": "2024-05-05T15:09:38+00:00"
         },
         {
             "name": "laravel/pint",
@@ -442,12 +441,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/nikic/PHP-Parser.git",
-                "reference": "c5ee33df86c06b3278c670f64273b1ba768a0744"
+                "reference": "daaadc3bae458908aa477b90a8932e7da9253f22"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nikic/PHP-Parser/zipball/c5ee33df86c06b3278c670f64273b1ba768a0744",
-                "reference": "c5ee33df86c06b3278c670f64273b1ba768a0744",
+                "url": "https://api.github.com/repos/nikic/PHP-Parser/zipball/daaadc3bae458908aa477b90a8932e7da9253f22",
+                "reference": "daaadc3bae458908aa477b90a8932e7da9253f22",
                 "shasum": ""
             },
             "require": {
@@ -493,7 +492,7 @@
                 "issues": "https://github.com/nikic/PHP-Parser/issues",
                 "source": "https://github.com/nikic/PHP-Parser/tree/master"
             },
-            "time": "2024-04-19T12:04:10+00:00"
+            "time": "2024-06-03T06:24:19+00:00"
         },
         {
             "name": "phar-io/manifest",
@@ -620,12 +619,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpstan.git",
-                "reference": "3b03bac1068a585926a14e97692baef8642c2a1b"
+                "reference": "80b404fb7a47b1416ed37b9fe33793ad32e714a6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/3b03bac1068a585926a14e97692baef8642c2a1b",
-                "reference": "3b03bac1068a585926a14e97692baef8642c2a1b",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/80b404fb7a47b1416ed37b9fe33793ad32e714a6",
+                "reference": "80b404fb7a47b1416ed37b9fe33793ad32e714a6",
                 "shasum": ""
             },
             "require": {
@@ -671,7 +670,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-04-22T13:39:03+00:00"
+            "time": "2024-06-07T10:21:58+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -998,12 +997,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "33a0610878994fc134c74c25d5276d606d49079b"
+                "reference": "feb499300d9595ea4587e7448ea990263bc47c10"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/33a0610878994fc134c74c25d5276d606d49079b",
-                "reference": "33a0610878994fc134c74c25d5276d606d49079b",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/feb499300d9595ea4587e7448ea990263bc47c10",
+                "reference": "feb499300d9595ea4587e7448ea990263bc47c10",
                 "shasum": ""
             },
             "require": {
@@ -1093,7 +1092,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-04-20T06:05:08+00:00"
+            "time": "2024-06-07T04:40:16+00:00"
         },
         {
             "name": "sebastian/cli-parser",
@@ -2157,12 +2156,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/walkor/workerman.git",
-                "reference": "ac27d373acc9943630a140181ac279ee37362156"
+                "reference": "4b35b7ea5785121059613a9943b3509a79cbb077"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/walkor/workerman/zipball/ac27d373acc9943630a140181ac279ee37362156",
-                "reference": "ac27d373acc9943630a140181ac279ee37362156",
+                "url": "https://api.github.com/repos/walkor/workerman/zipball/4b35b7ea5785121059613a9943b3509a79cbb077",
+                "reference": "4b35b7ea5785121059613a9943b3509a79cbb077",
                 "shasum": ""
             },
             "require": {
@@ -2212,7 +2211,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2024-03-23T00:47:05+00:00"
+            "time": "2024-06-04T14:22:00+00:00"
         }
     ],
     "aliases": [],

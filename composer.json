@@ -27,7 +27,7 @@
         "php": ">=8.0",
         "utopia-php/cli": "0.17.*",
         "utopia-php/servers": "dev-dev",
-        "utopia-php/di": "dev-main"
+        "utopia-php/di": "dev-dev"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
