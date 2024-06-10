@@ -249,6 +249,7 @@ class Server
 
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
+
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
                      */
@@ -334,7 +335,6 @@ class Server
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
                     } finally {
-                        $this->concurrencyManager->finishJob($message);
                         /**
                          * Remove Job from Processing.
                          */
@@ -346,6 +346,7 @@ class Server
                         $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
                     }
 
+                    Console::success("[Job] ({$message->getPid()}) successfully run.");
                     $this->resources = [];
                 }
             });
