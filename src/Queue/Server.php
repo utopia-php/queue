@@ -6,6 +6,7 @@ use Throwable;
 use Utopia\CLI\Console;
 use Exception;
 use Utopia\Hook;
+use Utopia\Queue\Concurrency\Manager;
 use Utopia\Validator;
 
 class Server
@@ -63,6 +64,13 @@ class Server
      * @var array
      */
     protected static array $resourcesCallbacks = [];
+
+    /**
+     * Concurrency Managers
+     * 
+     * @var Manager[] 
+     */
+    protected array $concurrencyManagers = [];
 
     /**
      * Creates an instance of a Queue server.
@@ -139,6 +147,29 @@ class Server
     }
 
     /**
+     * Register a concurrency manager
+     * 
+     * @param string $name
+     * @param Manager $manager
+     */
+    public function setConcurrencyManager(string $name, Manager $manager): self
+    {
+        $this->concurrencyManagers[$name] = $manager;
+        return $this;
+    }
+
+    /**
+     * Get a concurrency manager
+     * 
+     * @param string $name
+     * @return Manager|null
+     */
+    public function getConcurrencyManager(string $name): ?Manager
+    {
+        return $this->concurrencyManagers[$name] ?? null;
+    }
+
+    /**
      * Shutdown Hooks
      * @return Hook
      */
@@ -205,6 +236,14 @@ class Server
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 
                     $message = new Message($nextMessage);
+                    
+                    foreach($this->concurrencyManagers as $concurrencyManager) {
+                        if (!$concurrencyManager->canProcessJob($message)) {
+                            $this->adapter->connection->leftPushArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
+                            Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
+                            break;
+                        }
+                    }
 
                     self::setResource('message', fn () => $message);
 
@@ -295,6 +334,7 @@ class Server
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
                     } finally {
+                        $this->concurrencyManager->finishJob($message);
                         /**
                          * Remove Job from Processing.
                          */
