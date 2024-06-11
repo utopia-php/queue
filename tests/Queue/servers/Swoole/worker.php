@@ -7,16 +7,18 @@ use Utopia\Queue;
 use Utopia\Queue\Concurrency\Manager;
 use Utopia\Queue\Message;
 
-class BuildsConcurrencyManager extends Manager {
-    public function getConcurrencyKey(Message $message): string {
-        return $message['payload']['$id'] ?? '';
+class BuildsConcurrencyManager extends Manager
+{
+    public function getConcurrencyKey(Message $message): string
+    {
+        return $message['payload']['$id'] ?? throw new Exception("Concurrency key not found.");
     }
 }
 
 $connection = new Queue\Connection\Redis('redis');
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
 $server = new Queue\Server($adapter);
-$server->setConcurrencyManager('builds', new BuildsConcurrencyManager($connection));
+$server->setConcurrencyManager('builds', new BuildsConcurrencyManager('builds', 2, $connection));
 
 $server->job()
     ->inject('message')

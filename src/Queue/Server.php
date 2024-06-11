@@ -237,18 +237,28 @@ class Server
 
                     $message = new Message($nextMessage);
                     
-                    foreach($this->concurrencyManagers as $concurrencyManager) {
-                        if (!$concurrencyManager->canProcessJob($message)) {
-                            $this->adapter->connection->leftPushArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
-                            Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
+                    $concurrencyManager = null;
+                    foreach($this->concurrencyManagers as $_concurrencyManager) {
+                        if ($_concurrencyManager->match($message)) {
+                            $concurrencyManager = $_concurrencyManager;
                             break;
                         }
+                    }
+
+                    if ($concurrencyManager && !$concurrencyManager->canProcessJob($message)) {
+                        $this->adapter->connection->leftPushArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
+                        Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
+                        break;
+                    }
+
+                    /** Increment the concurrency counter */
+                    if ($concurrencyManager) {
+                        $concurrencyManager->startJob($message);
                     }
 
                     self::setResource('message', fn () => $message);
 
                     Console::info("[Job] Received Job ({$message->getPid()}).");
-
 
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
@@ -335,6 +345,10 @@ class Server
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
                     } finally {
+                        /** Decrement the counter so another job can be picked up again */
+                        if ($concurrencyManager) {
+                            $concurrencyManager->finishJob($message);
+                        }    
                         /**
                          * Remove Job from Processing.
                          */
@@ -346,7 +360,6 @@ class Server
                         $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
                     }
 
-                    Console::success("[Job] ({$message->getPid()}) successfully run.");
                     $this->resources = [];
                 }
             });

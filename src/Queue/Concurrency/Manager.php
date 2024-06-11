@@ -2,44 +2,56 @@
 
 namespace Utopia\Queue\Concurrency;
 
+use Utopia\Queue\Connection;
 use Utopia\Queue\Message;
 
-abstract class Manager {
-    protected $concurrencyKey;
-    protected $maxLimit;
-    protected $jobCount = [];
+abstract class Manager
+{
+
+    protected string $queue;
+    protected string $concurrencyKey;
+    protected int $limit = 1;
     protected Adapter $adapter;
 
-    public function __construct(Adapter $adapter)
+    public function __construct(string $queue, int $limit, Connection $adapter)
     {
-        $this->adapter = $adapter;   
+        $this->queue = $queue;
+        $this->limit = $limit;
+        $this->adapter = $adapter;
     }
 
-    public function setConcurrencyKey($key) {
+    public function setConcurrencyKey($key)
+    {
         $this->concurrencyKey = $key;
     }
 
-    public function setMaxLimit($limit) {
-        $this->maxLimit = $limit;
+    public function match(Message $message): bool
+    {
+        if ($this->queue === $message->getQueue())
+            return true;
+        return false;
     }
 
-    abstract protected function getConcurrencyKey(Message $message): string;
-
-    public function canProcessJob(Message $message) {
+    public function canProcessJob(Message $message)
+    {
         $key = $this->getConcurrencyKey($message);
         if ($this->adapter->get($key) === false) {
             $this->adapter->set($key, 0);
         }
-        return $this->adapter->get($key) < $this->maxLimit;
+        return $this->adapter->get($key) < $this->limit;
     }
 
-    public function startJob(Message $message) {
+    public function startJob(Message $message)
+    {
         $key = $this->getConcurrencyKey($message);
         $this->adapter->increment($key);
     }
 
-    public function finishJob(Message $message) {
+    public function finishJob(Message $message)
+    {
         $key = $this->getConcurrencyKey($message);
         $this->adapter->decrement($key);
     }
+
+    abstract protected function getConcurrencyKey(Message $message): string;
 }
