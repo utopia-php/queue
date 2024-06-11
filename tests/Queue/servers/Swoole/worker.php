@@ -19,6 +19,7 @@ class BuildsConcurrencyManager extends Manager
 $connection = new Redis('redis');
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
 $server = new Queue\Server($adapter);
+
 $server->setConcurrencyManager('builds', new BuildsConcurrencyManager('builds', 2, $connection));
 
 $server->job()
