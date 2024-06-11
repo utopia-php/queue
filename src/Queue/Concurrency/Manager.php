@@ -2,7 +2,6 @@
 
 namespace Utopia\Queue\Concurrency;
 
-use Utopia\Queue\Connection;
 use Utopia\Queue\Message;
 
 abstract class Manager
@@ -13,7 +12,7 @@ abstract class Manager
     protected int $limit = 1;
     protected Adapter $adapter;
 
-    public function __construct(string $queue, int $limit, Connection $adapter)
+    public function __construct(string $queue, int $limit, Adapter $adapter)
     {
         $this->queue = $queue;
         $this->limit = $limit;

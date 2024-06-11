@@ -5,6 +5,7 @@ require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
 use Utopia\Queue\Concurrency\Manager;
+use Utopia\Queue\Concurrency\Redis;
 use Utopia\Queue\Message;
 
 class BuildsConcurrencyManager extends Manager
@@ -15,7 +16,7 @@ class BuildsConcurrencyManager extends Manager
     }
 }
 
-$connection = new Queue\Connection\Redis('redis');
+$connection = new Redis('redis');
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
 $server = new Queue\Server($adapter);
 $server->setConcurrencyManager('builds', new BuildsConcurrencyManager('builds', 2, $connection));
