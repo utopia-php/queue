@@ -5,6 +5,10 @@ namespace Utopia\Queue;
 use Throwable;
 use Utopia\CLI\Console;
 use Exception;
+use Utopia\Balancer\Algorithm\Random;
+use Utopia\Balancer\Algorithm\RoundRobin;
+use Utopia\Balancer\Balancer;
+use Utopia\Balancer\Option;
 use Utopia\Hook;
 use Utopia\Validator;
 
@@ -187,20 +191,23 @@ class Server
     public function start(): self
     {
         try {
-            $this->adapter->workerStart(function (string $workerId) {
-                Console::success("[Worker] Worker {$workerId} is ready!");
+            $balancer = new Balancer(new RoundRobin(-1));
+            foreach ($this->adapter->queues as $queue) {
+                $balancer->addOption(new Option([ 'queue' => $queue ]));
+            }
+
+            $this->adapter->workerStart(function (string $workerId) use ($balancer) {
+                $queue = $balancer->run()->getState('queue');
+                Console::success("[Worker] Worker {$workerId} is ready for queue: " . $queue);
                 if (!is_null($this->workerStartHook)) {
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
+                
                 while (true) {
                     /**
                      * Waiting for next Job.
                      */
-                    $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
-
-                    if (!$nextMessage) {
-                        continue;
-                    }
+                    $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$queue}", 5);
 
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 
@@ -213,19 +220,19 @@ class Server
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
                      */
-                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
-                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$queue}.{$message->getPid()}", $nextMessage);
+                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$queue}", $message->getPid());
 
                     /**
                      * Increment Total Jobs Received from Stats.
                      */
-                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$queue}.total");
 
                     try {
                         /**
                          * Increment Processing Jobs from Stats.
                          */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$queue}.processing");
 
                         if ($this->job->getHook()) {
                             foreach ($this->initHooks as $hook) { // Global init hooks
@@ -250,12 +257,12 @@ class Server
                         /**
                          * Remove Jobs if successful.
                          */
-                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
+                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$queue}.{$message->getPid()}");
 
                         /**
                          * Increment Successful Jobs from Stats.
                          */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$queue}.success");
 
                         if ($this->job->getHook()) {
                             foreach ($this->shutdownHooks as $hook) { // Global init hooks
@@ -280,12 +287,12 @@ class Server
                         /**
                          * Move failed Job to Failed list.
                          */
-                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
+                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$queue}", $message->getPid());
 
                         /**
                          * Increment Failed Jobs from Stats.
                          */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
+                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$queue}.failed");
 
                         Console::error("[Job] ({$message->getPid()}) failed to run.");
                         Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
@@ -298,12 +305,12 @@ class Server
                         /**
                          * Remove Job from Processing.
                          */
-                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
+                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$queue}", $message->getPid());
 
                         /**
                          * Decrease Processing Jobs from Stats.
                          */
-                        $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+                        $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$queue}.processing");
                     }
 
                     $this->resources = [];
