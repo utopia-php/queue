@@ -5,7 +5,7 @@ require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
 use Utopia\Queue\Concurrency\Manager;
-use Utopia\Queue\Concurrency\Redis;
+use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Message;
 
 class BuildsConcurrencyManager extends Manager

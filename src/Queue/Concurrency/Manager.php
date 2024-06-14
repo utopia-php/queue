@@ -2,6 +2,7 @@
 
 namespace Utopia\Queue\Concurrency;
 
+use Utopia\Queue\Connection;
 use Utopia\Queue\Message;
 
 abstract class Manager
@@ -10,9 +11,9 @@ abstract class Manager
     protected string $queue;
     protected string $concurrencyKey;
     protected int $limit = 1;
-    protected Adapter $adapter;
+    protected Connection $adapter;
 
-    public function __construct(string $queue, int $limit, Adapter $adapter)
+    public function __construct(string $queue, int $limit, Connection $adapter)
     {
         $this->queue = $queue;
         $this->limit = $limit;
@@ -24,17 +25,17 @@ abstract class Manager
         $this->concurrencyKey = $key;
     }
 
-    public function match(Message $message): bool
-    {
-        if ($this->queue === $message->getQueue())
-            return true;
-        return false;
-    }
+    // public function match(Message $message): bool
+    // {
+    //     if ($this->queue === $message->getQueue())
+    //         return true;
+    //     return false;
+    // }
 
     public function canProcessJob(Message $message)
     {
         $key = $this->getConcurrencyKey($message);
-        if ($this->adapter->get($key) === false) {
+        if ($this->adapter->get($key) === null) {
             $this->adapter->set($key, 0);
         }
         return $this->adapter->get($key) < $this->limit;

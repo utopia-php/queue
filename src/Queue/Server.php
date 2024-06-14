@@ -237,18 +237,12 @@ class Server
 
                     $message = new Message($nextMessage);
                     
-                    $concurrencyManager = null;
-                    foreach($this->concurrencyManagers as $_concurrencyManager) {
-                        if ($_concurrencyManager->match($message)) {
-                            $concurrencyManager = $_concurrencyManager;
-                            break;
-                        }
-                    }
+                    $concurrencyManager = $this->getConcurrencyManager($message->getQueue());
 
                     if ($concurrencyManager && !$concurrencyManager->canProcessJob($message)) {
                         $this->adapter->connection->leftPushArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
                         Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
-                        break;
+                        continue;
                     }
 
                     /** Increment the concurrency counter */

@@ -152,4 +152,29 @@ abstract class Base extends TestCase
         $this->assertEquals(2, $client->countFailedJobs());
         $this->assertEquals(0, $client->countSuccessfulJobs());
     }
+
+    public function testConcurrencyManager(): void
+    {
+        run(function () {
+            $client = $this->getClient();
+            go(function () use ($client) {
+                $client->resetStats();
+
+                for ($i = 0; i < 10; i++) {
+                    $this->assertTrue($client->enqueue([
+                        'type' => 'test_sleep',
+                        'id' => $i
+                    ]));
+                }
+
+                sleep(1);
+
+                $this->assertEquals(10, $client->countTotalJobs());
+                $this->assertEquals(10, $client->countProcessingJobs());
+                $this->assertEquals(0, $client->countFailedJobs());
+                $this->assertEquals(0, $client->countSuccessfulJobs());
+            });
+        });
+
+    }
 }
