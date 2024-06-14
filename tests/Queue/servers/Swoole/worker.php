@@ -4,11 +4,23 @@ require_once __DIR__ . '/../../../../vendor/autoload.php';
 require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
+use Utopia\Queue\Concurrency\Manager;
+use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Message;
 
-$connection = new Queue\Connection\Redis('redis');
+class BuildsConcurrencyManager extends Manager
+{
+    public function getConcurrencyKey(Message $message): string
+    {
+        return $message['payload']['$id'] ?? throw new Exception("Concurrency key not found.");
+    }
+}
+
+$connection = new Redis('redis');
 $adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole');
 $server = new Queue\Server($adapter);
+
+$server->setConcurrencyManager('builds', new BuildsConcurrencyManager('builds', 2, $connection));
 
 $server->job()
     ->inject('message')

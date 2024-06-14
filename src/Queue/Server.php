@@ -6,6 +6,7 @@ use Throwable;
 use Utopia\CLI\Console;
 use Exception;
 use Utopia\Hook;
+use Utopia\Queue\Concurrency\Manager;
 use Utopia\Validator;
 
 class Server
@@ -63,6 +64,13 @@ class Server
      * @var array
      */
     protected static array $resourcesCallbacks = [];
+
+    /**
+     * Concurrency Managers
+     * 
+     * @var Manager[] 
+     */
+    protected array $concurrencyManagers = [];
 
     /**
      * Creates an instance of a Queue server.
@@ -139,6 +147,29 @@ class Server
     }
 
     /**
+     * Register a concurrency manager
+     * 
+     * @param string $name
+     * @param Manager $manager
+     */
+    public function setConcurrencyManager(string $name, Manager $manager): self
+    {
+        $this->concurrencyManagers[$name] = $manager;
+        return $this;
+    }
+
+    /**
+     * Get a concurrency manager
+     * 
+     * @param string $name
+     * @return Manager|null
+     */
+    public function getConcurrencyManager(string $name): ?Manager
+    {
+        return $this->concurrencyManagers[$name] ?? null;
+    }
+
+    /**
      * Shutdown Hooks
      * @return Hook
      */
@@ -205,6 +236,19 @@ class Server
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 
                     $message = new Message($nextMessage);
+                    
+                    $concurrencyManager = $this->getConcurrencyManager($message->getQueue());
+
+                    if ($concurrencyManager && !$concurrencyManager->canProcessJob($message)) {
+                        $this->adapter->connection->leftPushArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
+                        Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
+                        continue;
+                    }
+
+                    /** Increment the concurrency counter */
+                    if ($concurrencyManager) {
+                        $concurrencyManager->startJob($message);
+                    }
 
                     self::setResource('message', fn () => $message);
 
@@ -295,6 +339,10 @@ class Server
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
                     } finally {
+                        /** Decrement the counter so another job can be picked up again */
+                        if ($concurrencyManager) {
+                            $concurrencyManager->finishJob($message);
+                        }    
                         /**
                          * Remove Job from Processing.
                          */
