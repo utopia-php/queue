@@ -12,8 +12,13 @@ class Redis implements Connection
     protected ?string $password;
     protected ?\Redis $redis = null;
 
-    public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null)
+    public function __construct(mixed $host, int $port = 6379, ?string $user = null, ?string $password = null)
     {
+        if(gettype($host) !== 'string') {
+            $this->redis = $host;
+            return;
+        }
+
         $this->host = $host;
         $this->port = $port;
         $this->user = $user;
