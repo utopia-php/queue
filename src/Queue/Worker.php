@@ -84,14 +84,14 @@ class Worker extends Base
 
                 while (!$this->adapter->connection->ping()) {
                     if ($retryAttempts <= 0) {
-                    Console::error("[Worker] connection is not ready. Exiting...");
-                    return $this;
+                        Console::error("[Worker] connection is not ready. Exiting...");
+                        return $this;
                     }
 
                     $retryAttempts--;
 
                     Console::warning("[Worker] connection is not ready. Retrying in {$retryDelay} seconds [{$retryAttempts} left] ...");
-                    
+
                     sleep($retryDelay);
                 }
 

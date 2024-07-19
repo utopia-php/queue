@@ -14,7 +14,7 @@ class Redis implements Connection
 
     public function __construct(mixed $host, int $port = 6379, ?string $user = null, ?string $password = null)
     {
-        if(gettype($host) !== 'string') {
+        if (gettype($host) !== 'string') {
             $this->redis = $host;
             return;
         }
