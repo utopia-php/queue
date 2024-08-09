@@ -4,7 +4,7 @@
     "type": "library",
     "keywords": ["php","framework", "upf", "utopia", "tasks", "queue"],
     "license": "MIT",
-    "minimum-stability": "dev",
+    "minimum-stability": "RC",
     "authors": [
         {
             "name": "Torsten Dittmann",
@@ -25,9 +25,9 @@
     },
     "require": {
         "php": ">=8.0",
-        "utopia-php/cli": "0.17.*",
-        "utopia-php/servers": "dev-dev",
-        "utopia-php/di": "dev-feat-framework-v2"
+        "utopia-php/cli": "1.0.*",
+        "utopia-php/servers": "0.1.*",
+        "utopia-php/di": "0.1.*"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
