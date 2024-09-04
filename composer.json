@@ -40,15 +40,5 @@
         "ext-redis": "Needed to support Redis connections",
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman."
-    },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/utopia-php/servers"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/utopia-php/di"
-        }
-    ]
+    }
 }
