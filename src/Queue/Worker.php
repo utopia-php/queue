@@ -202,13 +202,10 @@ class Worker extends Base
         $connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
         $connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
-        \var_dump("Incrementing " . $this->adapter->namespace . " ," . $this->adapter->queue);
         /**
          * Increment Total Jobs Received from Stats.
          */
-        \var_dump($connection->get("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total"));
         $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
-        \var_dump($connection->get("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total"));
 
         /**
          * Increment Processing Jobs from Stats.
