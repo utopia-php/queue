@@ -67,8 +67,8 @@ class Server
 
     /**
      * Concurrency Managers
-     * 
-     * @var Manager[] 
+     *
+     * @var Manager[]
      */
     protected array $concurrencyManagers = [];
 
@@ -148,7 +148,7 @@ class Server
 
     /**
      * Register a concurrency manager
-     * 
+     *
      * @param string $name
      * @param Manager $manager
      */
@@ -160,7 +160,7 @@ class Server
 
     /**
      * Get a concurrency manager
-     * 
+     *
      * @param string $name
      * @return Manager|null
      */
@@ -236,7 +236,7 @@ class Server
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
 
                     $message = new Message($nextMessage);
-                    
+
                     $concurrencyManager = $this->getConcurrencyManager($message->getQueue());
 
                     if ($concurrencyManager && !$concurrencyManager->canProcessJob($message)) {
@@ -342,7 +342,7 @@ class Server
                         /** Decrement the counter so another job can be picked up again */
                         if ($concurrencyManager) {
                             $concurrencyManager->finishJob($message);
-                        }    
+                        }
                         /**
                          * Remove Job from Processing.
                          */

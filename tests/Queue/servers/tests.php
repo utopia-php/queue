@@ -45,6 +45,7 @@ function handleRequest(Queue\Message $job): void
         case 'test_exception':
             assert(false);
 
+            // no break
         case 'test_sleep':
             sleep(10);
             break;

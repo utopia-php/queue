@@ -160,7 +160,7 @@ abstract class Base extends TestCase
             go(function () use ($client) {
                 $client->resetStats();
 
-                for ($i = 0; i < 10; i++) {
+                for ($i = 0; $i < 10; $i++) {
                     $this->assertTrue($client->enqueue([
                         'type' => 'test_sleep',
                         'id' => $i
@@ -175,6 +175,5 @@ abstract class Base extends TestCase
                 $this->assertEquals(0, $client->countSuccessfulJobs());
             });
         });
-
     }
 }

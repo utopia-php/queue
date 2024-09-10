@@ -7,7 +7,6 @@ use Utopia\Queue\Message;
 
 abstract class Manager
 {
-
     protected string $queue;
     protected string $concurrencyKey;
     protected int $limit = 1;
@@ -20,19 +19,7 @@ abstract class Manager
         $this->adapter = $adapter;
     }
 
-    public function setConcurrencyKey($key)
-    {
-        $this->concurrencyKey = $key;
-    }
-
-    // public function match(Message $message): bool
-    // {
-    //     if ($this->queue === $message->getQueue())
-    //         return true;
-    //     return false;
-    // }
-
-    public function canProcessJob(Message $message)
+    public function canProcessJob(Message $message): bool
     {
         $key = $this->getConcurrencyKey($message);
         if ($this->adapter->get($key) === null) {
@@ -41,13 +28,13 @@ abstract class Manager
         return $this->adapter->get($key) < $this->limit;
     }
 
-    public function startJob(Message $message)
+    public function startJob(Message $message): void
     {
         $key = $this->getConcurrencyKey($message);
         $this->adapter->increment($key);
     }
 
-    public function finishJob(Message $message)
+    public function finishJob(Message $message): void
     {
         $key = $this->getConcurrencyKey($message);
         $this->adapter->decrement($key);
