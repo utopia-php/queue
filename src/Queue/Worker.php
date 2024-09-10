@@ -29,9 +29,9 @@ class Worker extends Base
     /**
      * Concurrency Manager
      *
-     * @var Manager
+     * @var ?Manager
      */
-    protected Manager $concurrencyManager;
+    protected ?Manager $concurrencyManager = null;
 
     /**
      * Creates an instance of a Queue server.
@@ -65,9 +65,9 @@ class Worker extends Base
     /**
      * Get a concurrency manager
      *
-     * @return Manager
+     * @return ?Manager
      */
-    public function getConcurrencyManager(): Manager
+    public function getConcurrencyManager(): ?Manager
     {
         return $this->concurrencyManager;
     }
@@ -202,10 +202,13 @@ class Worker extends Base
         $connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
         $connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
 
+        \var_dump("Incrementing " . $this->adapter->namespace . " ," . $this->adapter->queue);
         /**
          * Increment Total Jobs Received from Stats.
          */
+        \var_dump($connection->get("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total"));
         $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
+        \var_dump($connection->get("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total"));
 
         /**
          * Increment Processing Jobs from Stats.

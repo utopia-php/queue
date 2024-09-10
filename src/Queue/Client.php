@@ -16,6 +16,10 @@ class Client
 
     public function enqueue(array $payload): bool
     {
+        if(!isset($payload['concurrencyKey'])) {
+            $payload['concurrencyKey'] = \uniqid();
+        }
+
         $payload = [
             'pid' => \uniqid(more_entropy: true),
             'queue' => $this->queue,
