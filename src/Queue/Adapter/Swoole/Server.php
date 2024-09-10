@@ -1,12 +1,13 @@
 <?php
 
-namespace Utopia\Queue\Adapter;
+namespace Utopia\Queue\Adapter\Swoole;
 
 use Swoole\Process\Pool;
+use Swoole\Runtime;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Connection;
 
-class Swoole extends Adapter
+class Server extends Adapter
 {
     protected Pool $pool;
 
@@ -20,6 +21,7 @@ class Swoole extends Adapter
 
     public function start(): self
     {
+        Runtime::enableCoroutine();
         $this->pool->set(['enable_coroutine' => true]);
         $this->pool->start();
         return $this;
@@ -31,7 +33,7 @@ class Swoole extends Adapter
         return $this;
     }
 
-    public function workerStart(callable $callback): self
+    public function onWorkerStart(callable $callback): self
     {
         $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
             call_user_func($callback, $workerId);
@@ -40,11 +42,18 @@ class Swoole extends Adapter
         return $this;
     }
 
-    public function workerStop(callable $callback): self
+    public function onWorkerStop(callable $callback): self
     {
         $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
             call_user_func($callback, $workerId);
         });
+
+        return $this;
+    }
+
+    public function onJob(callable $callback): self
+    {
+        call_user_func($callback);
 
         return $this;
     }
