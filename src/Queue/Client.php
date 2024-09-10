@@ -16,7 +16,7 @@ class Client
 
     public function enqueue(array $payload): bool
     {
-        if(!isset($payload['concurrencyKey'])) {
+        if (!isset($payload['concurrencyKey'])) {
             $payload['concurrencyKey'] = \uniqid();
         }
 

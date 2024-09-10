@@ -14,10 +14,12 @@ abstract class Manager
     public function canProcessJob(Message $message): bool
     {
         $key = $this->getConcurrencyKey($message);
-        if ($this->adapter->get($key) === null) {
-            $this->adapter->set($key, 0);
+        $value = $this->adapter->get($key);
+        if ($value === null) {
+            $this->adapter->set($key, "0");
+            $value = 0;
         }
-        return \intval($this->adapter->get($key)) < $this->limit;
+        return \intval($value) < $this->limit;
     }
 
     public function startJob(Message $message): void
@@ -32,5 +34,5 @@ abstract class Manager
         $this->adapter->decrement($key);
     }
 
-    abstract protected function getConcurrencyKey(Message $message): string;
+    abstract public function getConcurrencyKey(Message $message): string;
 }

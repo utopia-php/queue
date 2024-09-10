@@ -1,6 +1,8 @@
 <?php
 
 use Utopia\Queue;
+use Utopia\Queue\Concurrency\Manager;
+use Utopia\Queue\Message;
 
 function handleRequest(Queue\Message $job): void
 {
@@ -52,5 +54,13 @@ function handleRequest(Queue\Message $job): void
         case 'test_sleep':
             sleep(5);
             break;
+    }
+}
+
+class TestConcurrencyManager extends Manager
+{
+    public function getConcurrencyKey(Message $message): string
+    {
+        return $message->getPayload()['concurrencyKey'];
     }
 }

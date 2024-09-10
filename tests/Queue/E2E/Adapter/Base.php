@@ -153,7 +153,6 @@ abstract class Base extends TestCase
         $this->assertEquals(0, $client->countSuccessfulJobs());
     }
 
-    /*
     public function testConcurrencyManager(): void
     {
         run(function () {
@@ -177,5 +176,4 @@ abstract class Base extends TestCase
             });
         });
     }
-    */
 }

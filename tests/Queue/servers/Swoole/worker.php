@@ -62,20 +62,13 @@ class Text extends Validator
     }
 }
 
-class PayloadConcurrencyManager extends Manager
-{
-    public function getConcurrencyKey(Message $message): string
-    {
-        $key = $message->getPayload()['concurrencyKey'];
-        return $key;
-    }
-}
+
 
 $container = new Container();
 $connection = new Queue\Adapter\Swoole\Redis('redis');
 $adapter = new Queue\Adapter\Swoole\Server($connection, 1, 'swoole');
 $server = new Queue\Worker($adapter);
-// $server->setConcurrencyManager(new PayloadConcurrencyManager($connection, 1));
+$server->setConcurrencyManager(new TestConcurrencyManager($connection, 5));
 $server->setContainer($container);
 
 // Server::init()
