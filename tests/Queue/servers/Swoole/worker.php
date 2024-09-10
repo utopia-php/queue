@@ -6,7 +6,6 @@ require_once __DIR__ . '/../tests.php';
 use Utopia\DI\Container;
 use Utopia\Queue;
 use Utopia\Queue\Concurrency\Manager;
-use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Message;
 use Utopia\Queue\Worker;
 use Utopia\Servers\Validator;
@@ -63,10 +62,19 @@ class Text extends Validator
     }
 }
 
+class PayloadConcurrencyManager extends Manager
+{
+    public function getConcurrencyKey(Message $message): string
+    {
+        return $message['payload']['$id'] ?? throw new Exception("Concurrency key not found.");
+    }
+}
+
 $container = new Container();
 $connection = new Queue\Adapter\Swoole\Redis('redis');
 $adapter = new Queue\Adapter\Swoole\Server($connection, 1, 'swoole');
 $server = new Queue\Worker($adapter);
+$server->setConcurrencyManager(new PayloadConcurrencyManager($connection, 1));
 $server->setContainer($container);
 
 // Server::init()

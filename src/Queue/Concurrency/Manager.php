@@ -7,16 +7,8 @@ use Utopia\Queue\Message;
 
 abstract class Manager
 {
-    protected string $queue;
-    protected string $concurrencyKey;
-    protected int $limit = 1;
-    protected Connection $adapter;
-
-    public function __construct(string $queue, int $limit, Connection $adapter)
+    public function __construct(protected Connection $adapter, protected int $limit = 1)
     {
-        $this->queue = $queue;
-        $this->limit = $limit;
-        $this->adapter = $adapter;
     }
 
     public function canProcessJob(Message $message): bool
@@ -25,7 +17,7 @@ abstract class Manager
         if ($this->adapter->get($key) === null) {
             $this->adapter->set($key, 0);
         }
-        return $this->adapter->get($key) < $this->limit;
+        return \intval($this->adapter->get($key)) < $this->limit;
     }
 
     public function startJob(Message $message): void

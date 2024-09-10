@@ -7,6 +7,7 @@ use Exception;
 use Utopia\CLI\Console;
 use Utopia\DI\Container;
 use Utopia\DI\Dependency;
+use Utopia\Queue\Concurrency\Manager;
 use Utopia\Servers\Base;
 
 class Worker extends Base
@@ -26,6 +27,13 @@ class Worker extends Base
     protected static Job $job;
 
     /**
+     * Concurrency Manager
+     *
+     * @var Manager
+     */
+    protected Manager $concurrencyManager;
+
+    /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter
      */
@@ -41,6 +49,27 @@ class Worker extends Base
     {
         self::$job = new Job();
         return self::$job;
+    }
+
+    /**
+     * Register a concurrency manager
+     *
+     * @param Manager $manager
+     */
+    public function setConcurrencyManager(Manager $manager): self
+    {
+        $this->concurrencyManager = $manager;
+        return $this;
+    }
+
+    /**
+     * Get a concurrency manager
+     *
+     * @return Manager
+     */
+    public function getConcurrencyManager(): Manager
+    {
+        return $this->concurrencyManager;
     }
 
     /**
@@ -150,9 +179,22 @@ class Worker extends Base
     {
         Console::info("[Job] Received Job ({$message->getPid()}).");
 
+        $concurrencyManager = $this->getConcurrencyManager();
+
         $groups = $job->getGroups();
 
         $connection->getConnection();
+
+        if ($concurrencyManager && !$concurrencyManager->canProcessJob($message)) {
+            $this->adapter->connection->leftPushArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", $nextMessage);
+            Console::info("[Job] Re-queued Job ({$message->getPid()}) due to concurrency limit.");
+            return $this;
+        }
+
+        /** Increment the concurrency counter */
+        if ($concurrencyManager) {
+            $concurrencyManager->startJob($message);
+        }
 
         /**
          * Move Job to Jobs and it's PID to the processing list.
@@ -257,6 +299,11 @@ class Worker extends Base
                 }
             }
         } finally {
+            /** Decrement the counter so another job can be picked up again */
+            if ($concurrencyManager) {
+                $concurrencyManager->finishJob($message);
+            }
+
             /**
              * Remove Job from Processing.
              */

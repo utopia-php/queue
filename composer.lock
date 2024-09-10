@@ -107,16 +107,16 @@
         },
         {
             "name": "utopia-php/framework",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/http.git",
-                "reference": "cc880ec41f7f163d4f9956fec26cc6be51b412cf"
+                "reference": "d9aa291f7e3efa516f7eb2dde490f0b24757fe0f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/http/zipball/cc880ec41f7f163d4f9956fec26cc6be51b412cf",
-                "reference": "cc880ec41f7f163d4f9956fec26cc6be51b412cf",
+                "url": "https://api.github.com/repos/utopia-php/http/zipball/d9aa291f7e3efa516f7eb2dde490f0b24757fe0f",
+                "reference": "d9aa291f7e3efa516f7eb2dde490f0b24757fe0f",
                 "shasum": ""
             },
             "require": {
@@ -135,8 +135,7 @@
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "Utopia\\": "src/",
-                    "Tests\\E2E\\": "tests/e2e"
+                    "Utopia\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -152,22 +151,22 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/http/issues",
-                "source": "https://github.com/utopia-php/http/tree/1.0.0"
+                "source": "https://github.com/utopia-php/http/tree/1.0.1"
             },
-            "time": "2024-09-05T15:38:08+00:00"
+            "time": "2024-09-09T15:36:32+00:00"
         },
         {
             "name": "utopia-php/servers",
-            "version": "0.1.0",
+            "version": "0.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/servers.git",
-                "reference": "7d9e4f364fb1ab1889fb89ca96eb9946467cb09c"
+                "reference": "fd5c8d32778f265256c1936372a071b944f5ba8a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/servers/zipball/7d9e4f364fb1ab1889fb89ca96eb9946467cb09c",
-                "reference": "7d9e4f364fb1ab1889fb89ca96eb9946467cb09c",
+                "url": "https://api.github.com/repos/utopia-php/servers/zipball/fd5c8d32778f265256c1936372a071b944f5ba8a",
+                "reference": "fd5c8d32778f265256c1936372a071b944f5ba8a",
                 "shasum": ""
             },
             "require": {
@@ -205,9 +204,9 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/servers/issues",
-                "source": "https://github.com/utopia-php/servers/tree/0.1.0"
+                "source": "https://github.com/utopia-php/servers/tree/0.1.1"
             },
-            "time": "2024-08-08T14:31:39+00:00"
+            "time": "2024-09-06T02:25:56+00:00"
         }
     ],
     "packages-dev": [
@@ -585,16 +584,16 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "1.12.2",
+            "version": "1.12.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpstan.git",
-                "reference": "0ca1c7bb55fca8fe6448f16fff0f311ccec960a1"
+                "reference": "0fcbf194ab63d8159bb70d9aa3e1350051632009"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/0ca1c7bb55fca8fe6448f16fff0f311ccec960a1",
-                "reference": "0ca1c7bb55fca8fe6448f16fff0f311ccec960a1",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/0fcbf194ab63d8159bb70d9aa3e1350051632009",
+                "reference": "0fcbf194ab63d8159bb70d9aa3e1350051632009",
                 "shasum": ""
             },
             "require": {
@@ -639,7 +638,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-09-05T16:09:28+00:00"
+            "time": "2024-09-09T08:10:35+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",

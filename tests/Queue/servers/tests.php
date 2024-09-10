@@ -50,7 +50,7 @@ function handleRequest(Queue\Message $job): void
 
             // no break
         case 'test_sleep':
-            sleep(10);
+            sleep(5);
             break;
     }
 }
