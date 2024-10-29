@@ -89,15 +89,28 @@ class Server
      */
     public function getResource(string $name, bool $fresh = false): mixed
     {
-        if (!\array_key_exists($name, $this->resources) || $fresh || self::$resourcesCallbacks[$name]['reset']) {
+        if (true || !\array_key_exists($name, $this->resources) || $fresh || self::$resourcesCallbacks[$name]['reset']) {
             if (!\array_key_exists($name, self::$resourcesCallbacks)) {
                 throw new Exception('Failed to find resource: "' . $name . '"');
             }
 
+            if ($name === 'project') {
+                var_dump("getResource::project - call_user_func_array with injections " . json_encode(self::$resourcesCallbacks[$name]['injections']));
+            }
+            if ($name === 'message') {
+                var_dump("getResource::message - call_user_func_array with injections " . json_encode(self::$resourcesCallbacks[$name]['injections']));
+            }
             $this->resources[$name] = \call_user_func_array(
                 self::$resourcesCallbacks[$name]['callback'],
                 $this->getResources(self::$resourcesCallbacks[$name]['injections'])
             );
+        } else {
+            if ($name === 'project') {
+                var_dump("getResource::project - returning this->resources");
+            }
+            if ($name === 'message') {
+                var_dump("getResource::message - returning this->resources with pid " . $this->resources['message']->getPid() . ' and project id: ' . $this->resources['message']->getPayload('project')['$id']);
+            }
         }
 
         self::$resourcesCallbacks[$name]['reset'] = false;
@@ -206,7 +219,10 @@ class Server
 
                     $message = new Message($nextMessage);
 
-                    self::setResource('message', fn () => $message);
+                    $this->resources['message'] = $message;
+                    self::setResource('message', function() use ($message) {
+                        return $message;
+                    });
 
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
@@ -227,6 +243,7 @@ class Server
                          */
                         $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
 
+                        var_dump($this->job, $this->job->getHook());
                         if ($this->job->getHook()) {
                             foreach ($this->initHooks as $hook) { // Global init hooks
                                 if (in_array('*', $hook->getGroups())) {
