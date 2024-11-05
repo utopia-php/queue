@@ -5,8 +5,9 @@ namespace Utopia\Queue\Adapter\Swoole;
 use Swoole\Database\RedisConfig;
 use Swoole\Database\RedisPool;
 use Utopia\Queue\Connection\Redis as ConnectionRedis;
+use Utopia\Queue\Concurrency\Adapter;
 
-class Redis extends ConnectionRedis
+class Redis extends ConnectionRedis implements Adapter
 {
     protected RedisPool $pool;
 

@@ -8,6 +8,7 @@ use Utopia\CLI\Console;
 use Utopia\DI\Container;
 use Utopia\DI\Dependency;
 use Utopia\Servers\Base;
+use Utopia\Queue\Concurrency\Manager;
 
 class Worker extends Base
 {
@@ -146,6 +147,20 @@ class Worker extends Base
         return $this;
     }
 
+    protected ?Manager $concurrencyManager = null;
+
+    /**
+     * Set the concurrency manager
+     *
+     * @param Manager $manager
+     * @return self
+     */
+    public function setConcurrencyManager(Manager $manager): self
+    {
+        $this->concurrencyManager = $manager;
+        return $this;
+    }
+
     protected function lifecycle(Job $job, Message $message, array $nextMessage, Container $context, Connection $connection): static
     {
         Console::info("[Job] Received Job ({$message->getPid()}).");
@@ -154,21 +169,15 @@ class Worker extends Base
 
         $connection->getConnection();
 
-        /**
-         * Move Job to Jobs and it's PID to the processing list.
-         */
-        $connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
-        $connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
-
-        /**
-         * Increment Total Jobs Received from Stats.
-         */
-        $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
-
-        /**
-         * Increment Processing Jobs from Stats.
-         */
-        $connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
+        // if ($this->concurrencyManager) {
+        //     if (!$this->concurrencyManager->canProcessJob($message)) {
+        //         // If we can't process the job due to concurrency limits, put it back in the queue
+        //         $connection->leftPush("{$this->adapter->namespace}.queue.{$this->adapter->queue}", json_encode($nextMessage));
+        //         Console::info("[Job] ({$message->getPid()}) postponed due to concurrency limits.");
+        //         return $this;
+        //     }
+        //     $this->concurrencyManager->startJob($message);
+        // }
 
         try {
             foreach (self::$init as $hook) { // Global init hooks
@@ -257,6 +266,10 @@ class Worker extends Base
                 }
             }
         } finally {
+            // if ($this->concurrencyManager) {
+            //     $this->concurrencyManager->finishJob($message);
+            // }
+
             /**
              * Remove Job from Processing.
              */
