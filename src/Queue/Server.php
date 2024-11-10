@@ -204,6 +204,7 @@ class Server
                     }
 
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
+                    $nextMessage['receivedTimestamp'] = microtime(true);
 
                     $message = new Message($nextMessage);
 
