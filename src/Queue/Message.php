@@ -72,7 +72,7 @@ class Message
     }
 
     /**
-     * Timestamp recorded when this message was received by the server.
+     * Timestamp recorded when this message was received by the worker.
      * The delta between `$receivedTimestamp` and `$timestamp` is the amount of time the message was waiting in the queue.
      *
      * @return float
