@@ -6,6 +6,8 @@ use Throwable;
 use Utopia\CLI\Console;
 use Exception;
 use Utopia\Hook;
+use Utopia\Telemetry\Adapter as Telemetry;
+use Utopia\Telemetry\Adapter\Noop as NoopTelemetry;
 use Utopia\Validator;
 
 class Server
@@ -64,6 +66,8 @@ class Server
      */
     protected static array $resourcesCallbacks = [];
 
+    protected Metrics $metrics;
+
     /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter
@@ -71,6 +75,7 @@ class Server
     public function __construct(Adapter $adapter)
     {
         $this->adapter = $adapter;
+        $this->metrics = new Metrics(new NoopTelemetry());
     }
 
     public function job(): Job
@@ -136,6 +141,11 @@ class Server
     public static function setResource(string $name, callable $callback, array $injections = []): void
     {
         self::$resourcesCallbacks[$name] = ['callback' => $callback, 'injections' => $injections, 'reset' => true];
+    }
+
+    public function setTelemetry(Telemetry $telemetry)
+    {
+        $this->metrics = new Metrics($telemetry);
     }
 
     /**
@@ -204,13 +214,17 @@ class Server
                     }
 
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
-                    $nextMessage['receivedTimestamp'] = microtime(true);
 
                     $message = new Message($nextMessage);
 
                     self::setResource('message', fn () => $message);
 
+                    $receivedAtTimestamp = microtime(true);
+
                     Console::info("[Job] Received Job ({$message->getPid()}).");
+
+                    $waitDuration = microtime(true) - $message->getTimestamp();
+                    $this->metrics->jobWaitTime->record($waitDuration);
 
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
@@ -297,6 +311,9 @@ class Server
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
                     } finally {
+                        $processDuration = microtime(true) - $receivedAtTimestamp;
+                        $this->metrics->processDuration->record($processDuration);
+
                         /**
                          * Remove Job from Processing.
                          */
