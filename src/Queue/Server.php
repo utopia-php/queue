@@ -7,7 +7,8 @@ use Utopia\CLI\Console;
 use Exception;
 use Utopia\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
-use Utopia\Telemetry\Adapter\Noop as NoopTelemetry;
+use Utopia\Telemetry\Adapter\None as NoTelemetry;
+use Utopia\Telemetry\Histogram;
 use Utopia\Validator;
 
 class Server
@@ -66,7 +67,8 @@ class Server
      */
     protected static array $resourcesCallbacks = [];
 
-    protected Metrics $metrics;
+    private Histogram $jobWaitTime;
+    private Histogram $processDuration;
 
     /**
      * Creates an instance of a Queue server.
@@ -75,7 +77,7 @@ class Server
     public function __construct(Adapter $adapter)
     {
         $this->adapter = $adapter;
-        $this->metrics = new Metrics(new NoopTelemetry());
+        $this->setTelemetry(new NoTelemetry());
     }
 
     public function job(): Job
@@ -145,7 +147,20 @@ class Server
 
     public function setTelemetry(Telemetry $telemetry)
     {
-        $this->metrics = new Metrics($telemetry);
+        $this->jobWaitTime = $telemetry->createHistogram(
+            'messaging.process.wait.duration',
+            's',
+            null,
+            ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
+        );
+
+        // https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/#metric-messagingprocessduration
+        $this->processDuration = $telemetry->createHistogram(
+            'messaging.process.duration',
+            's',
+            null,
+            ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
+        );
     }
 
     /**
@@ -224,7 +239,7 @@ class Server
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
                     $waitDuration = microtime(true) - $message->getTimestamp();
-                    $this->metrics->jobWaitTime->record($waitDuration);
+                    $this->jobWaitTime->record($waitDuration);
 
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
@@ -312,7 +327,7 @@ class Server
                         }
                     } finally {
                         $processDuration = microtime(true) - $receivedAtTimestamp;
-                        $this->metrics->processDuration->record($processDuration);
+                        $this->processDuration->record($processDuration);
 
                         /**
                          * Remove Job from Processing.
