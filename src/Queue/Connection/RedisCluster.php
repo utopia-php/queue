@@ -6,7 +6,6 @@ use Utopia\Queue\Connection;
 
 class RedisCluster implements Connection
 {
-
     protected array $seeds;
     protected ?\RedisCluster $redis = null;
 

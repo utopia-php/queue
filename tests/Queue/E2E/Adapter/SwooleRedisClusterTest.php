@@ -4,7 +4,6 @@ namespace Queue\E2E\Adapter;
 
 use Tests\E2E\Adapter\Base;
 use Utopia\Queue\Client;
-use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Connection\RedisCluster;
 
 class SwooleRedisClusterTest extends Base

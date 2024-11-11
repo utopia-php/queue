@@ -189,6 +189,7 @@ class Server
         try {
             $this->adapter->workerStart(function (string $workerId) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
+                self::setResource('workerId', fn () => $workerId);
                 if (!is_null($this->workerStartHook)) {
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
@@ -203,6 +204,7 @@ class Server
                     }
 
                     $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
+                    $nextMessage['receivedTimestamp'] = microtime(true);
 
                     $message = new Message($nextMessage);
 
