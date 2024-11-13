@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6687f7fbf7e0ef812748fa5b7bd3007a",
+    "content-hash": "74b58f35a2196824cfc8ab396d78db83",
     "packages": [
         {
             "name": "brick/math",
@@ -1891,16 +1891,16 @@
         },
         {
             "name": "utopia-php/telemetry",
-            "version": "dev-initial-commit",
+            "version": "0.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/telemetry.git",
-                "reference": "a51fd18289921fc81f69d98e51f73ebb381eeeb9"
+                "reference": "d35f2f0632f4ee0be63fb7ace6a94a6adda71a80"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/telemetry/zipball/a51fd18289921fc81f69d98e51f73ebb381eeeb9",
-                "reference": "a51fd18289921fc81f69d98e51f73ebb381eeeb9",
+                "url": "https://api.github.com/repos/utopia-php/telemetry/zipball/d35f2f0632f4ee0be63fb7ace6a94a6adda71a80",
+                "reference": "d35f2f0632f4ee0be63fb7ace6a94a6adda71a80",
                 "shasum": ""
             },
             "require": {
@@ -1924,23 +1924,7 @@
                     "Utopia\\": "src/"
                 }
             },
-            "scripts": {
-                "lint": [
-                    "vendor/bin/pint --test"
-                ],
-                "format": [
-                    "vendor/bin/pint"
-                ],
-                "check": [
-                    "vendor/bin/phpstan analyse -c phpstan.neon"
-                ],
-                "test": [
-                    "vendor/bin/phpunit --configuration phpunit.xml"
-                ],
-                "bench": [
-                    "vendor/bin/phpbench run --report=benchmark"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -1950,10 +1934,10 @@
                 "upf"
             ],
             "support": {
-                "source": "https://github.com/utopia-php/telemetry/tree/initial-commit",
-                "issues": "https://github.com/utopia-php/telemetry/issues"
+                "issues": "https://github.com/utopia-php/telemetry/issues",
+                "source": "https://github.com/utopia-php/telemetry/tree/0.1.0"
             },
-            "time": "2024-11-11T17:36:02+00:00"
+            "time": "2024-11-13T10:29:53+00:00"
         }
     ],
     "packages-dev": [
@@ -3930,13 +3914,11 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "utopia-php/telemetry": 20
-    },
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=8.0"
+        "php": ">=8.1"
     },
     "platform-dev": [],
     "plugin-api-version": "2.6.0"
