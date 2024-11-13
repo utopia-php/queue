@@ -8,7 +8,6 @@ class Message
     protected string $queue;
     protected int $timestamp;
     protected array $payload;
-    protected float $receivedTimestamp;
 
     public function __construct(array $array = [])
     {
@@ -20,7 +19,6 @@ class Message
         $this->queue = $array['queue'];
         $this->timestamp = $array['timestamp'];
         $this->payload = $array['payload'] ?? [];
-        $this->receivedTimestamp = (float)$array['receivedTimestamp'] ?? 0.;
     }
 
     public function setPid(string $pid): self
@@ -69,17 +67,6 @@ class Message
     public function getPayload(): array
     {
         return $this->payload;
-    }
-
-    /**
-     * Timestamp recorded when this message was received by the worker.
-     * The delta between `$receivedTimestamp` and `$timestamp` is the amount of time the message was waiting in the queue.
-     *
-     * @return float
-     */
-    public function getReceivedTimestamp(): float
-    {
-        return $this->receivedTimestamp;
     }
 
     public function asArray(): array
