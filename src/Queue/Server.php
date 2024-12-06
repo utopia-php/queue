@@ -8,6 +8,7 @@ use Exception;
 use Utopia\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
+use Utopia\Telemetry\Gauge;
 use Utopia\Telemetry\Histogram;
 use Utopia\Validator;
 
@@ -69,6 +70,7 @@ class Server
 
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
+    private Gauge $queueLength;
 
     /**
      * Creates an instance of a Queue server.
@@ -161,6 +163,8 @@ class Server
             null,
             ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
         );
+
+        $this->queueLength = $telemetry->createGauge('messaging.queue.length');
     }
 
     /**
@@ -219,6 +223,11 @@ class Server
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
                 while (true) {
+                    $this->queueLength->record(
+                        $this->adapter->connection->listSize("{$this->adapter->namespace}.queue.{$this->adapter->queue}"),
+                        ['queue' => $this->adapter->queue]
+                    );
+
                     /**
                      * Waiting for next Job.
                      */
@@ -239,7 +248,7 @@ class Server
                     Console::info("[Job] Received Job ({$message->getPid()}).");
 
                     $waitDuration = microtime(true) - $message->getTimestamp();
-                    $this->jobWaitTime->record($waitDuration);
+                    $this->jobWaitTime->record($waitDuration, ['queue' => $this->adapter->queue]);
 
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
@@ -327,7 +336,7 @@ class Server
                         }
                     } finally {
                         $processDuration = microtime(true) - $receivedAtTimestamp;
-                        $this->processDuration->record($processDuration);
+                        $this->processDuration->record($processDuration, ['queue' => $this->adapter->queue]);
 
                         /**
                          * Remove Job from Processing.
