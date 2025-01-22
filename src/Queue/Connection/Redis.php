@@ -183,8 +183,9 @@ class Redis implements Connection
         $this->redis = new \Redis();
 
         $this->redis->connect($this->host, $this->port);
-        $this->redis->auth($this->password);
-
+        if ($this->password) {
+            $this->redis->auth($this->password);
+        }
         return $this->redis;
     }
 
