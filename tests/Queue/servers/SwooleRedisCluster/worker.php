@@ -7,7 +7,8 @@ use Utopia\Queue;
 use Utopia\Queue\Message;
 
 $connection = new Queue\Connection\RedisCluster(['redis-cluster-0:6379', 'redis-cluster-1:6379', 'redis-cluster-2:6379']);
-$adapter = new Queue\Adapter\Swoole($connection, 12, 'swoole-redis-cluster');
+$consumer = new Queue\Broker\Redis($connection);
+$adapter = new Queue\Adapter\Swoole($consumer, 12, 'swoole-redis-cluster');
 $server = new Queue\Server($adapter);
 
 $server->job()

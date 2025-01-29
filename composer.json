@@ -24,12 +24,15 @@
         "lint": "vendor/bin/pint --test"
     },
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.3",
+        "php-amqplib/php-amqplib": "^3.7",
         "utopia-php/cli": "0.15.*",
-        "utopia-php/framework": "0.*.*",
-        "utopia-php/telemetry": "0.1.*"
+        "utopia-php/framework": "0.33.*",
+        "utopia-php/telemetry": "0.1.*",
+        "utopia-php/fetch": "^0.3.0"
     },
     "require-dev": {
+        "ext-redis": "*",
         "swoole/ide-helper": "4.8.8",
         "phpunit/phpunit": "^9.5.5",
         "laravel/pint": "^0.2.3",

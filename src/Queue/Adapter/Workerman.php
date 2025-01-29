@@ -3,20 +3,20 @@
 namespace Utopia\Queue\Adapter;
 
 use Utopia\Queue\Adapter;
-use Utopia\Queue\Connection;
+use Utopia\Queue\Consumer;
 use Workerman\Worker;
 
 class Workerman extends Adapter
 {
     protected Worker $worker;
 
-    public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
+    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
         parent::__construct($workerNum, $queue, $namespace);
 
         $this->worker = new Worker();
         $this->worker->count = $workerNum;
-        $this->connection = $connection;
+        $this->consumer = $consumer;
     }
 
     public function start(): self

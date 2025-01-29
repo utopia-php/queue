@@ -4,7 +4,8 @@ use Utopia\Queue;
 
 function handleRequest(Queue\Message $job): void
 {
-    ['type' => $type, 'value' => $value] = $job->getPayload();
+    $type = $job->getPayload()['type'];
+    $value = $job->getPayload()['value'] ?? null;
 
     if (empty($job->getTimestamp())) {
         throw new Exception();

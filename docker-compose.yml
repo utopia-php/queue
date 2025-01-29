@@ -4,12 +4,15 @@ services:
   tests:
     container_name: tests
     build: .
+    command:
+      - vendor/bin/phpunit
+      - tests
     volumes:
       - ./:/usr/local/src
     depends_on:
-      - redis
-      - redis-cluster-0
       - swoole
+      - swoole-amqp
+      - swoole-redis-cluster
       - workerman
 
   swoole:
@@ -28,7 +31,18 @@ services:
     volumes:
       - ./:/usr/src/code
     depends_on:
-      - redis-cluster-0
+      redis-cluster-0:
+        condition: service_healthy
+
+  swoole-amqp:
+    container_name: swoole-amqp
+    build: ./tests/Queue/servers/AMQP/.
+    command: php /usr/src/code/tests/Queue/servers/AMQP/worker.php
+    volumes:
+      - ./:/usr/src/code
+    depends_on:
+      amqp:
+        condition: service_healthy
 
   workerman:
     container_name: workerman
@@ -54,9 +68,15 @@ services:
       - REDIS_CLUSTER_CREATOR=yes
       - REDIS_CLUSTER_REPLICAS=0
     depends_on:
-      - redis-cluster-1
-      - redis-cluster-2
-      - redis-cluster-3
+      redis-cluster-1:
+        condition: service_started
+      redis-cluster-2:
+        condition: service_started
+      redis-cluster-3:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
+      start_interval: 1s
 
   redis-cluster-1:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -64,6 +84,9 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
       - REDIS_NODES=redis-cluster-0 redis-cluster-1 redis-cluster-2 redis-cluster-3
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
+      start_interval: 1s
 
   redis-cluster-2:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -71,6 +94,9 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
       - REDIS_NODES=redis-cluster-0 redis-cluster-1 redis-cluster-2 redis-cluster-3
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
+      start_interval: 1s
 
   redis-cluster-3:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -78,3 +104,16 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
       - REDIS_NODES=redis-cluster-0 redis-cluster-1 redis-cluster-2 redis-cluster-3
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
+      start_interval: 1s
+
+  amqp:
+    image: rabbitmq:4
+    environment:
+      RABBITMQ_DEFAULT_USER: amqp
+      RABBITMQ_DEFAULT_PASS: amqp
+      RABBITMQ_DEFAULT_VHOST: "/"
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "node_health_check"]
+      start_interval: 1s

@@ -2,16 +2,21 @@
 
 namespace Tests\E2E\Adapter;
 
-use Utopia\Queue\Client;
+use Utopia\Queue\Broker\Redis as RedisBroker;
 use Utopia\Queue\Connection\Redis;
+use Utopia\Queue\Publisher;
+use Utopia\Queue\Queue;
 
 class SwooleTest extends Base
 {
-    protected function getClient(): Client
+    protected function getPublisher(): Publisher
     {
         $connection = new Redis('redis', 6379);
-        $client = new Client('swoole', $connection);
+        return new RedisBroker($connection);
+    }
 
-        return $client;
+    protected function getQueue(): Queue
+    {
+        return new Queue('swoole');
     }
 }

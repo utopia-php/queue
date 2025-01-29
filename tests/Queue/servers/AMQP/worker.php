@@ -6,9 +6,8 @@ require_once __DIR__ . '/../tests.php';
 use Utopia\Queue;
 use Utopia\Queue\Message;
 
-$connection = new Queue\Connection\Redis('redis');
-$consumer = new Queue\Broker\Redis($connection);
-$adapter = new Queue\Adapter\Swoole($consumer, 12, 'swoole');
+$consumer = new Queue\Broker\AMQP(host: 'amqp', port: 5672, user: 'amqp', password: 'amqp');
+$adapter = new Queue\Adapter\Swoole($consumer, 12, 'amqp');
 $server = new Queue\Server($adapter);
 
 $server->job()
