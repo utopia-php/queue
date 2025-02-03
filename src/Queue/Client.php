@@ -32,22 +32,23 @@ class Client
      */
     public function retry(int $limit = null): void
     {
+
         $start = \time();
         $processed = 0;
-
         while (true) {
+
             $pid = $this->connection->rightPop("{$this->namespace}.failed.{$this->queue}", 5);
 
             // No more jobs to retry
-            if ($pid === false) {
+            if (empty($pid)) {
                 break;
             }
 
             $job = $this->getJob($pid);
 
             // Job doesn't exist
-            if ($job === false) {
-                break;
+            if (empty($job)) {
+                $this->connection->leftPush("{$this->namespace}.failed.{$this->queue}", $pid);
             }
 
             // Job was already retried
@@ -69,11 +70,15 @@ class Client
     {
         $value = $this->connection->get("{$this->namespace}.jobs.{$this->queue}.{$pid}");
 
-        if ($value === false) {
+        if (empty($value)) {
             return false;
         }
 
         $job = json_decode($value, true);
+
+        if (empty($job)) {
+            return false;
+        }
 
         return new Message($job);
     }
