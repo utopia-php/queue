@@ -1,12 +1,12 @@
 <?php
 
-namespace Utopia\Queue\Adapter\Workerman;
+namespace Utopia\Queue\Adapter;
 
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Connection;
 use Workerman\Worker;
 
-class Server extends Adapter
+class Workerman extends Adapter
 {
     protected Worker $worker;
 
@@ -31,7 +31,7 @@ class Server extends Adapter
         return $this;
     }
 
-    public function onWorkerStart(callable $callback): self
+    public function workerStart(callable $callback): self
     {
         $this->worker->onWorkerStart = function ($worker) use ($callback) {
             call_user_func($callback, $worker->workerId);
@@ -39,18 +39,11 @@ class Server extends Adapter
 
         return $this;
     }
-    public function onWorkerStop(callable $callback): self
+    public function workerStop(callable $callback): self
     {
         $this->worker->onWorkerStop = function ($worker) use ($callback) {
             call_user_func($callback, $worker->workerId);
         };
-
-        return $this;
-    }
-
-    public function onJob(callable $callback): self
-    {
-        call_user_func($callback);
 
         return $this;
     }
