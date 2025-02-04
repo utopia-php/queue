@@ -6,6 +6,9 @@ use Throwable;
 use Utopia\CLI\Console;
 use Exception;
 use Utopia\Hook;
+use Utopia\Telemetry\Adapter as Telemetry;
+use Utopia\Telemetry\Adapter\None as NoTelemetry;
+use Utopia\Telemetry\Histogram;
 use Utopia\Validator;
 
 class Server
@@ -64,6 +67,9 @@ class Server
      */
     protected static array $resourcesCallbacks = [];
 
+    private Histogram $jobWaitTime;
+    private Histogram $processDuration;
+
     /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter
@@ -71,6 +77,7 @@ class Server
     public function __construct(Adapter $adapter)
     {
         $this->adapter = $adapter;
+        $this->setTelemetry(new NoTelemetry());
     }
 
     public function job(): Job
@@ -138,6 +145,24 @@ class Server
         self::$resourcesCallbacks[$name] = ['callback' => $callback, 'injections' => $injections, 'reset' => true];
     }
 
+    public function setTelemetry(Telemetry $telemetry)
+    {
+        $this->jobWaitTime = $telemetry->createHistogram(
+            'messaging.process.wait.duration',
+            's',
+            null,
+            ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
+        );
+
+        // https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/#metric-messagingprocessduration
+        $this->processDuration = $telemetry->createHistogram(
+            'messaging.process.duration',
+            's',
+            null,
+            ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
+        );
+    }
+
     /**
      * Shutdown Hooks
      * @return Hook
@@ -189,6 +214,7 @@ class Server
         try {
             $this->adapter->workerStart(function (string $workerId) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
+                self::setResource('workerId', fn () => $workerId);
                 if (!is_null($this->workerStartHook)) {
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
@@ -208,7 +234,12 @@ class Server
 
                     self::setResource('message', fn () => $message);
 
+                    $receivedAtTimestamp = microtime(true);
+
                     Console::info("[Job] Received Job ({$message->getPid()}).");
+
+                    $waitDuration = microtime(true) - $message->getTimestamp();
+                    $this->jobWaitTime->record($waitDuration);
 
                     /**
                      * Move Job to Jobs and it's PID to the processing list.
@@ -295,6 +326,9 @@ class Server
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
                     } finally {
+                        $processDuration = microtime(true) - $receivedAtTimestamp;
+                        $this->processDuration->record($processDuration);
+
                         /**
                          * Remove Job from Processing.
                          */

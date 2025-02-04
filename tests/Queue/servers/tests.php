@@ -23,10 +23,6 @@ function handleRequest(Queue\Message $job): void
             assert(is_bool($value));
 
             break;
-        case 'test_bool':
-            assert(is_null($value));
-
-            break;
         case 'test_array':
             assert(is_array($value));
             assert(count($value) === 3);

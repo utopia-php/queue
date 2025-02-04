@@ -24,9 +24,10 @@
         "lint": "vendor/bin/pint --test"
     },
     "require": {
-        "php": ">=8.0",
+        "php": ">=8.1",
         "utopia-php/cli": "0.15.*",
-        "utopia-php/framework": "0.*.*"
+        "utopia-php/framework": "0.*.*",
+        "utopia-php/telemetry": "0.1.*"
     },
     "require-dev": {
         "swoole/ide-helper": "4.8.8",
@@ -38,5 +39,11 @@
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman."
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true,
+            "tbachert/spi": true
+        }
     }
 }
