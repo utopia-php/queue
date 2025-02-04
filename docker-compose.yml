@@ -1,10 +1,9 @@
+version: '3.1'
+
 services:
   tests:
     container_name: tests
-    image: queue-dev-${PHP_VERSION:-8.3}
-    build: 
-      context: .
-      dockerfile: php-${PHP_VERSION:-8.3}.Dockerfile
+    build: .
     volumes:
       - ./:/usr/local/src
     depends_on:
@@ -14,7 +13,7 @@ services:
 
   swoole:
     container_name: swoole
-    image: queue-dev-${PHP_VERSION:-8.3}
+    build: ./tests/Queue/servers/Swoole/.
     command: php /usr/src/code/tests/Queue/servers/Swoole/worker.php
     volumes:
       - ./:/usr/src/code
@@ -23,7 +22,7 @@ services:
 
   workerman:
     container_name: workerman
-    image: queue-dev-${PHP_VERSION:-8.3}
+    build: ./tests/Queue/servers/Workerman/.
     command: php /usr/src/code/tests/Queue/servers/Workerman/worker.php start
     volumes:
       - ./:/usr/src/code
@@ -34,12 +33,4 @@ services:
     container_name: redis
     image: "redis:alpine"
     ports:
-      - "9303:6379"
-
-  redis-insight:
-    image: redis/redisinsight:latest
-    restart: unless-stopped
-    environment:
-      - REDIS_HOSTS=redis
-    ports:
-      - "9304:5540"
+      - "6379:6379"
