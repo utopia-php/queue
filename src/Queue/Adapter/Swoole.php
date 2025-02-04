@@ -4,17 +4,17 @@ namespace Utopia\Queue\Adapter;
 
 use Swoole\Process\Pool;
 use Utopia\Queue\Adapter;
-use Utopia\Queue\Connection;
+use Utopia\Queue\Consumer;
 
 class Swoole extends Adapter
 {
     protected Pool $pool;
 
-    public function __construct(Connection $connection, int $workerNum, string $queue, string $namespace = 'utopia-queue')
+    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
         parent::__construct($workerNum, $queue, $namespace);
 
-        $this->connection = $connection;
+        $this->consumer = $consumer;
         $this->pool = new Pool($workerNum);
     }
 

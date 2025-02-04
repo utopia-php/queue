@@ -2,9 +2,9 @@
 
 namespace Utopia\Queue;
 
+use Exception;
 use Throwable;
 use Utopia\CLI\Console;
-use Exception;
 use Utopia\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
@@ -145,7 +145,7 @@ class Server
         self::$resourcesCallbacks[$name] = ['callback' => $callback, 'injections' => $injections, 'reset' => true];
     }
 
-    public function setTelemetry(Telemetry $telemetry)
+    public function setTelemetry(Telemetry $telemetry): void
     {
         $this->jobWaitTime = $telemetry->createHistogram(
             'messaging.process.wait.duration',
@@ -218,76 +218,43 @@ class Server
                 if (!is_null($this->workerStartHook)) {
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
-                while (true) {
-                    /**
-                     * Waiting for next Job.
-                     */
-                    $nextMessage = $this->adapter->connection->rightPopArray("{$this->adapter->namespace}.queue.{$this->adapter->queue}", 5);
 
-                    if (!$nextMessage) {
-                        continue;
-                    }
+                $this->adapter->consumer->consume(
+                    $this->adapter->queue,
+                    function (Message $message) {
+                        $receivedAtTimestamp = microtime(true);
+                        Console::info("[Job] Received Job ({$message->getPid()}).");
+                        try {
+                            $waitDuration = microtime(true) - $message->getTimestamp();
+                            $this->jobWaitTime->record($waitDuration);
 
-                    $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
-
-                    $message = new Message($nextMessage);
-
-                    self::setResource('message', fn () => $message);
-
-                    $receivedAtTimestamp = microtime(true);
-
-                    Console::info("[Job] Received Job ({$message->getPid()}).");
-
-                    $waitDuration = microtime(true) - $message->getTimestamp();
-                    $this->jobWaitTime->record($waitDuration);
-
-                    /**
-                     * Move Job to Jobs and it's PID to the processing list.
-                     */
-                    $this->adapter->connection->setArray("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}", $nextMessage);
-                    $this->adapter->connection->leftPush("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
-
-                    /**
-                     * Increment Total Jobs Received from Stats.
-                     */
-                    $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.total");
-
-                    try {
-                        /**
-                         * Increment Processing Jobs from Stats.
-                         */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
-
-                        if ($this->job->getHook()) {
-                            foreach ($this->initHooks as $hook) { // Global init hooks
-                                if (in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            $this->resources = [];
+                            self::setResource('message', fn () => $message);
+                            if ($this->job->getHook()) {
+                                foreach ($this->initHooks as $hook) { // Global init hooks
+                                    if (in_array('*', $hook->getGroups())) {
+                                        $arguments = $this->getArguments($hook, $message->getPayload());
+                                        \call_user_func_array($hook->getAction(), $arguments);
+                                    }
                                 }
                             }
-                        }
 
-                        foreach ($this->job->getGroups() as $group) {
-                            foreach ($this->initHooks as $hook) { // Group init hooks
-                                if (in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            foreach ($this->job->getGroups() as $group) {
+                                foreach ($this->initHooks as $hook) { // Group init hooks
+                                    if (in_array($group, $hook->getGroups())) {
+                                        $arguments = $this->getArguments($hook, $message->getPayload());
+                                        \call_user_func_array($hook->getAction(), $arguments);
+                                    }
                                 }
                             }
+
+                            \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
+                        } finally {
+                            $processDuration = microtime(true) - $receivedAtTimestamp;
+                            $this->processDuration->record($processDuration);
                         }
-
-                        \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
-
-                        /**
-                         * Remove Jobs if successful.
-                         */
-                        $this->adapter->connection->remove("{$this->adapter->namespace}.jobs.{$this->adapter->queue}.{$message->getPid()}");
-
-                        /**
-                         * Increment Successful Jobs from Stats.
-                         */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.success");
-
+                    },
+                    function (Message $message) {
                         if ($this->job->getHook()) {
                             foreach ($this->shutdownHooks as $hook) { // Global init hooks
                                 if (in_array('*', $hook->getGroups())) {
@@ -307,17 +274,8 @@ class Server
                         }
 
                         Console::success("[Job] ({$message->getPid()}) successfully run.");
-                    } catch (\Throwable $th) {
-                        /**
-                         * Move failed Job to Failed list.
-                         */
-                        $this->adapter->connection->leftPush("{$this->adapter->namespace}.failed.{$this->adapter->queue}", $message->getPid());
-
-                        /**
-                         * Increment Failed Jobs from Stats.
-                         */
-                        $this->adapter->connection->increment("{$this->adapter->namespace}.stats.{$this->adapter->queue}.failed");
-
+                    },
+                    function (Message $message, Throwable $th) {
                         Console::error("[Job] ({$message->getPid()}) failed to run.");
                         Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
 
@@ -325,23 +283,8 @@ class Server
                         foreach ($this->errorHooks as $hook) {
                             call_user_func_array($hook->getAction(), $this->getArguments($hook));
                         }
-                    } finally {
-                        $processDuration = microtime(true) - $receivedAtTimestamp;
-                        $this->processDuration->record($processDuration);
-
-                        /**
-                         * Remove Job from Processing.
-                         */
-                        $this->adapter->connection->listRemove("{$this->adapter->namespace}.processing.{$this->adapter->queue}", $message->getPid());
-
-                        /**
-                         * Decrease Processing Jobs from Stats.
-                         */
-                        $this->adapter->connection->decrement("{$this->adapter->namespace}.stats.{$this->adapter->queue}.processing");
-                    }
-
-                    $this->resources = [];
-                }
+                    },
+                );
             });
 
             $this->adapter->start();

@@ -1,4 +1,4 @@
-FROM composer:2.0 as composer
+FROM composer as composer
 
 WORKDIR /usr/local/src/
 
@@ -7,7 +7,7 @@ COPY composer.json /usr/local/src/
 
 RUN composer install --ignore-platform-reqs
 
-FROM phpswoole/swoole:php8.1-alpine
+FROM phpswoole/swoole:php8.3-alpine
 
 WORKDIR /usr/local/src/
 

@@ -5,15 +5,14 @@ namespace Utopia\Queue;
 abstract class Adapter
 {
     public int $workerNum;
-    public string $queue;
+    public Queue $queue;
     public string $namespace;
-    public Connection $connection;
+    public Consumer $consumer;
 
     public function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
         $this->workerNum = $workerNum;
-        $this->queue = $queue;
-        $this->namespace = $namespace;
+        $this->queue = new Queue($queue, $namespace);
     }
 
     /**
