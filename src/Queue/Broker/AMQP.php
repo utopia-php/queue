@@ -38,7 +38,8 @@ class AMQP implements Publisher, Consumer
         private readonly int $httpPort = 15672,
         private readonly ?string $user = null,
         private readonly ?string $password = null,
-        private readonly string $vhost = '/'
+        private readonly string $vhost = '/',
+        private readonly int $heartbeat = 0,
     ) {
     }
 
@@ -177,7 +178,7 @@ class AMQP implements Publisher, Consumer
     private function withChannel(callable $callback): void
     {
         $createChannel = function (): AMQPChannel {
-            $connection = new AMQPStreamConnection($this->host, $this->port, $this->user, $this->password, $this->vhost);
+            $connection = new AMQPStreamConnection($this->host, $this->port, $this->user, $this->password, $this->vhost, heartbeat: $this->heartbeat);
             if (is_callable($this->connectionConfigHook)) {
                 call_user_func($this->connectionConfigHook, $connection);
             }
