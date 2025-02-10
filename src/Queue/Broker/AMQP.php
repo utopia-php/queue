@@ -189,15 +189,16 @@ class AMQP implements Publisher, Consumer
             return $channel;
         };
 
-        if ($this->channel == null) {
+        if (!$this->channel) {
             $this->channel = $createChannel();
         }
 
         try {
             $callback($this->channel);
         } catch (\Throwable $th) {
-            // try to create a new connection once
-            unset($this->channel);
+            // createChannel() might throw, in that case set the channel to `null` first.
+            $this->channel = null;
+            // try creating a new connection once, if this still fails, throw the error
             $this->channel = $createChannel();
             $callback($this->channel);
         }
