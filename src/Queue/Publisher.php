@@ -5,6 +5,13 @@ namespace Utopia\Queue;
 interface Publisher
 {
     /**
+     * Checks if the publisher can reach the queue.
+     *
+     * @return bool
+     */
+    public function ping(): bool;
+
+    /**
      * Publishes a new message onto the queue.
      *
      * @param Queue $queue
