@@ -249,7 +249,7 @@ class Server
                                     }
                                 }
 
-                                \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
+                                return \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
                             } finally {
                                 $processDuration = microtime(true) - $receivedAtTimestamp;
                                 $this->processDuration->record($processDuration);

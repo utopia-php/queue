@@ -14,6 +14,8 @@ use Utopia\Queue\Error\Retryable;
 use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
+use Utopia\Queue\Result\Commit;
+use Utopia\Queue\Result\NoCommit;
 
 class AMQP implements Publisher, Consumer
 {
@@ -81,8 +83,12 @@ class AMQP implements Publisher, Consumer
                 $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
                 $message = new Message($nextMessage);
 
-                $messageCallback($message);
-                $amqpMessage->ack();
+                $result = $messageCallback($message);
+                match (true) {
+                    $result instanceof Commit => $amqpMessage->ack(true),
+                    $result instanceof NoCommit => null,
+                    default => $amqpMessage->ack()
+                };
                 $successCallback($message);
             } catch (Retryable $e) {
                 $amqpMessage->nack(requeue: true);
