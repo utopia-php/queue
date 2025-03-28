@@ -281,16 +281,16 @@ class Server
                                     }
                                 }
                             }
-
                             Console::success("[Job] ({$message->getPid()}) successfully run.");
                         },
-                        function (Message $message, Throwable $th) {
-                            Console::error("[Job] ({$message->getPid()}) failed to run.");
-                            Console::error("[Job] ({$message->getPid()}) {$th->getMessage()}");
+                        function (?Message $message, Throwable $th) {
+                            Console::error("[Job] ({$message?->getPid()}) failed to run.");
+                            Console::error("[Job] ({$message?->getPid()}) {$th->getMessage()}");
 
                             self::setResource('error', fn () => $th);
+
                             foreach ($this->errorHooks as $hook) {
-                                call_user_func_array($hook->getAction(), $this->getArguments($hook));
+                                ($hook->getAction())(...$this->getArguments($hook));
                             }
                         },
                     );
@@ -330,10 +330,11 @@ class Server
 
     /**
      * Is called when a Worker stops.
-     * @param callable $callback
+     * @param callable|null $callback
      * @return self
+     * @throws Exception
      */
-    public function workerStop(callable $callback = null): self
+    public function workerStop(?callable $callback = null): self
     {
         try {
             $this->adapter->workerStop(function (string $workerId) use ($callback) {

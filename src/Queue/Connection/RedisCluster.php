@@ -110,7 +110,8 @@ class RedisCluster implements Connection
 
     public function move(string $queue, string $destination): bool
     {
-        return $this->getRedis()->move($queue, $destination);
+        // Move is not supported for Redis Cluster
+        return false;
     }
 
     public function setArray(string $key, array $value): bool
@@ -160,7 +161,7 @@ class RedisCluster implements Connection
             }
 
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable) {
             return false;
         }
     }

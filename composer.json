@@ -19,7 +19,7 @@
     },
     "scripts":{
         "test": "phpunit",
-        "analyse": "vendor/bin/phpstan analyse",
+        "check": "vendor/bin/phpstan analyse",
         "format": "vendor/bin/pint",
         "lint": "vendor/bin/pint --test"
     },
