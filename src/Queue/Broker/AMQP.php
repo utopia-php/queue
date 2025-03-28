@@ -76,7 +76,7 @@ class AMQP implements Publisher, Consumer
             try {
                 $nextMessage = json_decode($amqpMessage->getBody(), associative: true) ?? false;
                 if (!$nextMessage) {
-                    $amqpMessage->nack(requeue: false);
+                    $amqpMessage->nack();
                     return;
                 }
 
@@ -92,10 +92,10 @@ class AMQP implements Publisher, Consumer
                 $successCallback($message);
             } catch (Retryable $e) {
                 $amqpMessage->nack(requeue: true);
-                $errorCallback($message, $e);
+                $errorCallback($message ?? null, $e);
             } catch (\Throwable $th) {
                 $amqpMessage->nack(requeue: false);
-                $errorCallback($message, $th);
+                $errorCallback($message ?? null, $th);
             }
         };
 
@@ -149,7 +149,7 @@ class AMQP implements Publisher, Consumer
         return true;
     }
 
-    public function retry(Queue $queue, int $limit = null): void
+    public function retry(Queue $queue, ?int $limit = null): void
     {
         // This is a no-op for AMQP
     }

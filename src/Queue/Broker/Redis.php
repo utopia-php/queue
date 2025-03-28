@@ -109,7 +109,7 @@ class Redis implements Publisher, Consumer
      * Take all jobs from the failed queue and re-enqueue them.
      * @param int|null $limit The amount of jobs to retry
      */
-    public function retry(Queue $queue, int $limit = null): void
+    public function retry(Queue $queue, ?int $limit = null): void
     {
         $start = \time();
         $processed = 0;

@@ -19,4 +19,4 @@ COPY . .
 
 COPY --from=composer /usr/local/src/vendor /usr/local/src/vendor
 
-CMD ["sleep","3600"]
+CMD ["tail", "-f", "/dev/null"]

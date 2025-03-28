@@ -1,0 +1,35 @@
+name: "Tests"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on: [pull_request]
+
+jobs:
+  adapter_test:
+    name: Adapter Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter:
+          [
+            AMQP,
+            SwooleRedisCluster,
+            Swoole,
+            Workerman,
+          ]
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Load and Start Services
+        run: |
+          docker compose build
+          docker compose up -d
+          sleep 10
+
+      - name: Run Tests
+        run: docker compose exec -T tests vendor/bin/phpunit /usr/local/src/tests/Queue/E2E/Adapter/${{matrix.adapter}}Test.php --debug
