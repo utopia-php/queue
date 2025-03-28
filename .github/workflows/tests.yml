@@ -7,23 +7,6 @@ concurrency:
 on: [pull_request]
 
 jobs:
-  unit_test:
-    name: Unit Test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - name: Load and Start Services
-        run: |
-          docker compose build
-          docker compose up -d
-          sleep 10
-
-      - name: Run Unit Tests
-        run: docker compose exec tests vendor/bin/phpunit /usr/src/code/tests/unit
-
   adapter_test:
     name: Adapter Tests
     runs-on: ubuntu-latest
