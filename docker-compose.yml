@@ -1,12 +1,7 @@
-version: '3.1'
-
 services:
   tests:
     container_name: tests
     build: .
-    command:
-      - vendor/bin/phpunit
-      - tests
     volumes:
       - ./:/usr/local/src
     depends_on:
