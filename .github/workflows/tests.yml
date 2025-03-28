@@ -49,4 +49,4 @@ jobs:
           sleep 10
 
       - name: Run Tests
-        run: docker compose exec -T tests vendor/bin/phpunit /usr/src/code/tests/Queue/E2E/Adapter/${{matrix.adapter}}Test.php --debug
+        run: docker compose exec -T tests vendor/bin/phpunit /usr/local/src/tests/Queue/E2E/Adapter/${{matrix.adapter}}Test.php --debug
