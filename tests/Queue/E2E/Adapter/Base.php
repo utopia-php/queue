@@ -72,7 +72,7 @@ abstract class Base extends TestCase
         sleep(1);
     }
 
-    protected function testConcurrency(): void
+    public function testConcurrency(): void
     {
         run(function () {
             $publisher = $this->getPublisher();

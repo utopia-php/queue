@@ -50,8 +50,6 @@ class Server
 
     /**
      * Hook that is called when worker starts
-     *
-     * @var Hook
      */
     protected Hook $workerStartHook;
 
@@ -84,6 +82,16 @@ class Server
     {
         $this->job = new Job();
         return $this->job;
+    }
+
+    /**
+     * Returns the underlying consumer of the Server.
+     *
+     * @return Consumer
+     */
+    public function getConsumer(): Consumer
+    {
+        return $this->adapter->getConsumer();
     }
 
     /**
