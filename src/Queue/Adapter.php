@@ -46,13 +46,4 @@ abstract class Adapter
      * @return mixed
      */
     abstract public function getNative(): mixed;
-
-    /**
-     * Returns the Consumer object from the Adapter.
-     * @return Consumer
-     */
-    public function getConsumer(): Consumer
-    {
-        return $this->consumer;
-    }
 }

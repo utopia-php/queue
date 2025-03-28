@@ -85,16 +85,6 @@ class Server
     }
 
     /**
-     * Returns the underlying consumer of the Server.
-     *
-     * @return Consumer
-     */
-    public function getConsumer(): Consumer
-    {
-        return $this->adapter->getConsumer();
-    }
-
-    /**
      * If a resource has been created return it, otherwise create it and then return it
      *
      * @param string $name
