@@ -94,6 +94,11 @@ class Redis implements Publisher, Consumer
         $this->closed = true;
     }
 
+    public function ping(): bool
+    {
+        return $this->connection->ping();
+    }
+
     public function enqueue(Queue $queue, array $payload): bool
     {
         $payload = [

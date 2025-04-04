@@ -134,6 +134,11 @@ class AMQP implements Publisher, Consumer
         }
     }
 
+    public function ping(): bool
+    {
+        return $this->withChannel(fn (AMQPChannel $channel) => $channel->is_open());
+    }
+
     public function enqueue(Queue $queue, array $payload): bool
     {
         $payload = [
@@ -178,10 +183,10 @@ class AMQP implements Publisher, Consumer
     }
 
     /**
-     * @param callable(AMQPChannel $channel): void $callback
+     * @param callable(AMQPChannel $channel): mixed $callback
      * @throws \Exception
      */
-    private function withChannel(callable $callback): void
+    private function withChannel(callable $callback): mixed
     {
         $createChannel = function (): AMQPChannel {
             $connection = new AMQPStreamConnection($this->host, $this->port, $this->user, $this->password, $this->vhost, heartbeat: $this->heartbeat);
@@ -200,13 +205,13 @@ class AMQP implements Publisher, Consumer
         }
 
         try {
-            $callback($this->channel);
+            return $callback($this->channel);
         } catch (\Throwable $th) {
             // createChannel() might throw, in that case set the channel to `null` first.
             $this->channel = null;
             // try creating a new connection once, if this still fails, throw the error
             $this->channel = $createChannel();
-            $callback($this->channel);
+            return $callback($this->channel);
         }
     }
 }
