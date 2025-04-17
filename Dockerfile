@@ -1,4 +1,4 @@
-FROM composer as composer
+FROM composer AS composer
 
 WORKDIR /usr/local/src/
 
