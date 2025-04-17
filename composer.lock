@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6e409e8e218225d898b5bcee19fecf83",
+    "content-hash": "77db808700b06a060b72e56ba5d9ac91",
     "packages": [
         {
             "name": "brick/math",
@@ -2184,16 +2184,16 @@
         },
         {
             "name": "utopia-php/fetch",
-            "version": "0.3.1",
+            "version": "0.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/fetch.git",
-                "reference": "524dd50afa8c64670c4fb18f1df4db9b5bb4b3d0"
+                "reference": "46e791ff6a95864517750b9df6bbf4a17e3c9c4e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/fetch/zipball/524dd50afa8c64670c4fb18f1df4db9b5bb4b3d0",
-                "reference": "524dd50afa8c64670c4fb18f1df4db9b5bb4b3d0",
+                "url": "https://api.github.com/repos/utopia-php/fetch/zipball/46e791ff6a95864517750b9df6bbf4a17e3c9c4e",
+                "reference": "46e791ff6a95864517750b9df6bbf4a17e3c9c4e",
                 "shasum": ""
             },
             "require": {
@@ -2217,9 +2217,9 @@
             "description": "A simple library that provides an interface for making HTTP Requests.",
             "support": {
                 "issues": "https://github.com/utopia-php/fetch/issues",
-                "source": "https://github.com/utopia-php/fetch/tree/0.3.1"
+                "source": "https://github.com/utopia-php/fetch/tree/0.4.0"
             },
-            "time": "2025-03-05T18:08:55+00:00"
+            "time": "2025-03-11T21:06:56+00:00"
         },
         {
             "name": "utopia-php/framework",
