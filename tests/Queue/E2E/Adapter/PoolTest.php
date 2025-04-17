@@ -3,6 +3,8 @@
 namespace Tests\E2E\Adapter;
 
 use Tests\E2E\Adapter\Base;
+use Utopia\Pools\Pool as UtopiaPool;
+use Utopia\Queue\Broker\Pool;
 use Utopia\Queue\Broker\Redis as RedisBroker;
 use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Publisher;
@@ -12,8 +14,11 @@ class PoolTest extends Base
 {
     protected function getPublisher(): Publisher
     {
-        $connection = new Redis('redis', 6379);
-        return new RedisBroker($connection);
+        $pool = new UtopiaPool('redis', 1, function () {
+            return new RedisBroker(new Redis('redis', 6379));
+        });
+
+        return new Pool($pool, $pool);
     }
 
     protected function getQueue(): Queue
