@@ -1,8 +1,7 @@
 <?php
 
-namespace Queue\E2E\Adapter;
+namespace Tests\E2E\Adapter;
 
-use Tests\E2E\Adapter\Base;
 use Utopia\Queue\Broker\AMQP;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
