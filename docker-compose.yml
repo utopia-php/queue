@@ -1,14 +1,10 @@
-version: '3.1'
-
 services:
   tests:
     container_name: tests
     build: .
-    command:
-      - vendor/bin/phpunit
-      - tests
     volumes:
-      - ./:/usr/local/src
+      - ./src:/usr/local/src/src
+      - ./tests:/usr/local/src/tests
     depends_on:
       - swoole
       - swoole-amqp
@@ -20,7 +16,8 @@ services:
     build: ./tests/Queue/servers/Swoole/.
     command: php /usr/src/code/tests/Queue/servers/Swoole/worker.php
     volumes:
-      - ./:/usr/src/code
+      - ./src:/usr/local/src/src
+      - ./tests:/usr/local/src/tests
     depends_on:
       - redis
 
@@ -29,7 +26,8 @@ services:
     build: ./tests/Queue/servers/SwooleRedisCluster/.
     command: php /usr/src/code/tests/Queue/servers/SwooleRedisCluster/worker.php
     volumes:
-      - ./:/usr/src/code
+      - ./src:/usr/local/src/src
+      - ./tests:/usr/local/src/tests
     depends_on:
       redis-cluster-0:
         condition: service_healthy
@@ -39,7 +37,8 @@ services:
     build: ./tests/Queue/servers/AMQP/.
     command: php /usr/src/code/tests/Queue/servers/AMQP/worker.php
     volumes:
-      - ./:/usr/src/code
+      - ./src:/usr/local/src/src
+      - ./tests:/usr/local/src/tests
     depends_on:
       amqp:
         condition: service_healthy
@@ -49,7 +48,8 @@ services:
     build: ./tests/Queue/servers/Workerman/.
     command: php /usr/src/code/tests/Queue/servers/Workerman/worker.php start
     volumes:
-      - ./:/usr/src/code
+      - ./src:/usr/local/src/src
+      - ./tests:/usr/local/src/tests
     depends_on:
       - redis
 
@@ -115,5 +115,5 @@ services:
       RABBITMQ_DEFAULT_PASS: amqp
       RABBITMQ_DEFAULT_VHOST: "/"
     healthcheck:
-      test: [ "CMD", "rabbitmqctl", "node_health_check"]
+      test: [ "CMD", "rabbitmqctl", "node_health_check" ]
       start_interval: 1s

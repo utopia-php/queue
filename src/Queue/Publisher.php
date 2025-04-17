@@ -20,7 +20,7 @@ interface Publisher
      * @param int|null $limit
      * @return void
      */
-    public function retry(Queue $queue, int $limit = null): void;
+    public function retry(Queue $queue, ?int $limit = null): void;
 
     /**
      * Returns the amount of pending messages in the queue.

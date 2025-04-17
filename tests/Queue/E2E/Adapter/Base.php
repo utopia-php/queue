@@ -72,7 +72,7 @@ abstract class Base extends TestCase
         sleep(1);
     }
 
-    protected function testConcurrency(): void
+    public function testConcurrency(): void
     {
         run(function () {
             $publisher = $this->getPublisher();
@@ -93,22 +93,33 @@ abstract class Base extends TestCase
     {
         $publisher = $this->getPublisher();
 
-        $publisher->enqueue($this->getQueue(), [
+        $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
             'id' => 1
         ]);
-        $publisher->enqueue($this->getQueue(), [
+
+        $this->assertTrue($published);
+
+        $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
             'id' => 2
         ]);
-        $publisher->enqueue($this->getQueue(), [
+
+        $this->assertTrue($published);
+
+        $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
             'id' => 3
         ]);
-        $publisher->enqueue($this->getQueue(), [
+
+        $this->assertTrue($published);
+
+        $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
             'id' => 4
         ]);
+
+        $this->assertTrue($published);
 
         sleep(1);
         $publisher->retry($this->getQueue());
