@@ -10,24 +10,10 @@ use Utopia\Pools\Pool as UtopiaPool;
 readonly class Pool implements Publisher, Consumer
 {
     public function __construct(
-        private UtopiaPool $publisherPool,
-        private UtopiaPool $consumerPool,
+        private ?UtopiaPool $publisher = null,
+        private ?UtopiaPool $consumer = null,
     )
     {
-    }
-
-    protected function delegatePublish(string $method, array $args): mixed
-    {
-        return $this->publisherPool->use(function (Publisher $adapter) use ($method, $args) {
-            return $adapter->$method(...$args);
-        });
-    }
-
-    protected function delegateConsumer(string $method, array $args): mixed
-    {
-        return $this->consumerPool->use(function (Consumer $adapter) use ($method, $args) {
-            return $adapter->$method(...$args);
-        });
     }
 
     public function enqueue(Queue $queue, array $payload): bool
@@ -53,5 +39,19 @@ readonly class Pool implements Publisher, Consumer
     public function close(): void
     {
         $this->delegateConsumer(__FUNCTION__, \func_get_args());
+    }
+
+    protected function delegatePublish(string $method, array $args): mixed
+    {
+        return $this->publisher?->use(function (Publisher $adapter) use ($method, $args) {
+            return $adapter->$method(...$args);
+        });
+    }
+
+    protected function delegateConsumer(string $method, array $args): mixed
+    {
+        return $this->consumer?->use(function (Consumer $adapter) use ($method, $args) {
+            return $adapter->$method(...$args);
+        });
     }
 }
