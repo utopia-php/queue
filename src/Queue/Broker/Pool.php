@@ -12,8 +12,7 @@ readonly class Pool implements Publisher, Consumer
     public function __construct(
         private ?UtopiaPool $publisher = null,
         private ?UtopiaPool $consumer = null,
-    )
-    {
+    ) {
     }
 
     public function enqueue(Queue $queue, array $payload): bool

@@ -2,7 +2,6 @@
 
 namespace Tests\E2E\Adapter;
 
-use Tests\E2E\Adapter\Base;
 use Utopia\Pools\Pool as UtopiaPool;
 use Utopia\Queue\Broker\Pool;
 use Utopia\Queue\Broker\Redis as RedisBroker;

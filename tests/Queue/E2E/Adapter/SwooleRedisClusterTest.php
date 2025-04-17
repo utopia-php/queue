@@ -2,7 +2,6 @@
 
 namespace Tests\E2E\Adapter;
 
-use Tests\E2E\Adapter\Base;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Queue\Connection\RedisCluster;
 use Utopia\Queue\Publisher;
