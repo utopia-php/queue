@@ -218,8 +218,19 @@ class Server
             $this->adapter->workerStart(function (string $workerId) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
                 self::setResource('workerId', fn () => $workerId);
+
                 if (!is_null($this->workerStartHook)) {
-                    call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
+                    try {
+                        $this->workerStartHook->getAction()(...$this->getArguments($this->workerStartHook));
+                    } catch (Throwable $error) {
+                        self::setResource('error', fn () => $error);
+
+                        foreach ($this->errorHooks as $hook) {
+                            ($hook->getAction())($this->getArguments($hook));
+                        }
+
+                        return;
+                    }
                 }
 
                 while (true) {
@@ -294,7 +305,15 @@ class Server
 
             if (!\is_null($this->workerStartHook)) {
                 $this->adapter->workerStop(function () {
-                    $this->workerStopHook->getAction()(...$this->getArguments($this->workerStopHook));
+                    try {
+                        $this->workerStopHook->getAction()(...$this->getArguments($this->workerStopHook));
+                    } catch (Throwable $error) {
+                        self::setResource('error', fn () => $error);
+
+                        foreach ($this->errorHooks as $hook) {
+                            $hook->getAction()($this->getArguments($hook));
+                        }
+                    }
                 });
             }
 

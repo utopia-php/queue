@@ -11,8 +11,12 @@ class Swoole extends Adapter
 {
     protected Pool $pool;
 
-    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
-    {
+    public function __construct(
+        Consumer $consumer,
+        int $workerNum,
+        string $queue,
+        string $namespace = 'utopia-queue'
+    ) {
         parent::__construct($workerNum, $queue, $namespace);
 
         $this->consumer = $consumer;
