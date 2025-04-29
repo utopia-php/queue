@@ -51,7 +51,12 @@ class Server
     /**
      * Hook that is called when worker starts
      */
-    protected Hook $workerStartHook;
+    protected ?Hook $workerStartHook = null;
+
+    /**
+     * Hook that is called when worker stops
+     */
+    protected ?Hook $workerStopHook = null;
 
     /**
      * @var array
@@ -287,6 +292,12 @@ class Server
                 }
             });
 
+            if (!\is_null($this->workerStartHook)) {
+                $this->adapter->workerStop(function () {
+                    $this->workerStopHook->getAction()(...$this->getArguments($this->workerStopHook));
+                });
+            }
+
             $this->adapter->start();
         } catch (Throwable $error) {
             self::setResource('error', fn () => $error);
@@ -310,37 +321,15 @@ class Server
     }
 
     /**
-    * Returns Worker starts hook.
-    * @return Hook
-    */
-    public function getWorkerStart(): Hook
-    {
-        return $this->workerStartHook;
-    }
-
-    /**
      * Is called when a Worker stops.
-     * @param callable|null $callback
-     * @return self
-     * @throws Exception
+     * @return Hook
      */
-    public function workerStop(?callable $callback = null): self
+    public function workerStop(): Hook
     {
-        try {
-            $this->adapter->workerStop(function (string $workerId) use ($callback) {
-                Console::success("[Worker] Worker {$workerId} is ready!");
-                if (!is_null($callback)) {
-                    call_user_func($callback);
-                }
-            });
-        } catch (Throwable $error) {
-            self::setResource('error', fn () => $error);
-            foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
-            }
-        }
-
-        return $this;
+        $hook = new Hook();
+        $hook->groups(['*']);
+        $this->workerStopHook = $hook;
+        return $hook;
     }
 
     /**
