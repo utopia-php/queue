@@ -217,45 +217,19 @@ class Server
                     call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
                 }
 
-                while (true) {
-                    $this->adapter->consumer->consume(
-                        $this->adapter->queue,
-                        function (Message $message) {
-                            $receivedAtTimestamp = microtime(true);
-                            Console::info("[Job] Received Job ({$message->getPid()}).");
-                            try {
-                                $waitDuration = microtime(true) - $message->getTimestamp();
-                                $this->jobWaitTime->record($waitDuration);
+                $this->adapter->consumer->consume(
+                    $this->adapter->queue,
+                    function (Message $message) {
+                        $receivedAtTimestamp = microtime(true);
+                        Console::info("[Job] Received Job ({$message->getPid()}).");
+                        try {
+                            $waitDuration = microtime(true) - $message->getTimestamp();
+                            $this->jobWaitTime->record($waitDuration);
 
-                                $this->resources = [];
-                                self::setResource('message', fn () => $message);
-                                if ($this->job->getHook()) {
-                                    foreach ($this->initHooks as $hook) { // Global init hooks
-                                        if (in_array('*', $hook->getGroups())) {
-                                            $arguments = $this->getArguments($hook, $message->getPayload());
-                                            \call_user_func_array($hook->getAction(), $arguments);
-                                        }
-                                    }
-                                }
-
-                                foreach ($this->job->getGroups() as $group) {
-                                    foreach ($this->initHooks as $hook) { // Group init hooks
-                                        if (in_array($group, $hook->getGroups())) {
-                                            $arguments = $this->getArguments($hook, $message->getPayload());
-                                            \call_user_func_array($hook->getAction(), $arguments);
-                                        }
-                                    }
-                                }
-
-                                return \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
-                            } finally {
-                                $processDuration = microtime(true) - $receivedAtTimestamp;
-                                $this->processDuration->record($processDuration);
-                            }
-                        },
-                        function (Message $message) {
+                            $this->resources = [];
+                            self::setResource('message', fn () => $message);
                             if ($this->job->getHook()) {
-                                foreach ($this->shutdownHooks as $hook) { // Global init hooks
+                                foreach ($this->initHooks as $hook) { // Global init hooks
                                     if (in_array('*', $hook->getGroups())) {
                                         $arguments = $this->getArguments($hook, $message->getPayload());
                                         \call_user_func_array($hook->getAction(), $arguments);
@@ -264,28 +238,54 @@ class Server
                             }
 
                             foreach ($this->job->getGroups() as $group) {
-                                foreach ($this->shutdownHooks as $hook) { // Group init hooks
+                                foreach ($this->initHooks as $hook) { // Group init hooks
                                     if (in_array($group, $hook->getGroups())) {
                                         $arguments = $this->getArguments($hook, $message->getPayload());
                                         \call_user_func_array($hook->getAction(), $arguments);
                                     }
                                 }
                             }
-                            Console::success("[Job] ({$message->getPid()}) successfully run.");
-                        },
-                        function (?Message $message, Throwable $th) {
-                            Console::error("[Job] ({$message?->getPid()}) failed to run.");
-                            Console::error("[Job] ({$message?->getPid()}) {$th->getMessage()}");
 
-                            self::setResource('error', fn () => $th);
-
-                            foreach ($this->errorHooks as $hook) {
-                                ($hook->getAction())(...$this->getArguments($hook));
+                            return \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
+                        } finally {
+                            $processDuration = microtime(true) - $receivedAtTimestamp;
+                            $this->processDuration->record($processDuration);
+                        }
+                    },
+                    function (Message $message) {
+                        if ($this->job->getHook()) {
+                            foreach ($this->shutdownHooks as $hook) { // Global init hooks
+                                if (in_array('*', $hook->getGroups())) {
+                                    $arguments = $this->getArguments($hook, $message->getPayload());
+                                    \call_user_func_array($hook->getAction(), $arguments);
+                                }
                             }
-                        },
-                    );
-                }
+                        }
+
+                        foreach ($this->job->getGroups() as $group) {
+                            foreach ($this->shutdownHooks as $hook) { // Group init hooks
+                                if (in_array($group, $hook->getGroups())) {
+                                    $arguments = $this->getArguments($hook, $message->getPayload());
+                                    \call_user_func_array($hook->getAction(), $arguments);
+                                }
+                            }
+                        }
+                        Console::success("[Job] ({$message->getPid()}) successfully run.");
+                    },
+                    function (?Message $message, Throwable $th) {
+                        Console::error("[Job] ({$message?->getPid()}) failed to run.");
+                        Console::error("[Job] ({$message?->getPid()}) {$th->getMessage()}");
+
+                        self::setResource('error', fn () => $th);
+
+                        foreach ($this->errorHooks as $hook) {
+                            ($hook->getAction())(...$this->getArguments($hook));
+                        }
+                    },
+                );
             });
+
+            $this->adapter->workerStop(fn () => $this->adapter->consumer->close());
 
             $this->adapter->start();
         } catch (Throwable $error) {
@@ -316,31 +316,6 @@ class Server
     public function getWorkerStart(): Hook
     {
         return $this->workerStartHook;
-    }
-
-    /**
-     * Is called when a Worker stops.
-     * @param callable|null $callback
-     * @return self
-     * @throws Exception
-     */
-    public function workerStop(?callable $callback = null): self
-    {
-        try {
-            $this->adapter->workerStop(function (string $workerId) use ($callback) {
-                Console::success("[Worker] Worker {$workerId} is ready!");
-                if (!is_null($callback)) {
-                    call_user_func($callback);
-                }
-            });
-        } catch (Throwable $error) {
-            self::setResource('error', fn () => $error);
-            foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
-            }
-        }
-
-        return $this;
     }
 
     /**
