@@ -29,4 +29,10 @@ $server
         echo "Worker Started" . PHP_EOL;
     });
 
+$server
+    ->workerStop()
+    ->action(function () {
+        echo "Worker Stopped" . PHP_EOL;
+    });
+
 $server->start();
