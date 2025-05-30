@@ -44,7 +44,6 @@ class AMQP implements Publisher, Consumer
         private readonly int $heartbeat = 0,
         private readonly float $connectTimeout = 3.0,
         private readonly float $readWriteTimeout = 3.0,
-
     ) {
     }
 
