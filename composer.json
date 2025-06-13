@@ -4,7 +4,7 @@
     "type": "library",
     "keywords": ["php","framework", "upf", "utopia", "tasks", "queue"],
     "license": "MIT",
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Torsten Dittmann",
@@ -23,9 +23,15 @@
         "format": "vendor/bin/pint",
         "lint": "vendor/bin/pint --test"
     },
+    "repositories": [
+      {
+        "type": "vcs",
+        "url": "git@github.com:appwrite-labs/php-amqplib.git"
+      }
+    ],
     "require": {
         "php": ">=8.3",
-        "php-amqplib/php-amqplib": "^3.7",
+        "appwrite-labs/php-amqplib": "master-dev",
         "utopia-php/cli": "0.15.*",
         "utopia-php/framework": "0.33.*",
         "utopia-php/telemetry": "0.1.*",
