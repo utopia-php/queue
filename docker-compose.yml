@@ -47,7 +47,7 @@ services:
 
   amqp-swoole:
     container_name: amqp-swoole
-    build: ./tests/Queue/servers/AMQPSwoole/.
+    build: ./tests/Queue/servers/AMQP/.
     command: php /usr/src/code/tests/Queue/servers/AMQPSwoole/worker.php
     volumes:
       - ./src:/usr/local/src/src

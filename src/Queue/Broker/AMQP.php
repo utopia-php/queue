@@ -145,6 +145,13 @@ class AMQP implements Publisher, Consumer
         ];
         $message = new AMQPMessage(json_encode($payload), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
         $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
+            $channel->exchange_declare(
+                $queue->namespace,
+                AMQPExchangeType::TOPIC,
+                durable: true,
+                auto_delete: false,
+                arguments: new AMQPTable($this->exchangeArguments)
+            );
             $channel->basic_publish($message, $queue->namespace, routing_key: $queue->name);
         });
         return true;
