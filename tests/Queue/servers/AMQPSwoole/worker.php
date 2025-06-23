@@ -29,4 +29,4 @@ $server
         echo "Worker Started" . PHP_EOL;
     });
 
-$server->start(); 
+$server->start();

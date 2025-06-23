@@ -26,34 +26,35 @@ class AMQPSwooleTest extends Base
     public function testEvents(): void
     {
         run(function () {
-            go(function () {
-                $publisher = $this->getPublisher();
-
+            $publisher = $this->getPublisher();
+            go(function () use ($publisher) {
                 foreach ($this->payloads as $payload) {
                     $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
                 }
 
-                // Allow some time for async processing (if any)
                 sleep(1);
-
                 /** @var \Utopia\Queue\Broker\AMQPSwoole $publisher */
                 $publisher->close();
             });
         });
     }
 
+    // public function tearDown(): void
+    // {
+    //     $publisher = $this->getPublisher();
+    //     /** @var \Utopia\Queue\Broker\AMQPSwoole $publisher */
+    // }
+
     public function testConcurrency(): void
     {
         run(function () {
-            go(function () {
-                $publisher = $this->getPublisher();
-
+            $publisher = $this->getPublisher();
+            go(function () use ($publisher) {
                 foreach ($this->payloads as $payload) {
                     $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
                 }
 
                 sleep(1);
-
                 /** @var \Utopia\Queue\Broker\AMQPSwoole $publisher */
                 $publisher->close();
             });
@@ -67,9 +68,8 @@ class AMQPSwooleTest extends Base
     public function testRetry(): void
     {
         run(function () {
-            go(function () {
-                $publisher = $this->getPublisher();
-
+            $publisher = $this->getPublisher();
+            go(function () use ($publisher) {
                 $published = $publisher->enqueue($this->getQueue(), [
                     'type' => 'test_exception',
                     'id' => 1
@@ -99,10 +99,13 @@ class AMQPSwooleTest extends Base
                 $this->assertTrue($published);
 
                 sleep(1);
-
+                $publisher->retry($this->getQueue());
+                sleep(1);
+                $publisher->retry($this->getQueue(), 2);
+                sleep(1);
                 /** @var \Utopia\Queue\Broker\AMQPSwoole $publisher */
                 $publisher->close();
             });
         });
     }
-} 
+}
