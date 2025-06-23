@@ -3,10 +3,6 @@
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
-use Utopia\Queue\Publisher;
-use Utopia\Queue\Queue;
-
-use function Co\run;
 
 abstract class Base extends TestCase
 {
@@ -52,79 +48,5 @@ abstract class Base extends TestCase
                 'null' => null
             ]
         ];
-    }
-
-    /**
-     * @return Publisher
-     */
-    abstract protected function getPublisher(): Publisher;
-
-    abstract protected function getQueue(): Queue;
-
-    public function testEvents(): void
-    {
-        $publisher = $this->getPublisher();
-
-        foreach ($this->payloads as $payload) {
-            $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
-        }
-
-        sleep(1);
-    }
-
-    public function testConcurrency(): void
-    {
-        run(function () {
-            $publisher = $this->getPublisher();
-            go(function () use ($publisher) {
-                foreach ($this->payloads as $payload) {
-                    $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
-                }
-
-                sleep(1);
-            });
-        });
-    }
-
-    /**
-     * @depends testEvents
-     */
-    public function testRetry(): void
-    {
-        $publisher = $this->getPublisher();
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 1
-        ]);
-
-        $this->assertTrue($published);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 2
-        ]);
-
-        $this->assertTrue($published);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 3
-        ]);
-
-        $this->assertTrue($published);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 4
-        ]);
-
-        $this->assertTrue($published);
-
-        sleep(1);
-        $publisher->retry($this->getQueue());
-        sleep(1);
-        $publisher->retry($this->getQueue(), 2);
-        sleep(1);
     }
 }

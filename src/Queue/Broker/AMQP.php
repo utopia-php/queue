@@ -5,9 +5,11 @@ namespace Utopia\Queue\Broker;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Connection\AMQPSwooleConnection;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
+use PhpAmqpLib\Wire\IO\SwooleIO;
 use Utopia\Fetch\Client;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Error\Retryable;
@@ -44,7 +46,11 @@ class AMQP implements Publisher, Consumer
         private readonly int $heartbeat = 0,
         private readonly float $connectTimeout = 3.0,
         private readonly float $readWriteTimeout = 3.0,
+        private readonly string $connectionClass = AMQPStreamConnection::class
     ) {
+        if (!is_subclass_of($this->connectionClass, AbstractConnection::class)) {
+            throw new \InvalidArgumentException('Connection class must be a subclass of AbstractConnection');
+        }
     }
 
     public function setExchangeArgument(string $key, string $value): void
@@ -185,7 +191,7 @@ class AMQP implements Publisher, Consumer
     private function withChannel(callable $callback): void
     {
         $createChannel = function (): AMQPChannel {
-            $connection = new AMQPStreamConnection(
+            $connection = new ($this->connectionClass)(
                 $this->host,
                 $this->port,
                 $this->user,
@@ -193,8 +199,9 @@ class AMQP implements Publisher, Consumer
                 $this->vhost,
                 connection_timeout: $this->connectTimeout,
                 read_write_timeout: $this->readWriteTimeout,
-                heartbeat: $this->heartbeat,
+                heartbeat: $this->heartbeat
             );
+
             if (is_callable($this->connectionConfigHook)) {
                 call_user_func($this->connectionConfigHook, $connection);
             }
