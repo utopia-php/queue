@@ -206,6 +206,7 @@ class Server
     /**
      * Starts the Queue Server
      * @return self
+     * @throws Exception
      */
     public function start(): self
     {
@@ -213,8 +214,14 @@ class Server
             $this->adapter->workerStart(function (string $workerId) {
                 Console::success("[Worker] Worker {$workerId} is ready!");
                 self::setResource('workerId', fn () => $workerId);
-                if (!is_null($this->workerStartHook)) {
-                    call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
+                if (!\is_null($this->workerStartHook)) {
+                    \call_user_func_array(
+                        $this->workerStartHook->getAction(),
+                        $this->getArguments($this->workerStartHook)
+                    );
+                }
+                if (\is_callable($this->adapter->consumer)) {
+                    $this->adapter->consumer = \call_user_func($this->adapter->consumer);
                 }
 
                 $this->adapter->consumer->consume(

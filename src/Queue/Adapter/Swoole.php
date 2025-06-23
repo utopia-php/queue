@@ -14,8 +14,12 @@ class Swoole extends Adapter
     /** @var callable */
     private $onStop;
 
-    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
-    {
+    public function __construct(
+        Consumer|callable $consumer,
+        int $workerNum,
+        string $queue,
+        string $namespace = 'utopia-queue'
+    ) {
         parent::__construct($workerNum, $queue, $namespace);
 
         $this->consumer = $consumer;

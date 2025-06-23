@@ -7,7 +7,11 @@ abstract class Adapter
     public int $workerNum;
     public Queue $queue;
     public string $namespace;
-    public Consumer $consumer;
+    
+    /**
+     * @var Consumer|callable(): Consumer
+     */
+    public mixed $consumer;
 
     public function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
