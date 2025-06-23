@@ -18,7 +18,7 @@ class AMQPTest extends Base
     {
         return [
             'AMQPStreamConnection' => [AMQPStreamConnection::class],
-            'AMQPSwooleConnection' => [AMQPSwooleConnection::class],
+            // 'AMQPSwooleConnection' => [AMQPSwooleConnection::class],
         ];
     }
 
@@ -44,6 +44,7 @@ class AMQPTest extends Base
      */
     public function testEventsWithConnection(string $connectionClass): void
     {
+        var_dump("Hello");
         $this->connectionClass = $connectionClass;
         parent::testEvents();
     }

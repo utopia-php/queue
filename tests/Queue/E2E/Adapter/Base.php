@@ -74,10 +74,6 @@ abstract class Base extends TestCase
 
     public function testConcurrency(): void
     {
-        if (!extension_loaded('swoole')) {
-            $this->markTestSkipped('Swoole extension is not available');
-        }
-
         run(function () {
             $publisher = $this->getPublisher();
             go(function () use ($publisher) {
