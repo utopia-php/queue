@@ -25,7 +25,7 @@
     },
     "require": {
         "php": ">=8.3",
-        "appwrite/php-amqplib": "0.1.0",
+        "appwrite-labs/php-amqplib": "0.1.0",
         "utopia-php/cli": "0.15.*",
         "utopia-php/framework": "0.33.*",
         "utopia-php/telemetry": "0.1.*",
