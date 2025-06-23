@@ -9,7 +9,7 @@ class AMQPSwoole extends AMQP
 {
     /**
      * Override the withChannel method to use AMQPSwooleConnection instead of AMQPStreamConnection
-     * 
+     *
      * @param callable(AMQPChannel $channel): void $callback
      * @throws \Exception
      */
@@ -32,17 +32,17 @@ class AMQPSwoole extends AMQP
                 $this->heartbeat, // heartbeat
                 0.0 // channel_rpc_timeout
             );
-            
+
             if (is_callable($this->connectionConfigHook)) {
                 call_user_func($this->connectionConfigHook, $connection);
             }
-            
+
             $channel = $connection->channel();
-            
+
             if (is_callable($this->channelConfigHook)) {
                 call_user_func($this->channelConfigHook, $channel);
             }
-            
+
             return $channel;
         };
 
@@ -60,4 +60,4 @@ class AMQPSwoole extends AMQP
             $callback($this->channel);
         }
     }
-} 
+}
