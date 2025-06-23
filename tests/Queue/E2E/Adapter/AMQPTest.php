@@ -12,6 +12,8 @@ use function Co\run;
 
 class AMQPTest extends Base
 {
+    private string $connectionClass;
+
     public function connectionsProvider(): array
     {
         return [
@@ -23,13 +25,13 @@ class AMQPTest extends Base
     /**
      * @dataProvider connectionsProvider
      */
-    protected function getPublisher(string $connectionClass): Publisher
+    protected function getPublisher(): Publisher
     {
-        if ($connectionClass === AMQPSwooleConnection::class && !extension_loaded('swoole')) {
+        if ($this->connectionClass === AMQPSwooleConnection::class && !extension_loaded('swoole')) {
             $this->markTestSkipped('Swoole extension is not available');
         }
 
-        return new AMQP(host: 'amqp', port: 5672, user: 'amqp', password: 'amqp', connectionClass: $connectionClass);
+        return new AMQP(host: 'amqp', port: 5672, user: 'amqp', password: 'amqp', connectionClass: $this->connectionClass);
     }
 
     protected function getQueue(): Queue
@@ -40,78 +42,35 @@ class AMQPTest extends Base
     /**
      * @dataProvider connectionsProvider
      */
-    public function testEvents(string $connectionClass): void
+    public function testEventsWithConnection(string $connectionClass): void
     {
-        $publisher = $this->getPublisher($connectionClass);
-
-        foreach ($this->payloads as $payload) {
-            $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
-        }
-
-        sleep(1);
+        $this->connectionClass = $connectionClass;
+        parent::testEvents();
     }
 
     /**
      * @dataProvider connectionsProvider
      */
-    public function testConcurrency(string $connectionClass): void
+    public function testConcurrencyWithConnection(string $connectionClass): void
     {
-        if (!extension_loaded('swoole')) {
-            $this->markTestSkipped('Swoole extension is not available');
+        $this->connectionClass = $connectionClass;
+
+        if ($this->connectionClass !== AMQPSwooleConnection::class) {
+            $this->markTestSkipped('Concurrency test can only be run with Swoole');
         }
 
-        run(function () use ($connectionClass) {
-            $publisher = $this->getPublisher($connectionClass);
-            go(function () use ($publisher) {
-                foreach ($this->payloads as $payload) {
-                    $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
-                }
-
-                sleep(1);
-            });
-        });
+        parent::testConcurrency();
     }
 
     /**
      * @dataProvider connectionsProvider
-     * @depends testEvents
      */
-    public function testRetry(string $connectionClass): void
+    public function testRetryWithConnection(string $connectionClass): void
     {
-        $publisher = $this->getPublisher($connectionClass);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 1
-        ]);
-
-        $this->assertTrue($published);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 2
-        ]);
-
-        $this->assertTrue($published);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 3
-        ]);
-
-        $this->assertTrue($published);
-
-        $published = $publisher->enqueue($this->getQueue(), [
-            'type' => 'test_exception',
-            'id' => 4
-        ]);
-
-        $this->assertTrue($published);
-
-        sleep(1);
-        $publisher->retry($this->getQueue());
-        sleep(1);
-        $publisher->retry($this->getQueue(), 2);
-        sleep(1);
+        $this->connectionClass = $connectionClass;
+        // The "depends" annotation will not work with a dataprovider.
+        // We need to manually call the dependency.
+        parent::testEvents();
+        parent::testRetry();
     }
 }
