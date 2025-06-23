@@ -4,11 +4,11 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "23b5f3bf9991a1527ac430fd3d2a0357",
+    "content-hash": "434886be4fd421b224a7d4a9164c22fb",
     "packages": [
         {
             "name": "appwrite-labs/php-amqplib",
-            "version": "dev-master",
+            "version": "0.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/appwrite-labs/php-amqplib.git",
@@ -43,7 +43,6 @@
             "suggest": {
                 "ext-swoole": "For Swoole coroutine support"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -55,12 +54,7 @@
                     "PhpAmqpLib\\": "PhpAmqpLib/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "PhpAmqpLib\\Tests\\Functional\\": "tests/Functional",
-                    "PhpAmqpLib\\Tests\\Unit\\": "tests/Unit"
-                }
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "LGPL-2.1-or-later"
             ],
@@ -4359,9 +4353,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "appwrite-labs/php-amqplib": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
