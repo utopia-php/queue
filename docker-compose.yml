@@ -77,6 +77,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-1:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -87,6 +88,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-2:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -97,6 +99,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-3:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -107,6 +110,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   amqp:
     image: rabbitmq:4
@@ -117,3 +121,4 @@ services:
     healthcheck:
       test: [ "CMD", "rabbitmqctl", "node_health_check" ]
       start_interval: 1s
+      start_period: 0s
