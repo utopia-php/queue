@@ -39,12 +39,6 @@ class AMQPSwooleTest extends Base
         });
     }
 
-    // public function tearDown(): void
-    // {
-    //     $publisher = $this->getPublisher();
-    //     /** @var \Utopia\Queue\Broker\AMQPSwoole $publisher */
-    // }
-
     public function testConcurrency(): void
     {
         run(function () {

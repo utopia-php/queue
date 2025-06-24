@@ -5,7 +5,6 @@ services:
     volumes:
       - ./src:/usr/local/src/src
       - ./tests:/usr/local/src/tests
-      - ./phpunit.xml:/usr/local/src/phpunit.xml
     depends_on:
       - swoole
       - swoole-amqp
