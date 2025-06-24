@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "434886be4fd421b224a7d4a9164c22fb",
+    "content-hash": "9de2edbb13039237d2a64acf9578bc19",
     "packages": [
         {
             "name": "appwrite-labs/php-amqplib",
-            "version": "0.1.0",
+            "version": "0.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/appwrite-labs/php-amqplib.git",
-                "reference": "30d709df7510e784d16ad7a7f817d26fe79615a0"
+                "reference": "bd380cbd63c8c0f063a3893b7a0b889d40876861"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/appwrite-labs/php-amqplib/zipball/30d709df7510e784d16ad7a7f817d26fe79615a0",
-                "reference": "30d709df7510e784d16ad7a7f817d26fe79615a0",
+                "url": "https://api.github.com/repos/appwrite-labs/php-amqplib/zipball/bd380cbd63c8c0f063a3893b7a0b889d40876861",
+                "reference": "bd380cbd63c8c0f063a3893b7a0b889d40876861",
                 "shasum": ""
             },
             "require": {
@@ -95,9 +95,9 @@
                 "swoole"
             ],
             "support": {
-                "source": "https://github.com/appwrite-labs/php-amqplib/tree/0.1.0"
+                "source": "https://github.com/appwrite-labs/php-amqplib/tree/0.1.1"
             },
-            "time": "2025-06-13T21:45:04+00:00"
+            "time": "2025-06-24T18:12:57+00:00"
         },
         {
             "name": "brick/math",
