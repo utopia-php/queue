@@ -2,7 +2,6 @@
 
 namespace Utopia\Queue\Adapter;
 
-use Swoole\Constant;
 use Swoole\Process\Pool;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
@@ -10,9 +9,6 @@ use Utopia\Queue\Consumer;
 class Swoole extends Adapter
 {
     protected Pool $pool;
-
-    /** @var callable */
-    private $onStop;
 
     public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
     {
@@ -31,16 +27,13 @@ class Swoole extends Adapter
 
     public function stop(): self
     {
-        if ($this->onStop) {
-            call_user_func($this->onStop);
-        }
         $this->pool->shutdown();
         return $this;
     }
 
     public function workerStart(callable $callback): self
     {
-        $this->pool->on(Constant::EVENT_WORKER_START, function (Pool $pool, string $workerId) use ($callback) {
+        $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
             call_user_func($callback, $workerId);
         });
 
@@ -49,8 +42,7 @@ class Swoole extends Adapter
 
     public function workerStop(callable $callback): self
     {
-        $this->onStop = $callback;
-        $this->pool->on(Constant::EVENT_WORKER_STOP, function (Pool $pool, string $workerId) use ($callback) {
+        $this->pool->on('WorkerStart', function (Pool $pool, string $workerId) use ($callback) {
             call_user_func($callback, $workerId);
         });
 
