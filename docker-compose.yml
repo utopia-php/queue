@@ -8,6 +8,7 @@ services:
     depends_on:
       - swoole
       - swoole-amqp
+      - amqp-swoole
       - swoole-redis-cluster
       - workerman
 
@@ -36,6 +37,17 @@ services:
     container_name: swoole-amqp
     build: ./tests/Queue/servers/AMQP/.
     command: php /usr/src/code/tests/Queue/servers/AMQP/worker.php
+    volumes:
+      - ./src:/usr/local/src/src
+      - ./tests:/usr/local/src/tests
+    depends_on:
+      amqp:
+        condition: service_healthy
+
+  amqp-swoole:
+    container_name: amqp-swoole
+    build: ./tests/Queue/servers/AMQP/.
+    command: php /usr/src/code/tests/Queue/servers/AMQPSwoole/worker.php
     volumes:
       - ./src:/usr/local/src/src
       - ./tests:/usr/local/src/tests
@@ -77,6 +89,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-1:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -87,6 +100,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-2:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -97,6 +111,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-3:
     image: docker.io/bitnami/redis-cluster:7.4
@@ -107,6 +122,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   amqp:
     image: rabbitmq:4
@@ -117,3 +133,4 @@ services:
     healthcheck:
       test: [ "CMD", "rabbitmqctl", "node_health_check" ]
       start_interval: 1s
+      start_period: 0s
