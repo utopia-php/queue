@@ -131,7 +131,6 @@ class AMQP implements Publisher, Consumer
 
     public function close(): void
     {
-        $this->channel?->stopConsume();
         $this->channel?->getConnection()?->close();
     }
 
