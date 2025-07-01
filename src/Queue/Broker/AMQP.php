@@ -154,6 +154,9 @@ class AMQP implements Publisher, Consumer
         // This is a no-op for AMQP
     }
 
+    /**
+     * @throws \Exception
+     */
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {
         $queueName = $queue->name;
@@ -174,7 +177,8 @@ class AMQP implements Publisher, Consumer
         }
 
         $data = $response->json();
-        return $data['messages'];
+
+        return $data['messages'] ?? 0;
     }
 
     /**
