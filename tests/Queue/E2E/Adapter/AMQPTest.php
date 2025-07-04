@@ -10,7 +10,12 @@ class AMQPTest extends Base
 {
     protected function getPublisher(): Publisher
     {
-        return new AMQP(host: 'amqp', port: 5672, user: 'amqp', password: 'amqp');
+        return new AMQP(
+            host: 'amqp',
+            port: 5672,
+            user: 'amqp',
+            password: 'amqp'
+        );
     }
 
     protected function getQueue(): Queue
