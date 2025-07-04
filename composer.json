@@ -33,7 +33,6 @@
         "utopia-php/fetch": "0.4.*"
     },
     "require-dev": {
-        "ext-redis": "*",
         "swoole/ide-helper": "5.1.7",
         "phpunit/phpunit": "9.*",
         "laravel/pint": "1.*",
@@ -41,6 +40,8 @@
         "phpstan/phpstan": "1.*"
     },
     "suggest": {
+        "ext-redis": "Needed to support Redis.",
+        "ext-amqp": "Needed to support AMQP.",
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman."
     },

@@ -58,6 +58,11 @@ class AMQP implements Publisher, Consumer
     ) {
     }
 
+    public function getConnectionType(): string
+    {
+        return AMQPStreamConnection::class;
+    }
+
     /**
      * Enable or disable waiting for publisher confirms.
      */
@@ -281,7 +286,7 @@ class AMQP implements Publisher, Consumer
             : 0;
 
         $createChannel = function (): AMQPChannel {
-            $connection = new AMQPStreamConnection(
+            $connection = new ($this->getConnectionType())(
                 $this->host,
                 $this->port,
                 $this->user,

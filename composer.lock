@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2b8d3acb921b6eae11d6edd946847d05",
+    "content-hash": "350529d3b55908338187ee3a1f284071",
     "packages": [
         {
             "name": "appwrite-labs/php-amqplib",
@@ -4355,8 +4355,6 @@
     "platform": {
         "php": ">=8.3"
     },
-    "platform-dev": {
-        "ext-redis": "*"
-    },
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }
