@@ -50,6 +50,7 @@ class AMQP implements Publisher, Consumer
         protected readonly float $connectTimeout = 3.0,
         protected readonly float $readWriteTimeout = 3.0,
         protected float $ackTimeout = 5.0,
+        protected int $maxEnqueueAttempts = 3,
         protected bool $requireAck = true,
     ) {
     }
@@ -65,6 +66,11 @@ class AMQP implements Publisher, Consumer
     public function setAckTimeout(float $timeout): void
     {
         $this->ackTimeout = $timeout;
+    }
+
+    public function setMaxEnqueueAttempts(int $maxEnqueueAttempts): void
+    {
+        $this->maxEnqueueAttempts = $maxEnqueueAttempts;
     }
 
     public function setExchangeArgument(string $key, string $value): void
@@ -175,6 +181,7 @@ class AMQP implements Publisher, Consumer
         );
 
         $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
+            for ($attempts = 0; $attempts < $this->maxEnqueueAttempts; $attempts++) {
                 try {
                     $channel->basic_publish(
                         $message,
@@ -201,6 +208,7 @@ class AMQP implements Publisher, Consumer
 
                 // Exit the loop if ack is received
                 break;
+            }
         });
 
         return true;
