@@ -22,7 +22,11 @@ use Utopia\Queue\Result\NoCommit;
 
 class AMQP implements Publisher, Consumer
 {
-    protected ?AMQPChannel $channel = null;
+    /**
+     * One channel per coroutine (CID => AMQPChannel).
+     * Non-coroutine contexts use CID = 0.
+     */
+    protected array $channels = [];
 
     private array $exchangeArguments = [];
     private array $queueArguments = [];
@@ -163,7 +167,14 @@ class AMQP implements Publisher, Consumer
 
     public function close(): void
     {
-        $this->channel?->getConnection()?->close();
+        foreach ($this->channels as $cid => $ch) {
+            try {
+                $ch->getConnection()?->close();
+            } catch (\Throwable) {
+                // ignore – connection might already be closed
+            }
+            unset($this->channels[$cid]);
+        }
     }
 
     /**
@@ -265,6 +276,10 @@ class AMQP implements Publisher, Consumer
      */
     protected function withChannel(callable $callback): void
     {
+        $cid = \class_exists('\\Swoole\\Coroutine')
+            ? \Swoole\Coroutine::getCid()
+            : 0;
+
         $createChannel = function (): AMQPChannel {
             $connection = new AMQPStreamConnection(
                 $this->host,
@@ -293,18 +308,18 @@ class AMQP implements Publisher, Consumer
             return $channel;
         };
 
-        if (!$this->channel) {
-            $this->channel = $createChannel();
+        if (!isset($this->channels[$cid])) {
+            $this->channels[$cid] = $createChannel();
         }
 
         try {
-            $callback($this->channel);
+            $callback($this->channels[$cid]);
         } catch (\Throwable) {
-            // createChannel() might throw, in that case set the channel to `null` first.
-            $this->channel = null;
-            // try creating a new connection once, if this still fails, throw the error
-            $this->channel = $createChannel();
-            $callback($this->channel);
+            // discard broken channel for this coroutine
+            unset($this->channels[$cid]);
+            // create a new channel once; rethrow on second failure
+            $this->channels[$cid] = $createChannel();
+            $callback($this->channels[$cid]);
         }
     }
 }
