@@ -51,7 +51,7 @@ class AMQP implements Publisher, Consumer
         protected readonly float $readWriteTimeout = 3.0,
         protected float $ackTimeout = 5.0,
         protected int $maxEnqueueAttempts = 3,
-        protected bool $requireAck = true,
+        protected bool $requireAck = false,
     ) {
     }
 
