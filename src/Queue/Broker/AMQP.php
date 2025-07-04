@@ -120,7 +120,6 @@ class AMQP implements Publisher, Consumer
                 $result = $messageCallback($message);
 
                 match (true) {
-                    $result instanceof Commit => $amqpMessage->ack(),
                     $result instanceof NoCommit => null,
                     default => $amqpMessage->ack()
                 };
