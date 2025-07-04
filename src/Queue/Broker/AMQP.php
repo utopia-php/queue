@@ -18,7 +18,6 @@ use Utopia\Queue\Error\Retryable;
 use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
-use Utopia\Queue\Result\Commit;
 use Utopia\Queue\Result\NoCommit;
 
 class AMQP implements Publisher, Consumer
