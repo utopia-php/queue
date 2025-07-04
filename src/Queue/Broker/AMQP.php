@@ -65,11 +65,17 @@ class AMQP implements Publisher, Consumer
 
     public function setAckTimeout(float $timeout): void
     {
+        if ($timeout <= 0) {
+            throw new \InvalidArgumentException('Ack timeout must be positive');
+        }
         $this->ackTimeout = $timeout;
     }
 
     public function setMaxEnqueueAttempts(int $maxEnqueueAttempts): void
     {
+        if ($maxEnqueueAttempts < 1) {
+            throw new \InvalidArgumentException('Max enqueue attempts must be at least 1');
+        }
         $this->maxEnqueueAttempts = $maxEnqueueAttempts;
     }
 
