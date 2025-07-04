@@ -16,8 +16,8 @@ jobs:
         adapter:
           [
             AMQP,
-            AMQPAck
-            AMQPSwoole
+            AMQPAck,
+            AMQPSwoole,
             Pool,
             SwooleRedisCluster,
             Swoole,
