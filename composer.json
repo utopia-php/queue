@@ -34,11 +34,11 @@
     },
     "require-dev": {
         "ext-redis": "*",
-        "swoole/ide-helper": "4.8.8",
-        "phpunit/phpunit": "^9.5.5",
-        "laravel/pint": "^0.2.3",
-        "workerman/workerman": "^4.0",
-        "phpstan/phpstan": "^1.8"
+        "swoole/ide-helper": "5.1.7",
+        "phpunit/phpunit": "9.*",
+        "laravel/pint": "1.*",
+        "workerman/workerman": "4.*",
+        "phpstan/phpstan": "1.*"
     },
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
