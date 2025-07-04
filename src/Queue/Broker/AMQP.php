@@ -205,6 +205,12 @@ class AMQP implements Publisher, Consumer
         $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
             for ($attempts = 0; $attempts < $this->maxEnqueueAttempts; $attempts++) {
                 try {
+                    // Redeclare topology, because the queue might not exist yet
+                    $channel->exchange_declare($queue->namespace, AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
+                    $channel->exchange_declare("{$queue->namespace}.failed", AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
+                    $channel->queue_declare($queue->name, durable: true, auto_delete: false, arguments: new AMQPTable(array_merge($this->queueArguments, ["x-dead-letter-exchange" => "{$queue->namespace}.failed"])));
+                    $channel->queue_bind($queue->name, $queue->namespace, routing_key: $queue->name);
+
                     $channel->basic_publish(
                         $message,
                         exchange: $queue->namespace,
@@ -212,16 +218,10 @@ class AMQP implements Publisher, Consumer
                         mandatory: $this->requireAck
                     );
 
+                    // No need to wait for ack if not required
                     if (!$this->requireAck) {
-                        // No need to wait for ack if not required
                         return;
                     }
-
-                    // Redeclare topology, because the queue might not exist yet
-                    $channel->exchange_declare($queue->namespace, AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
-                    $channel->exchange_declare("{$queue->namespace}.failed", AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
-                    $channel->queue_declare($queue->name, durable: true, auto_delete: false, arguments: new AMQPTable(array_merge($this->queueArguments, ["x-dead-letter-exchange" => "{$queue->namespace}.failed"])));
-                    $channel->queue_bind($queue->name, $queue->namespace, routing_key: $queue->name);
 
                     // Wait for the message to be acknowledged by the broker
                     $channel->wait_for_pending_acks($this->ackTimeout);
