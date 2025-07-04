@@ -5,21 +5,29 @@ namespace Utopia\Queue\Broker;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Exception\AMQPChannelClosedException;
+use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
+use PhpAmqpLib\Exception\AMQPConnectionClosedException;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
+use PhpAmqpLib\Exception\AMQPTimeoutException;
 use Utopia\Fetch\Client;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Error\Retryable;
 use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
-use Utopia\Queue\Result\Commit;
 use Utopia\Queue\Result\NoCommit;
 
 class AMQP implements Publisher, Consumer
 {
-    protected ?AMQPChannel $channel = null;
+    /**
+     * One channel per coroutine (CID => AMQPChannel).
+     * Non-coroutine contexts use CID = 0.
+     */
+    protected array $channels = [];
+
     private array $exchangeArguments = [];
     private array $queueArguments = [];
     private array $consumerArguments = [];
@@ -43,8 +51,40 @@ class AMQP implements Publisher, Consumer
         protected readonly string $vhost = '/',
         protected readonly int $heartbeat = 0,
         protected readonly float $connectTimeout = 3.0,
-        protected readonly float $readWriteTimeout = 3.0
+        protected readonly float $readWriteTimeout = 3.0,
+        protected float $ackTimeout = 5.0,
+        protected int $maxEnqueueAttempts = 3,
+        protected bool $requireAck = false,
     ) {
+    }
+
+    public function getConnectionType(): string
+    {
+        return AMQPStreamConnection::class;
+    }
+
+    /**
+     * Enable or disable waiting for publisher confirms.
+     */
+    public function setRequireAck(bool $require): void
+    {
+        $this->requireAck = $require;
+    }
+
+    public function setAckTimeout(float $timeout): void
+    {
+        if ($timeout <= 0) {
+            throw new \InvalidArgumentException('Ack timeout must be positive');
+        }
+        $this->ackTimeout = $timeout;
+    }
+
+    public function setMaxEnqueueAttempts(int $maxEnqueueAttempts): void
+    {
+        if ($maxEnqueueAttempts < 1) {
+            throw new \InvalidArgumentException('Max enqueue attempts must be at least 1');
+        }
+        $this->maxEnqueueAttempts = $maxEnqueueAttempts;
     }
 
     public function setExchangeArgument(string $key, string $value): void
@@ -86,11 +126,12 @@ class AMQP implements Publisher, Consumer
                 $message = new Message($nextMessage);
 
                 $result = $messageCallback($message);
+
                 match (true) {
-                    $result instanceof Commit => $amqpMessage->ack(true),
                     $result instanceof NoCommit => null,
                     default => $amqpMessage->ack()
                 };
+
                 $successCallback($message);
             } catch (Retryable $e) {
                 $amqpMessage->nack(requeue: true);
@@ -131,9 +172,19 @@ class AMQP implements Publisher, Consumer
 
     public function close(): void
     {
-        $this->channel?->getConnection()?->close();
+        foreach ($this->channels as $cid => $ch) {
+            try {
+                $ch->getConnection()?->close();
+            } catch (\Throwable) {
+                // ignore – connection might already be closed
+            }
+            unset($this->channels[$cid]);
+        }
     }
 
+    /**
+     * @throws \Exception
+     */
     public function enqueue(Queue $queue, array $payload): bool
     {
         $payload = [
@@ -142,10 +193,53 @@ class AMQP implements Publisher, Consumer
             'timestamp' => time(),
             'payload' => $payload
         ];
-        $message = new AMQPMessage(json_encode($payload), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
+
+        $message = new AMQPMessage(
+            \json_encode($payload),
+            [
+                'content_type' => 'application/json',
+                'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
+            ]
+        );
+
         $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
-            $channel->basic_publish($message, $queue->namespace, routing_key: $queue->name);
+            for ($attempts = 0; $attempts < $this->maxEnqueueAttempts; $attempts++) {
+                try {
+                    // Redeclare topology, because the queue might not exist yet
+                    $channel->exchange_declare($queue->namespace, AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
+                    $channel->exchange_declare("{$queue->namespace}.failed", AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
+                    $channel->queue_declare($queue->name, durable: true, auto_delete: false, arguments: new AMQPTable(array_merge($this->queueArguments, ["x-dead-letter-exchange" => "{$queue->namespace}.failed"])));
+                    $channel->queue_bind($queue->name, $queue->namespace, routing_key: $queue->name);
+
+                    $channel->basic_publish(
+                        $message,
+                        exchange: $queue->namespace,
+                        routing_key: $queue->name,
+                        mandatory: $this->requireAck
+                    );
+
+                    // No need to wait for ack if not required
+                    if (!$this->requireAck) {
+                        return;
+                    }
+
+                    // Wait for the message to be acknowledged by the broker
+                    $channel->wait_for_pending_acks($this->ackTimeout);
+                } catch (
+                    AMQPTimeoutException |
+                    AMQPConnectionClosedException |
+                    AMQPChannelClosedException |
+                    AMQPConnectionBlockedException $e
+                ) {
+                    // Retry sending the message if ack is not received or connection has issues
+                    continue;
+                }
+
+                // Exit the loop if ack is received
+                break;
+            }
         });
+
         return true;
     }
 
@@ -187,8 +281,12 @@ class AMQP implements Publisher, Consumer
      */
     protected function withChannel(callable $callback): void
     {
+        $cid = \class_exists('\\Swoole\\Coroutine')
+            ? \Swoole\Coroutine::getCid()
+            : 0;
+
         $createChannel = function (): AMQPChannel {
-            $connection = new AMQPStreamConnection(
+            $connection = new ($this->getConnectionType())(
                 $this->host,
                 $this->port,
                 $this->user,
@@ -198,28 +296,35 @@ class AMQP implements Publisher, Consumer
                 read_write_timeout: $this->readWriteTimeout,
                 heartbeat: $this->heartbeat,
             );
-            if (is_callable($this->connectionConfigHook)) {
-                call_user_func($this->connectionConfigHook, $connection);
+            if (\is_callable($this->connectionConfigHook)) {
+                ($this->connectionConfigHook)($connection);
             }
+
             $channel = $connection->channel();
-            if (is_callable($this->channelConfigHook)) {
-                call_user_func($this->channelConfigHook, $channel);
+
+            if (\is_callable($this->channelConfigHook)) {
+                ($this->channelConfigHook)($channel);
+            }
+
+            // Enable publisher confirms if required
+            if ($this->requireAck) {
+                $channel->confirm_select();
             }
             return $channel;
         };
 
-        if (!$this->channel) {
-            $this->channel = $createChannel();
+        if (!isset($this->channels[$cid])) {
+            $this->channels[$cid] = $createChannel();
         }
 
         try {
-            $callback($this->channel);
+            $callback($this->channels[$cid]);
         } catch (\Throwable) {
-            // createChannel() might throw, in that case set the channel to `null` first.
-            $this->channel = null;
-            // try creating a new connection once, if this still fails, throw the error
-            $this->channel = $createChannel();
-            $callback($this->channel);
+            // discard broken channel for this coroutine
+            unset($this->channels[$cid]);
+            // create a new channel once; rethrow on second failure
+            $this->channels[$cid] = $createChannel();
+            $callback($this->channels[$cid]);
         }
     }
 }

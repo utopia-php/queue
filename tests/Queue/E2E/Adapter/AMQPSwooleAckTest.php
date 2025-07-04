@@ -1,14 +1,15 @@
 <?php
 
-namespace Tests\E2E\Adapter;
+namespace Queue\E2E\Adapter;
 
+use Tests\E2E\Adapter\Base;
 use Utopia\Queue\Broker\AMQPSwoole;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
 
 use function Co\run;
 
-class AMQPSwooleTest extends Base
+class AMQPSwooleAckTest extends Base
 {
     protected function getPublisher(): Publisher
     {
@@ -16,7 +17,8 @@ class AMQPSwooleTest extends Base
             host: 'amqp',
             port: 5672,
             user: 'amqp',
-            password: 'amqp'
+            password: 'amqp',
+            requireAck: true
         );
     }
 

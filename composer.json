@@ -19,13 +19,13 @@
     },
     "scripts":{
         "test": "phpunit",
-        "check": "vendor/bin/phpstan analyse",
+        "check": "vendor/bin/phpstan --memory-limit=2G analyse",
         "format": "vendor/bin/pint",
         "lint": "vendor/bin/pint --test"
     },
     "require": {
         "php": ">=8.3",
-        "appwrite-labs/php-amqplib": "^0.1",
+        "appwrite-labs/php-amqplib": "0.1.*",
         "utopia-php/cli": "0.15.*",
         "utopia-php/framework": "0.33.*",
         "utopia-php/telemetry": "0.1.*",
@@ -33,14 +33,15 @@
         "utopia-php/fetch": "0.4.*"
     },
     "require-dev": {
-        "ext-redis": "*",
-        "swoole/ide-helper": "4.8.8",
-        "phpunit/phpunit": "^9.5.5",
-        "laravel/pint": "^0.2.3",
-        "workerman/workerman": "^4.0",
-        "phpstan/phpstan": "^1.8"
+        "swoole/ide-helper": "5.1.7",
+        "phpunit/phpunit": "9.*",
+        "laravel/pint": "1.*",
+        "workerman/workerman": "4.*",
+        "phpstan/phpstan": "1.*"
     },
     "suggest": {
+        "ext-redis": "Needed to support Redis.",
+        "ext-amqp": "Needed to support AMQP.",
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman."
     },
