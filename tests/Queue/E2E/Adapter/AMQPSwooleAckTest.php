@@ -6,6 +6,7 @@ use Tests\E2E\Adapter\Base;
 use Utopia\Queue\Broker\AMQPSwoole;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
+
 use function Co\run;
 
 class AMQPSwooleAckTest extends Base
