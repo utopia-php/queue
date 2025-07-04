@@ -22,25 +22,19 @@ class AMQPSwoole extends AMQP
                 $this->user,
                 $this->password,
                 $this->vhost,
-                false, // insist
-                'AMQPLAIN', // login_method
-                'en_US', // locale
-                $this->connectTimeout, // connection_timeout
-                $this->readWriteTimeout, // read_write_timeout
-                null, // context
-                false, // keepalive
-                $this->heartbeat, // heartbeat
-                0.0 // channel_rpc_timeout
+                connection_timeout: $this->connectTimeout,
+                read_write_timeout: $this->readWriteTimeout,
+                heartbeat: $this->heartbeat,
             );
 
-            if (is_callable($this->connectionConfigHook)) {
-                call_user_func($this->connectionConfigHook, $connection);
+            if (\is_callable($this->connectionConfigHook)) {
+                ($this->connectionConfigHook)($connection);
             }
 
             $channel = $connection->channel();
 
-            if (is_callable($this->channelConfigHook)) {
-                call_user_func($this->channelConfigHook, $channel);
+            if (\is_callable($this->channelConfigHook)) {
+                ($this->channelConfigHook)($channel);
             }
 
             return $channel;

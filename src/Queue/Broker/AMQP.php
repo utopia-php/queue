@@ -5,9 +5,13 @@ namespace Utopia\Queue\Broker;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Exception\AMQPChannelClosedException;
+use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
+use PhpAmqpLib\Exception\AMQPConnectionClosedException;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
+use PhpAmqpLib\Exception\AMQPTimeoutException;
 use Utopia\Fetch\Client;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Error\Retryable;
@@ -20,6 +24,7 @@ use Utopia\Queue\Result\NoCommit;
 class AMQP implements Publisher, Consumer
 {
     protected ?AMQPChannel $channel = null;
+
     private array $exchangeArguments = [];
     private array $queueArguments = [];
     private array $consumerArguments = [];
@@ -43,8 +48,23 @@ class AMQP implements Publisher, Consumer
         protected readonly string $vhost = '/',
         protected readonly int $heartbeat = 0,
         protected readonly float $connectTimeout = 3.0,
-        protected readonly float $readWriteTimeout = 3.0
+        protected readonly float $readWriteTimeout = 3.0,
+        protected float $ackTimeout = 5.0,
+        protected bool $requireAck = true,
     ) {
+    }
+
+    /**
+     * Enable or disable waiting for publisher confirms.
+     */
+    public function setRequireAck(bool $require): void
+    {
+        $this->requireAck = $require;
+    }
+
+    public function setAckTimeout(float $timeout): void
+    {
+        $this->ackTimeout = $timeout;
     }
 
     public function setExchangeArgument(string $key, string $value): void
@@ -134,6 +154,9 @@ class AMQP implements Publisher, Consumer
         $this->channel?->getConnection()?->close();
     }
 
+    /**
+     * @throws \Exception
+     */
     public function enqueue(Queue $queue, array $payload): bool
     {
         $payload = [
@@ -142,10 +165,44 @@ class AMQP implements Publisher, Consumer
             'timestamp' => time(),
             'payload' => $payload
         ];
-        $message = new AMQPMessage(json_encode($payload), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
+
+        $message = new AMQPMessage(
+            \json_encode($payload),
+            [
+                'content_type' => 'application/json',
+                'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
+            ]
+        );
+
         $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
-            $channel->basic_publish($message, $queue->namespace, routing_key: $queue->name);
+                try {
+                    $channel->basic_publish(
+                        $message,
+                        exchange: $queue->namespace,
+                        routing_key: $queue->name,
+                        mandatory: $this->requireAck
+                    );
+
+                    if (!$this->requireAck) {
+                        // No need to wait for ack if not required
+                        return;
+                    }
+
+                    $channel->wait_for_pending_acks($this->ackTimeout);
+                } catch (
+                    AMQPTimeoutException |
+                    AMQPConnectionClosedException |
+                    AMQPChannelClosedException |
+                    AMQPConnectionBlockedException $e
+                ) {
+                    // Retry sending the message if ack is not received or connection has issues
+                    continue;
+                }
+
+                // Exit the loop if ack is received
+                break;
         });
+
         return true;
     }
 
@@ -198,12 +255,19 @@ class AMQP implements Publisher, Consumer
                 read_write_timeout: $this->readWriteTimeout,
                 heartbeat: $this->heartbeat,
             );
-            if (is_callable($this->connectionConfigHook)) {
-                call_user_func($this->connectionConfigHook, $connection);
+            if (\is_callable($this->connectionConfigHook)) {
+                ($this->connectionConfigHook)($connection);
             }
+
             $channel = $connection->channel();
-            if (is_callable($this->channelConfigHook)) {
-                call_user_func($this->channelConfigHook, $channel);
+
+            if (\is_callable($this->channelConfigHook)) {
+                ($this->channelConfigHook)($channel);
+            }
+
+            // Enable publisher confirms if required
+            if ($this->requireAck) {
+                $channel->confirm_select();
             }
             return $channel;
         };
