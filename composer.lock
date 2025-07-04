@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9de2edbb13039237d2a64acf9578bc19",
+    "content-hash": "aef7a10af70ea69436901bc4f9dd7543",
     "packages": [
         {
             "name": "appwrite-labs/php-amqplib",
-            "version": "0.1.1",
+            "version": "dev-fix-memory",
             "source": {
                 "type": "git",
                 "url": "https://github.com/appwrite-labs/php-amqplib.git",
-                "reference": "bd380cbd63c8c0f063a3893b7a0b889d40876861"
+                "reference": "38f1fa283674ac1ab3156482deefd25f316309f1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/appwrite-labs/php-amqplib/zipball/bd380cbd63c8c0f063a3893b7a0b889d40876861",
-                "reference": "bd380cbd63c8c0f063a3893b7a0b889d40876861",
+                "url": "https://api.github.com/repos/appwrite-labs/php-amqplib/zipball/38f1fa283674ac1ab3156482deefd25f316309f1",
+                "reference": "38f1fa283674ac1ab3156482deefd25f316309f1",
                 "shasum": ""
             },
             "require": {
@@ -95,9 +95,9 @@
                 "swoole"
             ],
             "support": {
-                "source": "https://github.com/appwrite-labs/php-amqplib/tree/0.1.1"
+                "source": "https://github.com/appwrite-labs/php-amqplib/tree/fix-memory"
             },
-            "time": "2025-06-24T18:12:57+00:00"
+            "time": "2025-07-04T20:40:09+00:00"
         },
         {
             "name": "brick/math",
@@ -4356,7 +4356,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "appwrite-labs/php-amqplib": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
