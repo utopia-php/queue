@@ -19,7 +19,7 @@ use Utopia\Queue\Result\NoCommit;
 
 class AMQP implements Publisher, Consumer
 {
-    protected ?AMQPChannel $channel = null;
+    private ?AMQPChannel $channel = null;
     private array $exchangeArguments = [];
     private array $queueArguments = [];
     private array $consumerArguments = [];
@@ -27,23 +27,23 @@ class AMQP implements Publisher, Consumer
     /**
      * @var callable(AbstractConnection $connection): void
      */
-    protected $connectionConfigHook;
+    private $connectionConfigHook;
 
     /**
      * @var callable(AMQPChannel $channel): void
      */
-    protected $channelConfigHook;
+    private $channelConfigHook;
 
     public function __construct(
-        protected readonly string $host,
-        protected readonly int $port = 5672,
-        protected readonly int $httpPort = 15672,
-        protected readonly ?string $user = null,
-        protected readonly ?string $password = null,
-        protected readonly string $vhost = '/',
-        protected readonly int $heartbeat = 0,
-        protected readonly float $connectTimeout = 3.0,
-        protected readonly float $readWriteTimeout = 3.0
+        private readonly string $host,
+        private readonly int $port = 5672,
+        private readonly int $httpPort = 15672,
+        private readonly ?string $user = null,
+        private readonly ?string $password = null,
+        private readonly string $vhost = '/',
+        private readonly int $heartbeat = 0,
+        private readonly float $connectTimeout = 3.0,
+        private readonly float $readWriteTimeout = 3.0,
     ) {
     }
 
@@ -185,7 +185,7 @@ class AMQP implements Publisher, Consumer
      * @param callable(AMQPChannel $channel): void $callback
      * @throws \Exception
      */
-    protected function withChannel(callable $callback): void
+    private function withChannel(callable $callback): void
     {
         $createChannel = function (): AMQPChannel {
             $connection = new AMQPStreamConnection(
