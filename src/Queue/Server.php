@@ -5,7 +5,7 @@ namespace Utopia\Queue;
 use Exception;
 use Throwable;
 use Utopia\Console;
-use Utopia\Hook;
+use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
 use Utopia\Telemetry\Histogram;
