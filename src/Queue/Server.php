@@ -4,7 +4,7 @@ namespace Utopia\Queue;
 
 use Exception;
 use Throwable;
-use Utopia\CLI\Console;
+use Utopia\Console;
 use Utopia\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
