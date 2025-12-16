@@ -2,101 +2,99 @@
 
 namespace Utopia\Queue\Adapter;
 
-use Swoole\Constant;
-use Swoole\Process\Pool;
-use Utopia\CLI\Console;
+use Swoole\Coroutine;
+use Swoole\Process;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
 
 class Swoole extends Adapter
 {
-    protected Pool $pool;
+    /** @var Process[] */
+    protected array $workers = [];
 
-    /** @var callable */
-    private $onStop;
+    /** @var callable[] */
+    protected array $onWorkerStart = [];
 
-    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
-    {
+    /** @var callable[] */
+    protected array $onWorkerStop = [];
+
+    public function __construct(
+        Consumer $consumer,
+        int $workerNum,
+        string $queue,
+        string $namespace = 'utopia-queue',
+    ) {
         parent::__construct($workerNum, $queue, $namespace);
-
         $this->consumer = $consumer;
-        $this->pool = new Pool($workerNum);
     }
 
     public function start(): self
     {
-        $this->pool->set(['enable_coroutine' => true]);
-
-        // Register signal handlers in the main process before starting pool
-        if (extension_loaded('pcntl')) {
-            pcntl_signal(SIGTERM, function () {
-                Console::info("[Swoole] Received SIGTERM, initiating graceful shutdown...");
-                $this->stop();
-            });
-
-            pcntl_signal(SIGINT, function () {
-                Console::info("[Swoole] Received SIGINT, initiating graceful shutdown...");
-                $this->stop();
-            });
-
-            // Enable async signals
-            pcntl_async_signals(true);
-        } else {
-            Console::warning("[Swoole] pcntl extension is not loaded, worker will not shutdown gracefully.");
+        for ($i = 0; $i < $this->workerNum; $i++) {
+            $this->spawnWorker($i);
         }
 
-        $this->pool->start();
+        Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
+
+        Coroutine\run(function () {
+            Process::signal(SIGTERM, fn () => $this->stop());
+            Process::signal(SIGINT, fn () => $this->stop());
+            Process::signal(SIGCHLD, fn () => $this->reap());
+
+            while (\count($this->workers) > 0) {
+                Coroutine::sleep(1);
+            }
+        });
+
         return $this;
+    }
+
+    protected function spawnWorker(int $workerId): void
+    {
+        $process = new Process(function () use ($workerId) {
+            Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
+
+            Coroutine\run(function () use ($workerId) {
+                Process::signal(SIGTERM, fn () => $this->consumer->close());
+
+                foreach ($this->onWorkerStart as $callback) {
+                    $callback((string)$workerId);
+                }
+
+                foreach ($this->onWorkerStop as $callback) {
+                    $callback((string)$workerId);
+                }
+            });
+        }, false, 0, false);
+
+        $pid = $process->start();
+        $this->workers[$pid] = $process;
+    }
+
+    protected function reap(): void
+    {
+        while (($ret = Process::wait(false)) !== false) {
+            unset($this->workers[$ret['pid']]);
+        }
     }
 
     public function stop(): self
     {
-        if ($this->onStop) {
-            call_user_func($this->onStop);
+        foreach ($this->workers as $pid => $process) {
+            Process::kill($pid, SIGTERM);
         }
-
-        Console::info("[Swoole] Shutting down process pool...");
-        $this->pool->shutdown();
-        Console::success("[Swoole] Process pool stopped.");
         return $this;
     }
 
     public function workerStart(callable $callback): self
     {
-        $this->pool->on(Constant::EVENT_WORKER_START, function (Pool $pool, string $workerId) use ($callback) {
-            // Register signal handlers in each worker process for graceful shutdown
-            if (extension_loaded('pcntl')) {
-                pcntl_signal(SIGTERM, function () use ($workerId) {
-                    Console::info("[Worker] Worker {$workerId} received SIGTERM, closing consumer...");
-                    $this->consumer->close();
-                });
-
-                pcntl_signal(SIGINT, function () use ($workerId) {
-                    Console::info("[Worker] Worker {$workerId} received SIGINT, closing consumer...");
-                    $this->consumer->close();
-                });
-
-                pcntl_async_signals(true);
-            }
-
-            call_user_func($callback, $workerId);
-        });
-
+        $this->onWorkerStart[] = $callback;
         return $this;
     }
 
     public function workerStop(callable $callback): self
     {
-        $this->onStop = $callback;
-        $this->pool->on(Constant::EVENT_WORKER_STOP, function (Pool $pool, string $workerId) use ($callback) {
-            call_user_func($callback, $workerId);
-        });
-
+        $this->onWorkerStop[] = $callback;
         return $this;
-    }
-
-    public function getNative(): Pool
-    {
-        return $this->pool;
     }
 }

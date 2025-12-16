@@ -30,33 +30,37 @@ class Server
     /**
      * Hooks that will run when error occur
      *
-     * @var array
+     * @var array<Hook>
      */
     protected array $errorHooks = [];
 
     /**
      * Hooks that will run before running job
      *
-     * @var array
+     * @var array<Hook>
      */
     protected array $initHooks = [];
 
     /**
      * Hooks that will run after running job
      *
-     * @var array
+     * @var array<Hook>
      */
     protected array $shutdownHooks = [];
 
     /**
-     * Hook that is called when worker starts
+     * Hooks that will run when worker starts
+     *
+     * @var array<Hook>
      */
-    protected Hook $workerStartHook;
+    protected array $workerStartHooks = [];
 
     /**
-     * Hook that is called when worker stops
+     * Hooks that will run when worker stops
+     *
+     * @var array<Hook>
      */
-    protected Hook $workerStopHook;
+    protected array $workerStopHooks = [];
 
     /**
      * @var array
@@ -99,14 +103,20 @@ class Server
      */
     public function getResource(string $name, bool $fresh = false): mixed
     {
-        if (!\array_key_exists($name, $this->resources) || $fresh || self::$resourcesCallbacks[$name]['reset']) {
+        if (
+            !\array_key_exists($name, $this->resources) ||
+            $fresh ||
+            self::$resourcesCallbacks[$name]['reset']
+        ) {
             if (!\array_key_exists($name, self::$resourcesCallbacks)) {
                 throw new Exception("Failed to find resource: $name");
             }
 
             $this->resources[$name] = \call_user_func_array(
                 self::$resourcesCallbacks[$name]['callback'],
-                $this->getResources(self::$resourcesCallbacks[$name]['injections'])
+                $this->getResources(
+                    self::$resourcesCallbacks[$name]['injections'],
+                ),
             );
         }
 
@@ -143,9 +153,16 @@ class Server
      *
      * @return void
      */
-    public static function setResource(string $name, callable $callback, array $injections = []): void
-    {
-        self::$resourcesCallbacks[$name] = ['callback' => $callback, 'injections' => $injections, 'reset' => true];
+    public static function setResource(
+        string $name,
+        callable $callback,
+        array $injections = [],
+    ): void {
+        self::$resourcesCallbacks[$name] = [
+            'callback' => $callback,
+            'injections' => $injections,
+            'reset' => true,
+        ];
     }
 
     public function setTelemetry(Telemetry $telemetry): void
@@ -154,7 +171,24 @@ class Server
             'messaging.process.wait.duration',
             's',
             null,
-            ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
+            [
+                'ExplicitBucketBoundaries' => [
+                    0.005,
+                    0.01,
+                    0.025,
+                    0.05,
+                    0.075,
+                    0.1,
+                    0.25,
+                    0.5,
+                    0.75,
+                    1,
+                    2.5,
+                    5,
+                    7.5,
+                    10,
+                ],
+            ],
         );
 
         // https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/#metric-messagingprocessduration
@@ -162,7 +196,24 @@ class Server
             'messaging.process.duration',
             's',
             null,
-            ['ExplicitBucketBoundaries' =>  [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]]
+            [
+                'ExplicitBucketBoundaries' => [
+                    0.005,
+                    0.01,
+                    0.025,
+                    0.05,
+                    0.075,
+                    0.1,
+                    0.25,
+                    0.5,
+                    0.75,
+                    1,
+                    2.5,
+                    5,
+                    7.5,
+                    10,
+                ],
+            ],
         );
     }
 
@@ -189,7 +240,7 @@ class Server
         } catch (Throwable $error) {
             self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
+                $hook->getAction()(...$this->getArguments($hook));
             }
         }
         return $this;
@@ -216,70 +267,103 @@ class Server
     {
         try {
             $this->adapter->workerStart(function (string $workerId) {
-                Console::success("[Worker] Worker {$workerId} is ready!");
+                Console::success("[Worker] Worker {$workerId} started.");
                 self::setResource('workerId', fn () => $workerId);
-                if ($this->workerStartHook !== null) {
-                    call_user_func_array($this->workerStartHook->getAction(), $this->getArguments($this->workerStartHook));
+
+                foreach ($this->workerStartHooks as $hook) {
+                    $hook->getAction()(...$this->getArguments($hook));
                 }
 
                 $this->adapter->consumer->consume(
                     $this->adapter->queue,
                     function (Message $message) {
                         $receivedAtTimestamp = microtime(true);
-                        Console::info("[Job] Received Job ({$message->getPid()}).");
+                        Console::info(
+                            "[Job] Received Job ({$message->getPid()}).",
+                        );
                         try {
-                            $waitDuration = microtime(true) - $message->getTimestamp();
+                            $waitDuration =
+                                microtime(true) - $message->getTimestamp();
                             $this->jobWaitTime->record($waitDuration);
 
                             $this->resources = [];
                             self::setResource('message', fn () => $message);
                             if ($this->job->getHook()) {
-                                foreach ($this->initHooks as $hook) { // Global init hooks
-                                    if (in_array('*', $hook->getGroups())) {
-                                        $arguments = $this->getArguments($hook, $message->getPayload());
-                                        \call_user_func_array($hook->getAction(), $arguments);
+                                foreach ($this->initHooks as $hook) {
+                                    // Global init hooks
+                                    if (\in_array('*', $hook->getGroups())) {
+                                        $arguments = $this->getArguments(
+                                            $hook,
+                                            $message->getPayload(),
+                                        );
+                                        $hook->getAction()(...$arguments);
                                     }
                                 }
                             }
 
                             foreach ($this->job->getGroups() as $group) {
-                                foreach ($this->initHooks as $hook) { // Group init hooks
-                                    if (in_array($group, $hook->getGroups())) {
-                                        $arguments = $this->getArguments($hook, $message->getPayload());
-                                        \call_user_func_array($hook->getAction(), $arguments);
+                                foreach ($this->initHooks as $hook) {
+                                    // Group init hooks
+                                    if (\in_array($group, $hook->getGroups())) {
+                                        $arguments = $this->getArguments(
+                                            $hook,
+                                            $message->getPayload(),
+                                        );
+                                        $hook->getAction()(...$arguments);
                                     }
                                 }
                             }
 
-                            return \call_user_func_array($this->job->getAction(), $this->getArguments($this->job, $message->getPayload()));
+                            return \call_user_func_array(
+                                $this->job->getAction(),
+                                $this->getArguments(
+                                    $this->job,
+                                    $message->getPayload(),
+                                ),
+                            );
                         } finally {
-                            $processDuration = microtime(true) - $receivedAtTimestamp;
+                            $processDuration =
+                                microtime(true) - $receivedAtTimestamp;
                             $this->processDuration->record($processDuration);
                         }
                     },
                     function (Message $message) {
                         if ($this->job->getHook()) {
-                            foreach ($this->shutdownHooks as $hook) { // Global init hooks
-                                if (in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            foreach ($this->shutdownHooks as $hook) {
+                                // Global init hooks
+                                if (\in_array('*', $hook->getGroups())) {
+                                    $arguments = $this->getArguments(
+                                        $hook,
+                                        $message->getPayload(),
+                                    );
+                                    $hook->getAction()(...$arguments);
                                 }
                             }
                         }
 
                         foreach ($this->job->getGroups() as $group) {
-                            foreach ($this->shutdownHooks as $hook) { // Group init hooks
-                                if (in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments($hook, $message->getPayload());
-                                    \call_user_func_array($hook->getAction(), $arguments);
+                            foreach ($this->shutdownHooks as $hook) {
+                                // Group init hooks
+                                if (\in_array($group, $hook->getGroups())) {
+                                    $arguments = $this->getArguments(
+                                        $hook,
+                                        $message->getPayload(),
+                                    );
+                                    $hook->getAction()(...$arguments);
                                 }
                             }
                         }
-                        Console::success("[Job] ({$message->getPid()}) successfully run.");
+                        Console::success(
+                            "[Job] ({$message->getPid()}) successfully run.",
+                        );
                     },
                     function (?Message $message, Throwable $th) {
-                        Console::error("[Job] ({$message?->getPid()}) failed to run.");
-                        Console::error("[Job] ({$message?->getPid()}) {$th->getMessage()}");
+                        Console::error(
+                            "[Job] ({$message?->getPid()}) failed to run.",
+                        );
+                        Console::error(
+                            "[Job] ({$message?->getPid()}) {$th->getMessage()}",
+                        );
 
                         self::setResource('error', fn () => $th);
 
@@ -290,25 +374,34 @@ class Server
                 );
             });
 
-            $this->adapter->workerStop(function ($workerId) {
-                Console::info("[Worker] Worker {$workerId} stopping...");
+            $this->adapter->workerStop(function (string $workerId) {
                 self::setResource('workerId', fn () => $workerId);
 
-                // Call user-defined workerStop hook if set
-                if ($this->workerStopHook !== null) {
-                    call_user_func_array($this->workerStopHook->getAction(), $this->getArguments($this->workerStopHook));
+                try {
+                    // Call user-defined workerStop hooks
+                    foreach ($this->workerStopHooks as $hook) {
+                        try {
+                            $hook->getAction()(...$this->getArguments($hook));
+                        } catch (Throwable $e) {
+                            Console::error(
+                                "[Worker] Worker {$workerId} workerStop hook failed: {$e->getMessage()}",
+                            );
+                        }
+                    }
+                } finally {
+                    // Always close consumer connection, even if hooks throw
+                    $this->adapter->consumer->close();
+                    Console::success(
+                        "[Worker] Worker {$workerId} stopped.",
+                    );
                 }
-
-                // Close consumer connection
-                $this->adapter->consumer->close();
-                Console::success("[Worker] Worker {$workerId} stopped gracefully.");
             });
 
             $this->adapter->start();
         } catch (Throwable $error) {
             self::setResource('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
-                call_user_func_array($hook->getAction(), $this->getArguments($hook));
+                $hook->getAction()(...$this->getArguments($hook));
             }
         }
         return $this;
@@ -322,17 +415,17 @@ class Server
     {
         $hook = new Hook();
         $hook->groups(['*']);
-        $this->workerStartHook = $hook;
+        $this->workerStartHooks[] = $hook;
         return $hook;
     }
 
     /**
-    * Returns Worker starts hook.
-    * @return Hook
-    */
-    public function getWorkerStart(): Hook
+     * Returns Worker starts hooks.
+     * @return array
+     */
+    public function getWorkerStart(): array
     {
-        return $this->workerStartHook;
+        return $this->workerStartHooks;
     }
 
     /**
@@ -343,17 +436,17 @@ class Server
     {
         $hook = new Hook();
         $hook->groups(['*']);
-        $this->workerStopHook = $hook;
+        $this->workerStopHooks[] = $hook;
         return $hook;
     }
 
     /**
-     * Returns Worker stops hook.
-     * @return ?Hook
+     * Returns Worker stops hooks.
+     * @return array
      */
-    public function getWorkerStop(): ?Hook
+    public function getWorkerStop(): array
     {
-        return $this->workerStopHook;
+        return $this->workerStopHooks;
     }
 
     /**
@@ -366,9 +459,11 @@ class Server
     protected function getArguments(Hook $hook, array $payload = []): array
     {
         $arguments = [];
-        foreach ($hook->getParams() as $key => $param) { // Get value from route or request object
+        foreach ($hook->getParams() as $key => $param) {
+            // Get value from route or request object
             $value = $payload[$key] ?? $param['default'];
-            $value = ($value === '' || $value === null) ? $param['default'] : $value;
+            $value =
+                $value === '' || $value === null ? $param['default'] : $value;
 
             $this->validate($key, $param, $value);
             $hook->setParamValue($key, $value);
@@ -376,7 +471,9 @@ class Server
         }
 
         foreach ($hook->getInjections() as $key => $injection) {
-            $arguments[$injection['order']] = $this->getResource($injection['name']);
+            $arguments[$injection['order']] = $this->getResource(
+                $injection['name'],
+            );
         }
 
         return $arguments;
@@ -401,15 +498,25 @@ class Server
             $validator = $param['validator']; // checking whether the class exists
 
             if (\is_callable($validator)) {
-                $validator = \call_user_func_array($validator, $this->getResources($param['injections']));
+                $validator = \call_user_func_array(
+                    $validator,
+                    $this->getResources($param['injections']),
+                );
             }
 
-            if (!$validator instanceof Validator) { // is the validator object an instance of the Validator class
-                throw new Exception('Validator object is not an instance of the Validator class', 500);
+            if (!$validator instanceof Validator) {
+                // is the validator object an instance of the Validator class
+                throw new Exception(
+                    'Validator object is not an instance of the Validator class',
+                    500,
+                );
             }
 
             if (!$validator->isValid($value)) {
-                throw new Exception('Invalid ' .$key . ': ' . $validator->getDescription(), 400);
+                throw new Exception(
+                    'Invalid ' . $key . ': ' . $validator->getDescription(),
+                    400,
+                );
             }
         } elseif (!$param['optional']) {
             throw new Exception("Param $key is not optional.", 400);
