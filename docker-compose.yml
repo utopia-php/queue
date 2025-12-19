@@ -60,7 +60,7 @@ services:
       - "6379:6379"
 
   redis-cluster-0:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -77,9 +77,10 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-1:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -87,9 +88,10 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-2:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -97,9 +99,10 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   redis-cluster-3:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -107,6 +110,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
       start_interval: 1s
+      start_period: 0s
 
   amqp:
     image: rabbitmq:4
@@ -117,3 +121,4 @@ services:
     healthcheck:
       test: [ "CMD", "rabbitmqctl", "node_health_check" ]
       start_interval: 1s
+      start_period: 0s
