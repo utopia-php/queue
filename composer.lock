@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bf4134fee204c8991cb89b9bb3814a97",
+    "content-hash": "65969e3acad5417806c2128aef929e66",
     "packages": [
         {
             "name": "brick/math",
@@ -2273,20 +2273,20 @@
         },
         {
             "name": "utopia-php/fetch",
-            "version": "0.4.2",
+            "version": "0.5.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/fetch.git",
-                "reference": "83986d1be75a2fae4e684107fe70dd78a8e19b77"
+                "reference": "a96a010e1c273f3888765449687baf58cbc61fcd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/fetch/zipball/83986d1be75a2fae4e684107fe70dd78a8e19b77",
-                "reference": "83986d1be75a2fae4e684107fe70dd78a8e19b77",
+                "url": "https://api.github.com/repos/utopia-php/fetch/zipball/a96a010e1c273f3888765449687baf58cbc61fcd",
+                "reference": "a96a010e1c273f3888765449687baf58cbc61fcd",
                 "shasum": ""
             },
             "require": {
-                "php": ">=8.0"
+                "php": ">=8.1"
             },
             "require-dev": {
                 "laravel/pint": "^1.5.0",
@@ -2306,9 +2306,9 @@
             "description": "A simple library that provides an interface for making HTTP Requests.",
             "support": {
                 "issues": "https://github.com/utopia-php/fetch/issues",
-                "source": "https://github.com/utopia-php/fetch/tree/0.4.2"
+                "source": "https://github.com/utopia-php/fetch/tree/0.5.1"
             },
-            "time": "2025-04-25T13:48:02+00:00"
+            "time": "2025-12-18T16:25:10+00:00"
         },
         {
             "name": "utopia-php/framework",
@@ -4540,5 +4540,5 @@
     "platform-dev": {
         "ext-redis": "*"
     },
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
