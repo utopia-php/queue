@@ -60,7 +60,7 @@ services:
       - "6379:6379"
 
   redis-cluster-0:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -79,7 +79,7 @@ services:
       start_interval: 1s
 
   redis-cluster-1:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -89,7 +89,7 @@ services:
       start_interval: 1s
 
   redis-cluster-2:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
@@ -99,7 +99,7 @@ services:
       start_interval: 1s
 
   redis-cluster-3:
-    image: docker.io/bitnami/redis-cluster:7.4
+    image: docker.io/bitnamilegacy/redis-cluster:7.4
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
