@@ -47,9 +47,4 @@ class Workerman extends Adapter
 
         return $this;
     }
-
-    public function getNative(): Worker
-    {
-        return $this->worker;
-    }
 }

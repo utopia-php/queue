@@ -169,6 +169,12 @@ class Redis implements Connection
         }
     }
 
+    public function close(): void
+    {
+        $this->redis?->close();
+        $this->redis = null;
+    }
+
     protected function getRedis(): \Redis
     {
         if ($this->redis) {

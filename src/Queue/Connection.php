@@ -25,4 +25,5 @@ interface Connection
     public function increment(string $key): int;
     public function decrement(string $key): int;
     public function ping(): bool;
+    public function close(): void;
 }
