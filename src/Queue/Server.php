@@ -9,7 +9,7 @@ use Utopia\Http\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
 use Utopia\Telemetry\Histogram;
-use Utopia\Http\Validator;
+use Utopia\Validator;
 
 class Server
 {
