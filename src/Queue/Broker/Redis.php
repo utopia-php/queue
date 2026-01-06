@@ -4,6 +4,7 @@ namespace Utopia\Queue\Broker;
 
 use Utopia\Queue\Connection;
 use Utopia\Queue\Consumer;
+use Utopia\Queue\Error\Retryable;
 use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
@@ -12,8 +13,10 @@ class Redis implements Publisher, Consumer
 {
     private bool $closed = false;
 
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly ?int $maxRetries = null
+    ) {
     }
 
     public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
@@ -63,6 +66,27 @@ class Redis implements Publisher, Consumer
 
 
                 $successCallback($message);
+            } catch (Retryable $e) {
+                /**
+                 * Re-queue the job if max retries not exceeded.
+                 */
+                $shouldRetry = $this->maxRetries === null || $message->getRetries() < $this->maxRetries;
+
+                if ($shouldRetry) {
+                    // Increment retry count and re-queue
+                    $messageData = $message->asArray();
+                    $messageData['retries'] = $message->getRetries() + 1;
+                    $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $messageData);
+                } else {
+                    // Max retries exceeded, move to failed queue
+                    $this->connection->leftPush("{$queue->namespace}.failed.{$queue->name}", $message->getPid());
+                    $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.failed");
+                }
+
+                // Remove job from jobs list in either case
+                $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}");
+
+                $errorCallback($message, $e);
             } catch (\Throwable $th) {
                 /**
                  * Move failed Job to Failed list.
@@ -73,6 +97,11 @@ class Redis implements Publisher, Consumer
                  * Increment Failed Jobs from Stats.
                  */
                 $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.failed");
+
+                /**
+                 * Remove Jobs on non-retryable errors.
+                 */
+                $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}");
 
                 $errorCallback($message, $th);
             } finally {
@@ -100,7 +129,8 @@ class Redis implements Publisher, Consumer
             'pid' => \uniqid(more_entropy: true),
             'queue' => $queue->name,
             'timestamp' => time(),
-            'payload' => $payload
+            'payload' => $payload,
+            'retries' => 0
         ];
         return $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }

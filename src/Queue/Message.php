@@ -8,6 +8,7 @@ class Message
     protected string $queue;
     protected int $timestamp;
     protected array $payload;
+    protected int $retries = 0;
 
     public function __construct(array $array = [])
     {
@@ -19,6 +20,7 @@ class Message
         $this->queue = $array['queue'];
         $this->timestamp = $array['timestamp'];
         $this->payload = $array['payload'] ?? [];
+        $this->retries = $array['retries'] ?? 0;
     }
 
     public function setPid(string $pid): self
@@ -49,6 +51,13 @@ class Message
         return $this;
     }
 
+    public function setRetries(int $retries): self
+    {
+        $this->retries = $retries;
+
+        return $this;
+    }
+
     public function getPid(): string
     {
         return $this->pid;
@@ -69,6 +78,11 @@ class Message
         return $this->payload;
     }
 
+    public function getRetries(): int
+    {
+        return $this->retries;
+    }
+
     public function asArray(): array
     {
         return [
@@ -76,6 +90,7 @@ class Message
             'queue' => $this->queue,
             'timestamp' => $this->timestamp,
             'payload' => $this->payload ?? null,
+            'retries' => $this->retries,
         ];
     }
 }
