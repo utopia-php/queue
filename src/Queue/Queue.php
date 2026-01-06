@@ -9,7 +9,7 @@ readonly class Queue
         public string $namespace = 'utopia-queue',
     ) {
         if (empty($this->name)) {
-            throw new \InvalidArgumentException("Cannot create queue with empty name.");
+            throw new \InvalidArgumentException('Cannot create queue with empty name.');
         }
     }
 }

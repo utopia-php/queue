@@ -40,10 +40,4 @@ abstract class Adapter
      * @return self
      */
     abstract public function workerStop(callable $callback): self;
-
-    /**
-     * Returns the native server object from the Adapter.
-     * @return mixed
-     */
-    abstract public function getNative(): mixed;
 }

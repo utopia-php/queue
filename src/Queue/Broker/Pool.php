@@ -30,26 +30,36 @@ readonly class Pool implements Publisher, Consumer
         return $this->delegatePublish(__FUNCTION__, \func_get_args());
     }
 
-    public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
+    public function consume(
+        Queue $queue,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+    ): void {
         $this->delegateConsumer(__FUNCTION__, \func_get_args());
     }
 
     public function close(): void
     {
-        $this->delegateConsumer(__FUNCTION__, \func_get_args());
+        // TODO: Implement closing all connections in the pool
     }
 
     protected function delegatePublish(string $method, array $args): mixed
     {
-        return $this->publisher?->use(function (Publisher $adapter) use ($method, $args) {
+        return $this->publisher?->use(function (Publisher $adapter) use (
+            $method,
+            $args,
+        ) {
             return $adapter->$method(...$args);
         });
     }
 
     protected function delegateConsumer(string $method, array $args): mixed
     {
-        return $this->consumer?->use(function (Consumer $adapter) use ($method, $args) {
+        return $this->consumer?->use(function (Consumer $adapter) use (
+            $method,
+            $args,
+        ) {
             return $adapter->$method(...$args);
         });
     }
