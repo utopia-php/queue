@@ -44,6 +44,7 @@ class AMQP implements Publisher, Consumer
         private readonly int $heartbeat = 0,
         private readonly float $connectTimeout = 3.0,
         private readonly float $readWriteTimeout = 3.0,
+        private readonly ?int $maxRetries = null,
     ) {
     }
 
@@ -74,7 +75,7 @@ class AMQP implements Publisher, Consumer
 
     public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        $processMessage = function (AMQPMessage $amqpMessage) use ($messageCallback, $successCallback, $errorCallback) {
+        $processMessage = function (AMQPMessage $amqpMessage) use ($queue, $messageCallback, $successCallback, $errorCallback) {
             try {
                 $nextMessage = json_decode($amqpMessage->getBody(), associative: true) ?? false;
                 if (!$nextMessage) {
@@ -93,7 +94,28 @@ class AMQP implements Publisher, Consumer
                 };
                 $successCallback($message);
             } catch (Retryable $e) {
-                $amqpMessage->nack(requeue: true);
+                /**
+                 * Re-queue the job if max retries not exceeded.
+                 */
+                $shouldRetry = $this->maxRetries === null || $message->getRetries() < $this->maxRetries;
+
+                if ($shouldRetry) {
+                    // Increment retry count and re-publish
+                    $messageData = $message->asArray();
+                    $messageData['retries'] = $message->getRetries() + 1;
+
+                    $newMessage = new AMQPMessage(
+                        json_encode($messageData),
+                        ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
+                    );
+
+                    $amqpMessage->getChannel()->basic_publish($newMessage, $queue->namespace, routing_key: $queue->name);
+                    $amqpMessage->ack();
+                } else {
+                    // Max retries exceeded, send to dead-letter-exchange (failed queue)
+                    $amqpMessage->nack();
+                }
+
                 $errorCallback($message ?? null, $e);
             } catch (\Throwable $th) {
                 $amqpMessage->nack();
@@ -140,7 +162,8 @@ class AMQP implements Publisher, Consumer
             'pid' => \uniqid(more_entropy: true),
             'queue' => $queue->name,
             'timestamp' => time(),
-            'payload' => $payload
+            'payload' => $payload,
+            'retries' => 0
         ];
         $message = new AMQPMessage(json_encode($payload), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
         $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
