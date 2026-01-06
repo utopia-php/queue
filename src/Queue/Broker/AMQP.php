@@ -97,22 +97,27 @@ class AMQP implements Publisher, Consumer
                 /**
                  * Re-queue the job if max retries not exceeded.
                  */
-                $shouldRetry = $this->maxRetries === null || $message->getRetries() < $this->maxRetries;
+                if (isset($message)) {
+                    $shouldRetry = $this->maxRetries === null || $message->getRetries() < $this->maxRetries;
 
-                if ($shouldRetry) {
-                    // Increment retry count and re-publish
-                    $messageData = $message->asArray();
-                    $messageData['retries'] = $message->getRetries() + 1;
+                    if ($shouldRetry) {
+                        // Increment retry count and re-publish
+                        $messageData = $message->asArray();
+                        $messageData['retries'] = $message->getRetries() + 1;
 
-                    $newMessage = new AMQPMessage(
-                        json_encode($messageData),
-                        ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
-                    );
+                        $newMessage = new AMQPMessage(
+                            json_encode($messageData),
+                            ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
+                        );
 
-                    $amqpMessage->getChannel()->basic_publish($newMessage, $queue->namespace, routing_key: $queue->name);
-                    $amqpMessage->ack();
+                        $amqpMessage->getChannel()->basic_publish($newMessage, $queue->namespace, routing_key: $queue->name);
+                        $amqpMessage->ack();
+                    } else {
+                        // Max retries exceeded, send to dead-letter-exchange (failed queue)
+                        $amqpMessage->nack();
+                    }
                 } else {
-                    // Max retries exceeded, send to dead-letter-exchange (failed queue)
+                    // Message wasn't created yet, treat as non-retryable
                     $amqpMessage->nack();
                 }
 

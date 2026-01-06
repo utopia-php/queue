@@ -70,23 +70,25 @@ class Redis implements Publisher, Consumer
                 /**
                  * Re-queue the job if max retries not exceeded.
                  */
-                $shouldRetry = $this->maxRetries === null || $message->getRetries() < $this->maxRetries;
+                if (isset($message)) {
+                    $shouldRetry = $this->maxRetries === null || $message->getRetries() < $this->maxRetries;
 
-                if ($shouldRetry) {
-                    // Increment retry count and re-queue
-                    $messageData = $message->asArray();
-                    $messageData['retries'] = $message->getRetries() + 1;
-                    $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $messageData);
-                } else {
-                    // Max retries exceeded, move to failed queue
-                    $this->connection->leftPush("{$queue->namespace}.failed.{$queue->name}", $message->getPid());
-                    $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.failed");
+                    if ($shouldRetry) {
+                        // Increment retry count and re-queue
+                        $messageData = $message->asArray();
+                        $messageData['retries'] = $message->getRetries() + 1;
+                        $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $messageData);
+                    } else {
+                        // Max retries exceeded, move to failed queue
+                        $this->connection->leftPush("{$queue->namespace}.failed.{$queue->name}", $message->getPid());
+                        $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.failed");
+                    }
+
+                    // Remove job from jobs list in either case
+                    $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}");
                 }
 
-                // Remove job from jobs list in either case
-                $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}");
-
-                $errorCallback($message, $e);
+                $errorCallback($message ?? null, $e);
             } catch (\Throwable $th) {
                 /**
                  * Move failed Job to Failed list.
