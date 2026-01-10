@@ -8,5 +8,10 @@ parameters:
     scanDirectories:
         - vendor/swoole
 
+    # phpredis stubs don't include Redis Streams methods (xAdd, xGroup, etc.)
+    # These methods exist at runtime but PHPStan's stubs are incomplete
+    # See: https://github.com/phpredis/phpredis-stubs/issues
     ignoreErrors:
-        - '#Call to an undefined method RedisCluster::x(Add|Group|ReadGroup|Ack|Pending|Claim|AutoClaim|Del|Len|Trim|Info|Range|RevRange)\(\)#'
+        -
+            message: '#Call to an undefined method RedisCluster::(x(Add|Group|ReadGroup|Ack|Pending|Claim|AutoClaim|Del|Len|Trim|Info|Range|RevRange)|eval)\(\)#'
+            path: src/Queue/Connection/RedisStreamCluster.php
