@@ -3,9 +3,9 @@ services:
     container_name: tests
     build: .
     volumes:
-      - ./vendor:/usr/local/src/vendor
-      - ./src:/usr/local/src/src
-      - ./tests:/usr/local/src/tests
+      - ./vendor:/usr/src/code/vendor
+      - ./src:/usr/src/code/src
+      - ./tests:/usr/src/code/tests
     depends_on:
       - swoole
       - swoole-amqp
