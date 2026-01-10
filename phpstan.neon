@@ -7,3 +7,6 @@ parameters:
 
     scanDirectories:
         - vendor/swoole
+
+    ignoreErrors:
+        - '#Call to an undefined method RedisCluster::x(Add|Group|ReadGroup|Ack|Pending|Claim|AutoClaim|Del|Len|Trim|Info|Range|RevRange)\(\)#'
