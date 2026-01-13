@@ -5,7 +5,7 @@ namespace Utopia\Queue;
 use Exception;
 use Throwable;
 use Utopia\Console;
-use Utopia\Hook;
+use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
 use Utopia\Telemetry\Histogram;
@@ -470,6 +470,7 @@ class Server
             $arguments[$param['order']] = $value;
         }
 
+        // TODO: Get injections doesn't exist on Utopia\Servers\Hook
         foreach ($hook->getInjections() as $key => $injection) {
             $arguments[$injection['order']] = $this->getResource(
                 $injection['name'],
