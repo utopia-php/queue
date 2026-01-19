@@ -26,6 +26,7 @@
     "require": {
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
+        "dragonmantank/cron-expression": "^3.0",
         "utopia-php/console": "0.0.*",
         "utopia-php/framework": "0.33.*",
         "utopia-php/telemetry": "*",

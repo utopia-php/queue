@@ -10,6 +10,7 @@ services:
       - swoole
       - swoole-amqp
       - swoole-redis-cluster
+      - swoole-redis-streams
       - workerman
 
   swoole:
@@ -34,6 +35,17 @@ services:
     depends_on:
       redis-cluster-0:
         condition: service_healthy
+
+  swoole-redis-streams:
+    container_name: swoole-redis-streams
+    build: ./tests/Queue/servers/SwooleRedisStreams/.
+    command: php /usr/src/code/tests/Queue/servers/SwooleRedisStreams/worker.php
+    volumes:
+      - ./vendor:/usr/src/code/vendor
+      - ./src:/usr/src/code/src
+      - ./tests:/usr/src/code/tests
+    depends_on:
+      - redis
 
   swoole-amqp:
     container_name: swoole-amqp
@@ -61,8 +73,6 @@ services:
   redis:
     container_name: redis
     image: "redis:alpine"
-    ports:
-      - "6379:6379"
 
   redis-cluster-0:
     image: docker.io/bitnamilegacy/redis-cluster:7.4
