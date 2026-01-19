@@ -39,7 +39,8 @@
         "phpunit/phpunit": "^9.5.5",
         "laravel/pint": "^0.2.3",
         "workerman/workerman": "^4.0",
-        "phpstan/phpstan": "^1.8"
+        "phpstan/phpstan": "^1.8",
+        "jetbrains/phpstorm-stubs": "dev-master"
     },
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
