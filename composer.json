@@ -27,10 +27,11 @@
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
         "utopia-php/console": "0.0.*",
-        "utopia-php/framework": "0.33.*",
-        "utopia-php/telemetry": "*",
+        "utopia-php/di": "dev-chore-hook-tests-readme",
+        "utopia-php/fetch": "0.5.*",
         "utopia-php/pools": "1.*",
-        "utopia-php/fetch": "0.5.*"
+        "utopia-php/telemetry": "*",
+        "utopia-php/validators": "0.2.*"
     },
     "require-dev": {
         "ext-redis": "*",
