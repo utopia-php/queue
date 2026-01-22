@@ -12,7 +12,10 @@
         }
     ],
     "autoload": {
-        "psr-4": {"Utopia\\Queue\\": "src/Queue"}
+        "psr-4": {
+            "Utopia\\Queue\\": "src/Queue",
+            "Utopia\\DI\\": "src/DI"
+        }
     },
     "autoload-dev": {
         "psr-4": {"Tests\\E2E\\": "tests/Queue/E2E"}
@@ -27,7 +30,7 @@
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
         "utopia-php/console": "0.0.*",
-        "utopia-php/framework": "0.34.*",
+        "utopia-php/di": "dev-chore-hook-tests-readme",
         "utopia-php/telemetry": "*",
         "utopia-php/pools": "0.8.*",
         "utopia-php/fetch": "0.4.*"
