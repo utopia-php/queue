@@ -111,7 +111,7 @@ class AMQP implements Publisher, Consumer
             $channel->exchange_declare("{$queue->namespace}.failed", AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
 
             // 2. Declare the working queue and configure the DLX for receiving rejected messages.
-            $channel->queue_declare($queue->name, durable: true, auto_delete: false, arguments: new AMQPTable(array_merge($this->queueArguments, ["x-dead-letter-exchange" => "{$queue->namespace}.failed"])));
+            $channel->queue_declare($queue->name, durable: true, auto_delete: false, arguments: new AMQPTable(array_merge($this->queueArguments, ['x-dead-letter-exchange' => "{$queue->namespace}.failed"])));
             $channel->queue_bind($queue->name, $queue->namespace, routing_key: $queue->name);
 
             // 3. Declare the dead-letter-queue and bind it to the DLX.
@@ -131,6 +131,7 @@ class AMQP implements Publisher, Consumer
 
     public function close(): void
     {
+        $this->channel?->stopConsume();
         $this->channel?->getConnection()?->close();
     }
 
@@ -161,7 +162,7 @@ class AMQP implements Publisher, Consumer
     {
         $queueName = $queue->name;
         if ($failedJobs) {
-            $queueName = $queueName . ".failed";
+            $queueName = $queueName . '.failed';
         }
 
         $client = new Client();

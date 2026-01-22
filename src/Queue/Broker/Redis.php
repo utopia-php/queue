@@ -10,6 +10,8 @@ use Utopia\Queue\Queue;
 
 class Redis implements Publisher, Consumer
 {
+    private const int POP_TIMEOUT = 2;
+
     private bool $closed = false;
 
     public function __construct(private readonly Connection $connection)
@@ -22,7 +24,15 @@ class Redis implements Publisher, Consumer
             /**
              * Waiting for next Job.
              */
-            $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", 5);
+            try {
+                $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
+            } catch (\RedisException $e) {
+                if ($this->closed) {
+                    break;
+                }
+
+                throw $e;
+            }
 
             if (!$nextMessage) {
                 continue;
@@ -115,7 +125,7 @@ class Redis implements Publisher, Consumer
         $processed = 0;
 
         while (true) {
-            $pid = $this->connection->rightPop("{$queue->namespace}.failed.{$queue->name}", 5);
+            $pid = $this->connection->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
 
             // No more jobs to retry
             if ($pid === false) {
