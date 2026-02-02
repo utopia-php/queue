@@ -45,7 +45,7 @@ class Redis implements Publisher, Consumer
             /**
              * Move Job to Jobs and it's PID to the processing list.
              */
-            $this->connection->setArray("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}", $nextMessage);
+            $this->connection->setArray("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}", $nextMessage, $queue->jobTtl);
             $this->connection->leftPush("{$queue->namespace}.processing.{$queue->name}", $message->getPid());
 
             /**
