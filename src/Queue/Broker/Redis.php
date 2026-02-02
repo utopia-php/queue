@@ -150,12 +150,6 @@ class Redis implements Publisher, Consumer
             }
 
             $this->enqueue($queue, $job->getPayload());
-
-            /**
-             * Remove old job record after re-enqueueing to prevent memory leak.
-             */
-            $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
-
             $processed++;
         }
     }
