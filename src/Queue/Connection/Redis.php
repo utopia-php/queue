@@ -119,13 +119,16 @@ class Redis implements Connection
         return $this->getRedis()->move($queue, $destination);
     }
 
-    public function setArray(string $key, array $value): bool
+    public function setArray(string $key, array $value, int $ttl = 0): bool
     {
-        return $this->set($key, json_encode($value));
+        return $this->set($key, json_encode($value), $ttl);
     }
 
-    public function set(string $key, string $value): bool
+    public function set(string $key, string $value, int $ttl = 0): bool
     {
+        if ($ttl > 0) {
+            return $this->getRedis()->setex($key, $ttl, $value);
+        }
         return $this->getRedis()->set($key, $value);
     }
 
