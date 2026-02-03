@@ -12,5 +12,8 @@
         <testsuite name="E2E">
             <directory>./tests/Queue/E2E/Adapter</directory>
         </testsuite>
+        <testsuite name="Unit">
+            <directory>./tests/Queue/Unit</directory>
+        </testsuite>
     </testsuites>
 </phpunit>
