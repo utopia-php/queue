@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0b0a5294e23f3143325ece8a2d8540f1",
+    "content-hash": "9ab39d905882f9020e545eba23ac4b98",
     "packages": [
         {
             "name": "brick/math",
@@ -2367,16 +2367,16 @@
         },
         {
             "name": "utopia-php/servers",
-            "version": "0.2.2",
+            "version": "0.2.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/servers.git",
-                "reference": "0ebdcdbfbccee7badc64d615889f8f4f3481e0f3"
+                "reference": "84069bf28b0cfd4f7a22949bc575271ade0a9172"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/servers/zipball/0ebdcdbfbccee7badc64d615889f8f4f3481e0f3",
-                "reference": "0ebdcdbfbccee7badc64d615889f8f4f3481e0f3",
+                "url": "https://api.github.com/repos/utopia-php/servers/zipball/84069bf28b0cfd4f7a22949bc575271ade0a9172",
+                "reference": "84069bf28b0cfd4f7a22949bc575271ade0a9172",
                 "shasum": ""
             },
             "require": {
@@ -2415,9 +2415,9 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/servers/issues",
-                "source": "https://github.com/utopia-php/servers/tree/0.2.2"
+                "source": "https://github.com/utopia-php/servers/tree/0.2.3"
             },
-            "time": "2025-11-26T12:27:33+00:00"
+            "time": "2026-02-03T05:50:20+00:00"
         },
         {
             "name": "utopia-php/telemetry",
