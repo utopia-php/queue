@@ -27,7 +27,7 @@
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
         "utopia-php/console": "0.0.*",
-        "utopia-php/di": "dev-chore-hook-tests-readme",
+        "utopia-php/servers": "0.2.*",
         "utopia-php/fetch": "0.5.*",
         "utopia-php/pools": "1.*",
         "utopia-php/telemetry": "*",
