@@ -4,7 +4,6 @@ namespace Utopia\Queue;
 
 use Exception;
 use Throwable;
-use Utopia\Console;
 use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
@@ -267,7 +266,6 @@ class Server
     {
         try {
             $this->adapter->workerStart(function (string $workerId) {
-                Console::success("[Worker] Worker {$workerId} started.");
                 self::setResource('workerId', fn () => $workerId);
 
                 foreach ($this->workerStartHooks as $hook) {
@@ -278,9 +276,6 @@ class Server
                     $this->adapter->queue,
                     function (Message $message) {
                         $receivedAtTimestamp = microtime(true);
-                        Console::info(
-                            "[Job] Received Job ({$message->getPid()}).",
-                        );
                         try {
                             $waitDuration =
                                 microtime(true) - $message->getTimestamp();
@@ -353,18 +348,8 @@ class Server
                                 }
                             }
                         }
-                        Console::success(
-                            "[Job] ({$message->getPid()}) successfully run.",
-                        );
                     },
                     function (?Message $message, Throwable $th) {
-                        Console::error(
-                            "[Job] ({$message?->getPid()}) failed to run.",
-                        );
-                        Console::error(
-                            "[Job] ({$message?->getPid()}) {$th->getMessage()}",
-                        );
-
                         self::setResource('error', fn () => $th);
 
                         foreach ($this->errorHooks as $hook) {
@@ -383,17 +368,11 @@ class Server
                         try {
                             $hook->getAction()(...$this->getArguments($hook));
                         } catch (Throwable $e) {
-                            Console::error(
-                                "[Worker] Worker {$workerId} workerStop hook failed: {$e->getMessage()}",
-                            );
                         }
                     }
                 } finally {
                     // Always close consumer connection, even if hooks throw
                     $this->adapter->consumer->close();
-                    Console::success(
-                        "[Worker] Worker {$workerId} stopped.",
-                    );
                 }
             });
 
