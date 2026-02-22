@@ -11,7 +11,7 @@ class RedisCluster implements Connection
     protected float $readTimeout;
     protected ?\RedisCluster $redis = null;
 
-    public function __construct(array $seeds, float $connectTimeout = 5, float $readTimeout = 5)
+    public function __construct(array $seeds, float $connectTimeout = 5, float $readTimeout = -1)
     {
         $this->seeds = $seeds;
         $this->connectTimeout = $connectTimeout;
@@ -28,9 +28,22 @@ class RedisCluster implements Connection
 
         return json_decode($response, true);
     }
+
     public function rightPopLeftPush(string $queue, string $destination, int $timeout): string|false
     {
-        $response = $this->getRedis()->bRPopLPush($queue, $destination, $timeout);
+        $redis = $this->getRedis();
+        $prev = $redis->getOption(\RedisCluster::OPT_READ_TIMEOUT);
+        $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
+        try {
+            $response = $redis->bRPopLPush($queue, $destination, $timeout);
+        } catch (\RedisException $e) {
+            $this->redis = null;
+            throw $e;
+        } finally {
+            if ($this->redis) {
+                $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $prev);
+            }
+        }
 
         if (!$response) {
             return false;
@@ -38,6 +51,7 @@ class RedisCluster implements Connection
 
         return $response;
     }
+
     public function rightPushArray(string $queue, array $value): bool
     {
         return !!$this->getRedis()->rPush($queue, json_encode($value));
@@ -71,7 +85,19 @@ class RedisCluster implements Connection
 
     public function rightPop(string $queue, int $timeout): string|false
     {
-        $response = $this->getRedis()->brPop([$queue], $timeout);
+        $redis = $this->getRedis();
+        $prev = $redis->getOption(\RedisCluster::OPT_READ_TIMEOUT);
+        $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
+        try {
+            $response = $redis->brPop([$queue], $timeout);
+        } catch (\RedisException $e) {
+            $this->redis = null;
+            throw $e;
+        } finally {
+            if ($this->redis) {
+                $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $prev);
+            }
+        }
 
         if (empty($response)) {
             return false;
@@ -82,18 +108,30 @@ class RedisCluster implements Connection
 
     public function leftPopArray(string $queue, int $timeout): array|false
     {
-        $response = $this->getRedis()->blPop($queue, $timeout);
+        $response = $this->leftPop($queue, $timeout);
 
-        if (empty($response)) {
+        if ($response === false) {
             return false;
         }
 
-        return json_decode($response[1], true) ?? false;
+        return json_decode($response, true) ?? false;
     }
 
     public function leftPop(string $queue, int $timeout): string|false
     {
-        $response = $this->getRedis()->blPop($queue, $timeout);
+        $redis = $this->getRedis();
+        $prev = $redis->getOption(\RedisCluster::OPT_READ_TIMEOUT);
+        $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
+        try {
+            $response = $redis->blPop($queue, $timeout);
+        } catch (\RedisException $e) {
+            $this->redis = null;
+            throw $e;
+        } finally {
+            if ($this->redis) {
+                $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $prev);
+            }
+        }
 
         if (empty($response)) {
             return false;
@@ -187,5 +225,23 @@ class RedisCluster implements Connection
 
         $this->redis = new \RedisCluster(null, $this->seeds, $this->connectTimeout, $this->readTimeout);
         return $this->redis;
+    }
+
+    /**
+     * Returns the read timeout to use for a blocking command.
+     * Ensures the socket does not time out before Redis returns.
+     * A $timeout of 0 means block indefinitely, so we use -1 (infinite).
+     */
+    private function blockingReadTimeout(int $timeout): float
+    {
+        if ($timeout <= 0) {
+            return -1;
+        }
+        // Add 1s buffer so the socket outlasts the Redis-side block timeout.
+        // Also respect an explicit readTimeout if it is already larger.
+        if ($this->readTimeout < 0) {
+            return -1;
+        }
+        return max((float)($timeout + 1), $this->readTimeout);
     }
 }
