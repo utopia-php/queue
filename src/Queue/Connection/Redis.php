@@ -10,14 +10,18 @@ class Redis implements Connection
     protected int $port;
     protected ?string $user;
     protected ?string $password;
+    protected float $connectTimeout;
+    protected float $readTimeout;
     protected ?\Redis $redis = null;
 
-    public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null)
+    public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null, float $connectTimeout = 5, float $readTimeout = 5)
     {
         $this->host = $host;
         $this->port = $port;
         $this->user = $user;
         $this->password = $password;
+        $this->connectTimeout = $connectTimeout;
+        $this->readTimeout = $readTimeout;
     }
 
     public function rightPopLeftPushArray(string $queue, string $destination, int $timeout): array|false
@@ -186,7 +190,8 @@ class Redis implements Connection
 
         $this->redis = new \Redis();
 
-        $this->redis->connect($this->host, $this->port);
+        $this->redis->connect($this->host, $this->port, $this->connectTimeout);
+        $this->redis->setOption(\Redis::OPT_READ_TIMEOUT, $this->readTimeout);
 
         return $this->redis;
     }

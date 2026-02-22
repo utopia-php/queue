@@ -7,11 +7,15 @@ use Utopia\Queue\Connection;
 class RedisCluster implements Connection
 {
     protected array $seeds;
+    protected float $connectTimeout;
+    protected float $readTimeout;
     protected ?\RedisCluster $redis = null;
 
-    public function __construct(array $seeds)
+    public function __construct(array $seeds, float $connectTimeout = 5, float $readTimeout = 5)
     {
         $this->seeds = $seeds;
+        $this->connectTimeout = $connectTimeout;
+        $this->readTimeout = $readTimeout;
     }
 
     public function rightPopLeftPushArray(string $queue, string $destination, int $timeout): array|false
@@ -181,7 +185,7 @@ class RedisCluster implements Connection
             return $this->redis;
         }
 
-        $this->redis = new \RedisCluster(null, $this->seeds);
+        $this->redis = new \RedisCluster(null, $this->seeds, $this->connectTimeout, $this->readTimeout);
         return $this->redis;
     }
 }
