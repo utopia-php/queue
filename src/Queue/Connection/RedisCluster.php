@@ -6,6 +6,11 @@ use Utopia\Queue\Connection;
 
 class RedisCluster implements Connection
 {
+    // OPT_READ_TIMEOUT (3) is defined on \Redis but not on \RedisCluster in all
+    // environments (e.g. Swoole replaces RedisCluster with its own coroutine-aware
+    // class that omits the constant). The numeric value is stable across phpredis.
+    private const OPT_READ_TIMEOUT = 3;
+
     protected array $seeds;
     protected float $connectTimeout;
     protected float $readTimeout;
@@ -42,8 +47,8 @@ class RedisCluster implements Connection
     public function rightPopLeftPush(string $queue, string $destination, int $timeout): string|false
     {
         $redis = $this->getRedis();
-        $prev = $redis->getOption(\RedisCluster::OPT_READ_TIMEOUT);
-        $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
+        $prev = $redis->getOption(self::OPT_READ_TIMEOUT);
+        $redis->setOption(self::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
         try {
             $response = $redis->bRPopLPush($queue, $destination, $timeout);
         } catch (\RedisException $e) {
@@ -51,7 +56,7 @@ class RedisCluster implements Connection
             throw $e;
         } finally {
             if ($this->redis) {
-                $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $prev);
+                $redis->setOption(self::OPT_READ_TIMEOUT, $prev);
             }
         }
 
@@ -96,8 +101,8 @@ class RedisCluster implements Connection
     public function rightPop(string $queue, int $timeout): string|false
     {
         $redis = $this->getRedis();
-        $prev = $redis->getOption(\RedisCluster::OPT_READ_TIMEOUT);
-        $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
+        $prev = $redis->getOption(self::OPT_READ_TIMEOUT);
+        $redis->setOption(self::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
         try {
             $response = $redis->brPop([$queue], $timeout);
         } catch (\RedisException $e) {
@@ -105,7 +110,7 @@ class RedisCluster implements Connection
             throw $e;
         } finally {
             if ($this->redis) {
-                $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $prev);
+                $redis->setOption(self::OPT_READ_TIMEOUT, $prev);
             }
         }
 
@@ -130,8 +135,8 @@ class RedisCluster implements Connection
     public function leftPop(string $queue, int $timeout): string|false
     {
         $redis = $this->getRedis();
-        $prev = $redis->getOption(\RedisCluster::OPT_READ_TIMEOUT);
-        $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
+        $prev = $redis->getOption(self::OPT_READ_TIMEOUT);
+        $redis->setOption(self::OPT_READ_TIMEOUT, $this->blockingReadTimeout($timeout));
         try {
             $response = $redis->blPop($queue, $timeout);
         } catch (\RedisException $e) {
@@ -139,7 +144,7 @@ class RedisCluster implements Connection
             throw $e;
         } finally {
             if ($this->redis) {
-                $redis->setOption(\RedisCluster::OPT_READ_TIMEOUT, $prev);
+                $redis->setOption(self::OPT_READ_TIMEOUT, $prev);
             }
         }
 
