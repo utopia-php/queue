@@ -11,6 +11,16 @@ class RedisCluster implements Connection
     protected float $readTimeout;
     protected ?\RedisCluster $redis = null;
 
+    /**
+     * @param array $seeds          Cluster seed nodes in "host:port" format.
+     * @param float $connectTimeout Connection timeout in seconds per node (0 = no timeout).
+     * @param float $readTimeout    Socket read timeout in seconds (-1 = infinite).
+     *                              Use -1 for consumers so blocking commands (BRPOP/BLPOP)
+     *                              are not interrupted; the per-call blockingReadTimeout()
+     *                              helper adds a safety buffer automatically.
+     *                              Use a positive value (e.g. 5) for publishers so a hung
+     *                              node fails fast rather than blocking indefinitely.
+     */
     public function __construct(array $seeds, float $connectTimeout = 5, float $readTimeout = -1)
     {
         $this->seeds = $seeds;

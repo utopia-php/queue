@@ -14,6 +14,19 @@ class Redis implements Connection
     protected float $readTimeout;
     protected ?\Redis $redis = null;
 
+    /**
+     * @param string      $host           Redis host.
+     * @param int         $port           Redis port.
+     * @param string|null $user           Redis ACL username (optional).
+     * @param string|null $password       Redis password (optional).
+     * @param float       $connectTimeout Connection timeout in seconds (0 = no timeout).
+     * @param float       $readTimeout    Socket read timeout in seconds (-1 = infinite).
+     *                                    Use -1 for consumers so blocking commands (BRPOP/BLPOP)
+     *                                    are not interrupted; the per-call blockingReadTimeout()
+     *                                    helper adds a safety buffer automatically.
+     *                                    Use a positive value (e.g. 5) for publishers so a hung
+     *                                    Redis fails fast rather than blocking indefinitely.
+     */
     public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null, float $connectTimeout = 5, float $readTimeout = -1)
     {
         $this->host = $host;
