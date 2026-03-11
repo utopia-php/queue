@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9ab39d905882f9020e545eba23ac4b98",
+    "content-hash": "0f8d5bc14e6ed3374614a47aad797be4",
     "packages": [
         {
             "name": "brick/math",
@@ -2266,16 +2266,16 @@
         },
         {
             "name": "utopia-php/pools",
-            "version": "1.0.2",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/pools.git",
-                "reference": "b7d8dd00306cdd8bf3ff6f1dc90caeaf27dabeb1"
+                "reference": "3634543100957c282d49323f2d644186416dbc2c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/pools/zipball/b7d8dd00306cdd8bf3ff6f1dc90caeaf27dabeb1",
-                "reference": "b7d8dd00306cdd8bf3ff6f1dc90caeaf27dabeb1",
+                "url": "https://api.github.com/repos/utopia-php/pools/zipball/3634543100957c282d49323f2d644186416dbc2c",
+                "reference": "3634543100957c282d49323f2d644186416dbc2c",
                 "shasum": ""
             },
             "require": {
@@ -2288,6 +2288,7 @@
                 "phpunit/phpunit": "11.*",
                 "swoole/ide-helper": "6.*"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -2313,9 +2314,9 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/pools/issues",
-                "source": "https://github.com/utopia-php/pools/tree/1.0.2"
+                "source": "https://github.com/utopia-php/pools/tree/main"
             },
-            "time": "2026-01-28T13:12:36+00:00"
+            "time": "2026-03-11T10:22:08+00:00"
         },
         {
             "name": "utopia-php/servers",
@@ -4494,9 +4495,18 @@
             "time": "2024-11-24T11:45:37+00:00"
         }
     ],
-    "aliases": [],
+    "aliases": [
+        {
+            "package": "utopia-php/pools",
+            "version": "dev-main",
+            "alias": "1.0.4",
+            "alias_normalized": "1.0.4.0"
+        }
+    ],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "utopia-php/pools": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
@@ -4505,5 +4515,5 @@
     "platform-dev": {
         "ext-redis": "*"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
