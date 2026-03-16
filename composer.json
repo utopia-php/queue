@@ -26,6 +26,7 @@
     "require": {
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
+        "utopia-php/di": "0.3.*",
         "utopia-php/servers": "0.3.*",
         "utopia-php/fetch": "0.5.*",
         "utopia-php/pools": "1.*",
