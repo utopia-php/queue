@@ -3,6 +3,7 @@
 namespace Utopia\Queue;
 
 use Exception;
+use Swoole\Coroutine;
 use Throwable;
 use Utopia\DI\Container;
 use Utopia\Servers\Hook;
@@ -214,14 +215,16 @@ class Server
      */
     public function start(): self
     {
-        $this->workerContainer = new Container($this->container);
+        if ($this->coroutines && Coroutine::getCid() !== -1) {
+            Coroutine::getContext()[self::WORKER_CONTAINER_CONTEXT_KEY] = new Container($this->container);
+        }
 
         try {
             $this->adapter->workerStart(function (string $workerId) {
-                $this->workerContainer->set('workerId', fn () => $workerId);
+                $this->getContainer()->set('workerId', fn () => $workerId);
 
                 foreach ($this->workerStartHooks as $hook) {
-                    $hook->getAction()(...$this->getArguments($this->workerContainer, $hook));
+                    $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
                 }
 
                 $this->adapter->consumer->consume(
@@ -322,13 +325,13 @@ class Server
             });
 
             $this->adapter->workerStop(function (string $workerId) {
-                $this->workerContainer->set('workerId', fn () => $workerId);
+                $this->getContainer()->set('workerId', fn () => $workerId);
 
                 try {
                     // Call user-defined workerStop hooks
                     foreach ($this->workerStopHooks as $hook) {
                         try {
-                            $hook->getAction()(...$this->getArguments($this->workerContainer, $hook));
+                            $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
                         } catch (Throwable $e) {
                         }
                     }
