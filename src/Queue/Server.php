@@ -83,6 +83,22 @@ class Server
         $this->setTelemetry(new NoTelemetry());
     }
 
+    /**
+     * Enable or disable coroutine mode for concurrent job processing.
+     *
+     * When enabled, each coroutine gets its own child container via
+     * Swoole\Coroutine::getContext(), preventing shared state between
+     * concurrent jobs. Must be called before start().
+     *
+     * @param bool $enable
+     * @return self
+     */
+    public function setCoroutines(bool $enable): self
+    {
+        $this->coroutines = $enable;
+        return $this;
+    }
+
     public function job(): Job
     {
         $this->job = new Job();
