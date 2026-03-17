@@ -104,7 +104,7 @@ class Redis implements Publisher, Consumer
         $this->closed = true;
     }
 
-    public function enqueue(Queue $queue, array $payload): bool
+    public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
         $payload = [
             'pid' => \uniqid(more_entropy: true),
@@ -112,6 +112,9 @@ class Redis implements Publisher, Consumer
             'timestamp' => time(),
             'payload' => $payload
         ];
+        if ($priority) {
+            return $this->connection->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+        }
         return $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }
 

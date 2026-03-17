@@ -135,7 +135,7 @@ class AMQP implements Publisher, Consumer
         $this->channel?->getConnection()?->close();
     }
 
-    public function enqueue(Queue $queue, array $payload): bool
+    public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
         $payload = [
             'pid' => \uniqid(more_entropy: true),
