@@ -231,10 +231,6 @@ class Server
      */
     public function start(): self
     {
-        if ($this->coroutines && Coroutine::getCid() !== -1) {
-            Coroutine::getContext()[self::WORKER_CONTAINER_CONTEXT_KEY] = new Container($this->container);
-        }
-
         try {
             $this->adapter->workerStart(function (string $workerId) {
                 $this->getContainer()->set('workerId', fn () => $workerId);
@@ -246,6 +242,10 @@ class Server
                 $this->adapter->consumer->consume(
                     $this->adapter->queue,
                     function (Message $message) {
+                        if ($this->coroutines && Coroutine::getCid() !== -1) {
+                            Coroutine::getContext()[self::WORKER_CONTAINER_CONTEXT_KEY] = new Container($this->container);
+                        }
+
                         $receivedAtTimestamp = microtime(true);
                         try {
                             $waitDuration =
