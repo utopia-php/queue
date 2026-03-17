@@ -93,8 +93,6 @@ abstract class Base extends TestCase
         $result = $publisher->enqueue($this->getQueue(), ['type' => 'test_string', 'value' => 'priority'], priority: true);
 
         $this->assertTrue($result);
-
-        sleep(1);
     }
 
     /**
