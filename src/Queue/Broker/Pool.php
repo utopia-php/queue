@@ -15,7 +15,7 @@ readonly class Pool implements Publisher, Consumer
     ) {
     }
 
-    public function enqueue(Queue $queue, array $payload): bool
+    public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
         return $this->delegatePublish(__FUNCTION__, \func_get_args());
     }

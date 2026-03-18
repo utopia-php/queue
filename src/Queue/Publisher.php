@@ -11,7 +11,7 @@ interface Publisher
      * @param array $payload
      * @return bool
      */
-    public function enqueue(Queue $queue, array $payload): bool;
+    public function enqueue(Queue $queue, array $payload, bool $priority = false): bool;
 
     /**
      * Retries failed jobs.
