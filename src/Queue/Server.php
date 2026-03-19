@@ -3,7 +3,6 @@
 namespace Utopia\Queue;
 
 use Exception;
-use Swoole\Coroutine;
 use Throwable;
 use Utopia\DI\Container;
 use Utopia\Servers\Hook;
@@ -14,7 +13,6 @@ use Utopia\Validator;
 
 class Server
 {
-    public const WORKER_CONTAINER_CONTEXT_KEY = '__utopia_queue_worker_container';
     /**
      * Queue Adapter
      *
@@ -64,9 +62,8 @@ class Server
      */
     protected array $workerStopHooks = [];
 
-    protected bool $coroutines = false;
     protected Container $container;
-    protected ?Container $workerContainer = null;
+    protected ?Container $messageContainer = null;
 
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
@@ -81,22 +78,6 @@ class Server
         $this->adapter = $adapter;
         $this->container = $container ?? new Container();
         $this->setTelemetry(new NoTelemetry());
-    }
-
-    /**
-     * Enable or disable coroutine mode for concurrent job processing.
-     *
-     * When enabled, each coroutine gets its own child container via
-     * Swoole\Coroutine::getContext(), preventing shared state between
-     * concurrent jobs. Must be called before start().
-     *
-     * @param bool $enable
-     * @return self
-     */
-    public function setCoroutines(bool $enable): self
-    {
-        $this->coroutines = $enable;
-        return $this;
     }
 
     public function job(): Job
@@ -124,11 +105,7 @@ class Server
 
     public function getContainer(): Container
     {
-        if ($this->coroutines && \Swoole\Coroutine::getCid() !== -1) {
-            return \Swoole\Coroutine::getContext()[self::WORKER_CONTAINER_CONTEXT_KEY] ?? $this->container;
-        }
-
-        return $this->workerContainer ?? $this->container;
+        return $this->messageContainer ?? $this->container;
     }
 
     public function setTelemetry(Telemetry $telemetry): void
@@ -242,9 +219,7 @@ class Server
                 $this->adapter->consumer->consume(
                     $this->adapter->queue,
                     function (Message $message) {
-                        if ($this->coroutines && Coroutine::getCid() !== -1) {
-                            Coroutine::getContext()[self::WORKER_CONTAINER_CONTEXT_KEY] = new Container($this->container);
-                        }
+                        $this->messageContainer = new Container($this->container);
 
                         $receivedAtTimestamp = microtime(true);
                         try {
