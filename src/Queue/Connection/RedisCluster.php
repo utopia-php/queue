@@ -6,6 +6,10 @@ use Utopia\Queue\Connection;
 
 class RedisCluster implements Connection
 {
+    protected const int CONNECT_MAX_ATTEMPTS = 5;
+    protected const int CONNECT_BASE_BACKOFF_MS = 100;
+    protected const int CONNECT_MAX_BACKOFF_MS = 3_000;
+
     protected array $seeds;
     protected float $connectTimeout;
     protected float $readTimeout;
@@ -175,19 +179,42 @@ class RedisCluster implements Connection
 
     public function close(): void
     {
-        $this->redis?->close();
-        $this->redis = null;
+        try {
+            $this->redis?->close();
+        } catch (\Throwable) {
+            // best-effort: underlying socket may already be dead
+        } finally {
+            $this->redis = null;
+        }
     }
 
     protected function getRedis(): \RedisCluster
     {
-        if ($this->redis) {
+        if ($this->redis instanceof \RedisCluster) {
             return $this->redis;
         }
 
         $connectTimeout = $this->connectTimeout < 0 ? 0 : $this->connectTimeout;
         $readTimeout = $this->readTimeout < 0 ? 0 : $this->readTimeout;
-        $this->redis = new \RedisCluster(null, $this->seeds, $connectTimeout, $readTimeout);
-        return $this->redis;
+
+        for ($attempt = 1; $attempt <= self::CONNECT_MAX_ATTEMPTS; $attempt++) {
+            try {
+                $this->redis = new \RedisCluster(null, $this->seeds, $connectTimeout, $readTimeout);
+                return $this->redis;
+            } catch (\RedisClusterException $e) {
+                if ($attempt === self::CONNECT_MAX_ATTEMPTS) {
+                    throw $e;
+                }
+
+                // Exponential backoff with full jitter to avoid thundering herd on recovery.
+                $backoffMs = \min(
+                    self::CONNECT_MAX_BACKOFF_MS,
+                    self::CONNECT_BASE_BACKOFF_MS * (2 ** ($attempt - 1)),
+                );
+                \usleep(\mt_rand(0, $backoffMs) * 1000);
+            }
+        }
+
+        throw new \RedisClusterException('Unreachable: connect loop exited without success or exception.');
     }
 }

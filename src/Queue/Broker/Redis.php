@@ -11,6 +11,9 @@ use Utopia\Queue\Queue;
 class Redis implements Publisher, Consumer
 {
     private const int POP_TIMEOUT = 2;
+    private const int RECONNECT_BASE_BACKOFF_MS = 100;
+    private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
+    private const int RECONNECT_BACKOFF_CAP_SHIFT = 10;
 
     private bool $closed = false;
 
@@ -20,18 +23,34 @@ class Redis implements Publisher, Consumer
 
     public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
+        $reconnectAttempts = 0;
+
         while (!$this->closed) {
             /**
              * Waiting for next Job.
              */
             try {
                 $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
+                $reconnectAttempts = 0;
             } catch (\RedisException $e) {
                 if ($this->closed) {
                     break;
                 }
 
-                throw $e;
+                // Drop the stale connection so the next pop opens a fresh one, then
+                // back off with full jitter before retrying. Keeps the worker alive
+                // across transient Redis outages instead of crash-looping.
+                $this->connection->close();
+
+                $reconnectAttempts++;
+                $shift = \min(self::RECONNECT_BACKOFF_CAP_SHIFT, $reconnectAttempts - 1);
+                $backoffMs = \min(
+                    self::RECONNECT_MAX_BACKOFF_MS,
+                    self::RECONNECT_BASE_BACKOFF_MS * (2 ** $shift),
+                );
+                \usleep(\mt_rand(0, $backoffMs) * 1000);
+
+                continue;
             }
 
             if (!$nextMessage) {
