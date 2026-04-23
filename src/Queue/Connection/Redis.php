@@ -182,13 +182,8 @@ class Redis implements Connection
 
     public function close(): void
     {
-        try {
-            $this->redis?->close();
-        } catch (\Throwable) {
-            // best-effort: underlying socket may already be dead
-        } finally {
-            $this->redis = null;
-        }
+        $this->redis?->close();
+        $this->redis = null;
     }
 
     protected function getRedis(): \Redis
@@ -201,9 +196,11 @@ class Redis implements Connection
 
         for ($attempt = 1; $attempt <= self::CONNECT_MAX_ATTEMPTS; $attempt++) {
             $redis = new \Redis();
+            $connected = false;
 
             try {
                 $redis->connect($this->host, $this->port, $connectTimeout);
+                $connected = true;
 
                 if ($this->readTimeout >= 0) {
                     $redis->setOption(\Redis::OPT_READ_TIMEOUT, $this->readTimeout);
@@ -212,6 +209,10 @@ class Redis implements Connection
                 $this->redis = $redis;
                 return $this->redis;
             } catch (\RedisException $e) {
+                if ($connected) {
+                    $redis->close();
+                }
+
                 if ($attempt === self::CONNECT_MAX_ATTEMPTS) {
                     throw $e;
                 }

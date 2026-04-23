@@ -179,13 +179,8 @@ class RedisCluster implements Connection
 
     public function close(): void
     {
-        try {
-            $this->redis?->close();
-        } catch (\Throwable) {
-            // best-effort: underlying socket may already be dead
-        } finally {
-            $this->redis = null;
-        }
+        $this->redis?->close();
+        $this->redis = null;
     }
 
     protected function getRedis(): \RedisCluster
