@@ -19,6 +19,10 @@ class Redis implements Publisher, Consumer
      * @var (callable(Queue, \Throwable, int, int): void)|null
      */
     private $reconnectCallback = null;
+    /**
+     * @var (callable(Queue, int): void)|null
+     */
+    private $reconnectSuccessCallback = null;
 
     public function __construct(private readonly Connection $connection)
     {
@@ -27,6 +31,13 @@ class Redis implements Publisher, Consumer
     public function setReconnectCallback(?callable $callback): self
     {
         $this->reconnectCallback = $callback;
+
+        return $this;
+    }
+
+    public function setReconnectSuccessCallback(?callable $callback): self
+    {
+        $this->reconnectSuccessCallback = $callback;
 
         return $this;
     }
@@ -42,6 +53,10 @@ class Redis implements Publisher, Consumer
              */
             try {
                 $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
+                if ($reconnectAttempt > 0) {
+                    $this->triggerReconnectSuccessCallback($queue, $reconnectAttempt);
+                }
+
                 $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
                 $reconnectAttempt = 0;
             } catch (\RedisException|\RedisClusterException $e) {
@@ -143,6 +158,18 @@ class Redis implements Publisher, Consumer
 
         try {
             ($this->reconnectCallback)($queue, $error, $attempt, $sleepMs);
+        } catch (\Throwable) {
+        }
+    }
+
+    private function triggerReconnectSuccessCallback(Queue $queue, int $attempts): void
+    {
+        if (!\is_callable($this->reconnectSuccessCallback)) {
+            return;
+        }
+
+        try {
+            ($this->reconnectSuccessCallback)($queue, $attempts);
         } catch (\Throwable) {
         }
     }

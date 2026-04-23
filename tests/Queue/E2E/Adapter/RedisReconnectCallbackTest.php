@@ -43,6 +43,36 @@ class RedisReconnectCallbackTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $calls[0]['sleepMs']);
         $this->assertLessThanOrEqual(100, $calls[0]['sleepMs']);
     }
+
+    public function testReconnectSuccessCallbackReceivesAttemptCount(): void
+    {
+        $queue = new Queue('reconnect-success-callback');
+        $connection = new RecoveringRedisConnection();
+        $broker = new RedisBroker($connection);
+        $calls = [];
+
+        $broker->setReconnectCallback(fn () => null);
+        $broker->setReconnectSuccessCallback(function (Queue $queue, int $attempts) use (&$calls, $broker): void {
+            $calls[] = [
+                'queue' => $queue,
+                'attempts' => $attempts,
+            ];
+
+            $broker->close();
+        });
+
+        $broker->consume(
+            $queue,
+            fn () => null,
+            fn () => null,
+            fn () => null,
+        );
+
+        $this->assertSame(2, $connection->popAttempts);
+        $this->assertCount(1, $calls);
+        $this->assertSame($queue, $calls[0]['queue']);
+        $this->assertSame(1, $calls[0]['attempts']);
+    }
 }
 
 class FailingRedisConnection implements Connection
@@ -158,5 +188,19 @@ class FailingRedisConnection implements Connection
 
     public function close(): void
     {
+    }
+}
+
+class RecoveringRedisConnection extends FailingRedisConnection
+{
+    public function rightPopArray(string $queue, int $timeout): array|false
+    {
+        $this->popAttempts++;
+
+        if ($this->popAttempts === 1) {
+            throw new \RedisException('Redis is unavailable.');
+        }
+
+        return false;
     }
 }
