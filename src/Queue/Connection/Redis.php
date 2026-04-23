@@ -6,6 +6,10 @@ use Utopia\Queue\Connection;
 
 class Redis implements Connection
 {
+    protected const int CONNECT_MAX_ATTEMPTS = 5;
+    protected const int CONNECT_BACKOFF_MS = 100;
+    protected const int CONNECT_MAX_BACKOFF_MS = 3_000;
+
     protected string $host;
     protected int $port;
     protected ?string $user;
@@ -178,8 +182,12 @@ class Redis implements Connection
 
     public function close(): void
     {
-        $this->redis?->close();
-        $this->redis = null;
+        try {
+            $this->redis?->close();
+        } catch (\Throwable) {
+        } finally {
+            $this->redis = null;
+        }
     }
 
     protected function getRedis(): \Redis
@@ -188,15 +196,58 @@ class Redis implements Connection
             return $this->redis;
         }
 
-        $this->redis = new \Redis();
-
         $connectTimeout = $this->connectTimeout < 0 ? 0 : $this->connectTimeout;
-        $this->redis->connect($this->host, $this->port, $connectTimeout);
 
-        if ($this->readTimeout >= 0) {
-            $this->redis->setOption(\Redis::OPT_READ_TIMEOUT, $this->readTimeout);
+        for ($attempt = 1; $attempt <= self::CONNECT_MAX_ATTEMPTS; $attempt++) {
+            $redis = new \Redis();
+            $connected = false;
+
+            try {
+                $redis->connect($this->host, $this->port, $connectTimeout);
+                $connected = true;
+
+                if ($this->readTimeout >= 0) {
+                    $redis->setOption(\Redis::OPT_READ_TIMEOUT, $this->readTimeout);
+                }
+
+                $this->redis = $redis;
+                return $this->redis;
+            } catch (\RedisException $e) {
+                if ($connected) {
+                    try {
+                        $redis->close();
+                    } catch (\Throwable) {
+                    }
+                }
+
+                if ($attempt === self::CONNECT_MAX_ATTEMPTS) {
+                    throw new \RedisException(
+                        \sprintf(
+                            'Failed to connect to Redis at %s:%d after %d attempts: %s',
+                            $this->host,
+                            $this->port,
+                            self::CONNECT_MAX_ATTEMPTS,
+                            $e->getMessage(),
+                        ),
+                        (int)$e->getCode(),
+                        $e,
+                    );
+                }
+
+                // Exponential backoff with full jitter to avoid thundering herd on recovery.
+                $backoffMs = \min(
+                    self::CONNECT_MAX_BACKOFF_MS,
+                    self::CONNECT_BACKOFF_MS * (2 ** ($attempt - 1)),
+                );
+                \usleep(\mt_rand(0, $backoffMs) * 1000);
+            }
         }
 
-        return $this->redis;
+        throw new \RedisException(\sprintf(
+            'Unreachable: Redis connect loop for %s:%d exited after %d attempts without success or exception.',
+            $this->host,
+            $this->port,
+            self::CONNECT_MAX_ATTEMPTS,
+        ));
     }
 }
