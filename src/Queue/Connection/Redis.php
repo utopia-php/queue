@@ -7,7 +7,7 @@ use Utopia\Queue\Connection;
 class Redis implements Connection
 {
     protected const int CONNECT_MAX_ATTEMPTS = 5;
-    protected const int CONNECT_BASE_BACKOFF_MS = 100;
+    protected const int CONNECT_BACKOFF_MS = 100;
     protected const int CONNECT_MAX_BACKOFF_MS = 3_000;
 
     protected string $host;
@@ -217,18 +217,33 @@ class Redis implements Connection
                 }
 
                 if ($attempt === self::CONNECT_MAX_ATTEMPTS) {
-                    throw $e;
+                    throw new \RedisException(
+                        \sprintf(
+                            'Failed to connect to Redis at %s:%d after %d attempts: %s',
+                            $this->host,
+                            $this->port,
+                            self::CONNECT_MAX_ATTEMPTS,
+                            $e->getMessage(),
+                        ),
+                        (int)$e->getCode(),
+                        $e,
+                    );
                 }
 
                 // Exponential backoff with full jitter to avoid thundering herd on recovery.
                 $backoffMs = \min(
                     self::CONNECT_MAX_BACKOFF_MS,
-                    self::CONNECT_BASE_BACKOFF_MS * (2 ** ($attempt - 1)),
+                    self::CONNECT_BACKOFF_MS * (2 ** ($attempt - 1)),
                 );
                 \usleep(\mt_rand(0, $backoffMs) * 1000);
             }
         }
 
-        throw new \RedisException('Unreachable: connect loop exited without success or exception.');
+        throw new \RedisException(\sprintf(
+            'Unreachable: Redis connect loop for %s:%d exited after %d attempts without success or exception.',
+            $this->host,
+            $this->port,
+            self::CONNECT_MAX_ATTEMPTS,
+        ));
     }
 }

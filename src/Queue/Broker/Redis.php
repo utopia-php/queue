@@ -11,7 +11,7 @@ use Utopia\Queue\Queue;
 class Redis implements Publisher, Consumer
 {
     private const int POP_TIMEOUT = 2;
-    private const int RECONNECT_BASE_BACKOFF_MS = 100;
+    private const int RECONNECT_BACKOFF_MS = 100;
     private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
 
     private bool $closed = false;
@@ -22,7 +22,7 @@ class Redis implements Publisher, Consumer
 
     public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        $reconnectBackoffMs = self::RECONNECT_BASE_BACKOFF_MS;
+        $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
 
         while (!$this->closed) {
             /**
@@ -30,7 +30,7 @@ class Redis implements Publisher, Consumer
              */
             try {
                 $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
-                $reconnectBackoffMs = self::RECONNECT_BASE_BACKOFF_MS;
+                $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
             } catch (\RedisException|\RedisClusterException $e) {
                 if ($this->closed) {
                     break;

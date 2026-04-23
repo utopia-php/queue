@@ -7,7 +7,7 @@ use Utopia\Queue\Connection;
 class RedisCluster implements Connection
 {
     protected const int CONNECT_MAX_ATTEMPTS = 5;
-    protected const int CONNECT_BASE_BACKOFF_MS = 100;
+    protected const int CONNECT_BACKOFF_MS = 100;
     protected const int CONNECT_MAX_BACKOFF_MS = 3_000;
 
     protected array $seeds;
@@ -198,18 +198,31 @@ class RedisCluster implements Connection
                 return $this->redis;
             } catch (\RedisClusterException $e) {
                 if ($attempt === self::CONNECT_MAX_ATTEMPTS) {
-                    throw $e;
+                    throw new \RedisClusterException(
+                        \sprintf(
+                            'Failed to connect to Redis cluster seeds [%s] after %d attempts: %s',
+                            \implode(', ', $this->seeds),
+                            self::CONNECT_MAX_ATTEMPTS,
+                            $e->getMessage(),
+                        ),
+                        (int)$e->getCode(),
+                        $e,
+                    );
                 }
 
                 // Exponential backoff with full jitter to avoid thundering herd on recovery.
                 $backoffMs = \min(
                     self::CONNECT_MAX_BACKOFF_MS,
-                    self::CONNECT_BASE_BACKOFF_MS * (2 ** ($attempt - 1)),
+                    self::CONNECT_BACKOFF_MS * (2 ** ($attempt - 1)),
                 );
                 \usleep(\mt_rand(0, $backoffMs) * 1000);
             }
         }
 
-        throw new \RedisClusterException('Unreachable: connect loop exited without success or exception.');
+        throw new \RedisClusterException(\sprintf(
+            'Unreachable: Redis cluster connect loop for seeds [%s] exited after %d attempts without success or exception.',
+            \implode(', ', $this->seeds),
+            self::CONNECT_MAX_ATTEMPTS,
+        ));
     }
 }
