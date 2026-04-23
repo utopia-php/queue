@@ -185,7 +185,7 @@ class RedisCluster implements Connection
 
     protected function getRedis(): \RedisCluster
     {
-        if ($this->redis instanceof \RedisCluster) {
+        if ($this->redis) {
             return $this->redis;
         }
 

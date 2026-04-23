@@ -188,7 +188,7 @@ class Redis implements Connection
 
     protected function getRedis(): \Redis
     {
-        if ($this->redis instanceof \Redis) {
+        if ($this->redis) {
             return $this->redis;
         }
 
