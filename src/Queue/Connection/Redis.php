@@ -210,7 +210,10 @@ class Redis implements Connection
                 return $this->redis;
             } catch (\RedisException $e) {
                 if ($connected) {
-                    $redis->close();
+                    try {
+                        $redis->close();
+                    } catch (\Throwable) {
+                    }
                 }
 
                 if ($attempt === self::CONNECT_MAX_ATTEMPTS) {

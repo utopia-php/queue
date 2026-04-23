@@ -36,7 +36,11 @@ class Redis implements Publisher, Consumer
                     break;
                 }
 
-                $this->connection->close();
+                try {
+                    $this->connection->close();
+                } catch (\Throwable) {
+                }
+
                 \usleep(\mt_rand(0, $reconnectBackoffMs) * 1000);
                 $reconnectBackoffMs = \min(self::RECONNECT_MAX_BACKOFF_MS, $reconnectBackoffMs * 2);
 
