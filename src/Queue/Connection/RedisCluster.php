@@ -200,7 +200,7 @@ class RedisCluster implements Connection
                 if ($attempt === self::CONNECT_MAX_ATTEMPTS) {
                     throw new \RedisClusterException(
                         \sprintf(
-                            'Failed to connect to Redis cluster seeds [%s] after %d attempts: %s',
+                            'Failed to connect to Redis cluster nodes [%s] after %d attempts: %s',
                             \implode(', ', $this->seeds),
                             self::CONNECT_MAX_ATTEMPTS,
                             $e->getMessage(),
@@ -220,7 +220,7 @@ class RedisCluster implements Connection
         }
 
         throw new \RedisClusterException(\sprintf(
-            'Unreachable: Redis cluster connect loop for seeds [%s] exited after %d attempts without success or exception.',
+            'Unreachable: Redis cluster connect loop for nodes [%s] exited after %d attempts without success or exception.',
             \implode(', ', $this->seeds),
             self::CONNECT_MAX_ATTEMPTS,
         ));
