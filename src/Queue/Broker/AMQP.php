@@ -6,9 +6,9 @@ use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
+use PhpAmqpLib\Exception\AMQPProtocolChannelException;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
-use Utopia\Fetch\Client;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Error\Retryable;
 use Utopia\Queue\Message;
@@ -165,21 +165,21 @@ class AMQP implements Publisher, Consumer
             $queueName = $queueName . '.failed';
         }
 
-        $client = new Client();
-        $response = $client->fetch(sprintf('http://%s:%s@%s:%s/api/queues/%s/%s', $this->user, $this->password, $this->host, $this->httpPort, urlencode($this->vhost), $queueName));
+        $messageCount = 0;
+        $this->withChannel(function (AMQPChannel $channel) use ($queueName, &$messageCount) {
+            try {
+                [, $messageCount] = $channel->queue_declare($queueName, passive: true);
+            } catch (AMQPProtocolChannelException $e) {
+                $this->channel = null;
+                if ($e->getCode() === 404) {
+                    return;
+                }
 
-        // If this queue does not exist (yet), the queue size is 0.
-        if ($response->getStatusCode() === 404) {
-            return 0;
-        }
+                throw $e;
+            }
+        });
 
-        if ($response->getStatusCode() !== 200) {
-            throw new \Exception(sprintf('Invalid status code %d: %s', $response->getStatusCode(), $response->getBody()));
-        }
-
-        $data = $response->json();
-
-        return $data['messages'] ?? 0;
+        return $messageCount;
     }
 
     /**
