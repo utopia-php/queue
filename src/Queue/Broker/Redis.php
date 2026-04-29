@@ -11,27 +11,73 @@ use Utopia\Queue\Queue;
 class Redis implements Publisher, Consumer
 {
     private const int POP_TIMEOUT = 2;
+    private const int RECONNECT_BACKOFF_MS = 100;
+    private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
 
     private bool $closed = false;
+    /**
+     * @var (callable(Queue, \Throwable, int, int): void)|null
+     */
+    private $reconnectCallback = null;
+    /**
+     * @var (callable(Queue, int): void)|null
+     */
+    private $reconnectSuccessCallback = null;
 
     public function __construct(private readonly Connection $connection)
     {
     }
 
+    public function setReconnectCallback(?callable $callback): self
+    {
+        $this->reconnectCallback = $callback;
+
+        return $this;
+    }
+
+    public function setReconnectSuccessCallback(?callable $callback): self
+    {
+        $this->reconnectSuccessCallback = $callback;
+
+        return $this;
+    }
+
     public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
+        $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
+        $reconnectAttempt = 0;
+
         while (!$this->closed) {
             /**
              * Waiting for next Job.
              */
             try {
                 $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
-            } catch (\RedisException $e) {
+                if ($reconnectAttempt > 0) {
+                    $this->triggerReconnectSuccessCallback($queue, $reconnectAttempt);
+                }
+
+                $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
+                $reconnectAttempt = 0;
+            } catch (\RedisException|\RedisClusterException $e) {
                 if ($this->closed) {
                     break;
                 }
 
-                throw $e;
+                $reconnectAttempt++;
+
+                try {
+                    $this->connection->close();
+                } catch (\Throwable) {
+                }
+
+                $sleepMs = \mt_rand(0, $reconnectBackoffMs);
+                $this->triggerReconnectCallback($queue, $e, $reconnectAttempt, $sleepMs);
+
+                \usleep($sleepMs * 1000);
+                $reconnectBackoffMs = \min(self::RECONNECT_MAX_BACKOFF_MS, $reconnectBackoffMs * 2);
+
+                continue;
             }
 
             if (!$nextMessage) {
@@ -45,7 +91,7 @@ class Redis implements Publisher, Consumer
             /**
              * Move Job to Jobs and it's PID to the processing list.
              */
-            $this->connection->setArray("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}", $nextMessage);
+            $this->connection->setArray("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}", $nextMessage, $queue->jobTtl);
             $this->connection->leftPush("{$queue->namespace}.processing.{$queue->name}", $message->getPid());
 
             /**
@@ -104,7 +150,31 @@ class Redis implements Publisher, Consumer
         $this->closed = true;
     }
 
-    public function enqueue(Queue $queue, array $payload): bool
+    private function triggerReconnectCallback(Queue $queue, \Throwable $error, int $attempt, int $sleepMs): void
+    {
+        if (!\is_callable($this->reconnectCallback)) {
+            return;
+        }
+
+        try {
+            ($this->reconnectCallback)($queue, $error, $attempt, $sleepMs);
+        } catch (\Throwable) {
+        }
+    }
+
+    private function triggerReconnectSuccessCallback(Queue $queue, int $attempts): void
+    {
+        if (!\is_callable($this->reconnectSuccessCallback)) {
+            return;
+        }
+
+        try {
+            ($this->reconnectSuccessCallback)($queue, $attempts);
+        } catch (\Throwable) {
+        }
+    }
+
+    public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
         $payload = [
             'pid' => \uniqid(more_entropy: true),
@@ -112,6 +182,9 @@ class Redis implements Publisher, Consumer
             'timestamp' => time(),
             'payload' => $payload
         ];
+        if ($priority) {
+            return $this->connection->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+        }
         return $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }
 

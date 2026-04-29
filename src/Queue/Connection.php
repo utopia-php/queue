@@ -19,9 +19,9 @@ interface Connection
     public function listRange(string $key, int $total, int $offset): array;
     public function remove(string $key): bool;
     public function move(string $queue, string $destination): bool;
-    public function set(string $key, string $value): bool;
+    public function set(string $key, string $value, int $ttl = 0): bool;
     public function get(string $key): array|string|null;
-    public function setArray(string $key, array $value): bool;
+    public function setArray(string $key, array $value, int $ttl = 0): bool;
     public function increment(string $key): int;
     public function decrement(string $key): int;
     public function ping(): bool;

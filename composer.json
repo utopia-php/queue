@@ -15,7 +15,9 @@
         "psr-4": {"Utopia\\Queue\\": "src/Queue"}
     },
     "autoload-dev": {
-        "psr-4": {"Tests\\E2E\\": "tests/Queue/E2E"}
+        "psr-4": {
+            "Tests\\E2E\\": "tests/Queue/E2E"
+        }
     },
     "scripts":{
         "test": "phpunit",
@@ -26,18 +28,17 @@
     "require": {
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
-        "dragonmantank/cron-expression": "^3.0",
-        "utopia-php/console": "0.0.*",
-        "utopia-php/framework": "0.33.*",
-        "utopia-php/telemetry": "*",
+        "utopia-php/di": "0.3.*",
+        "utopia-php/servers": "0.3.*",
         "utopia-php/pools": "1.*",
-        "utopia-php/fetch": "0.5.*"
+        "utopia-php/telemetry": "0.2.*",
+        "utopia-php/validators": "0.2.*"
     },
     "require-dev": {
         "ext-redis": "*",
         "swoole/ide-helper": "4.8.8",
-        "phpunit/phpunit": "^9.5.5",
-        "laravel/pint": "^0.2.3",
+        "phpunit/phpunit": "^11.0",
+        "laravel/pint": "^1.0",
         "workerman/workerman": "^4.0",
         "phpstan/phpstan": "^1.8"
     },
