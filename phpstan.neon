@@ -7,4 +7,4 @@ parameters:
 
     scanDirectories:
         - vendor/swoole
-        - vendor/jetbrains/phpstorm-stubs
+        - stubs
