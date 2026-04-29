@@ -1,5 +1,8 @@
 {
     "preset": "psr12",
+    "exclude": [
+        "stubs"
+    ],
     "rules": {
         "single_quote": true
     }
