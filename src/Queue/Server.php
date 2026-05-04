@@ -396,8 +396,18 @@ class Server
     {
         $arguments = [];
         foreach ($hook->getParams() as $key => $param) {
+            $payloadKey = $key;
+            if (!\array_key_exists($key, $payload) && !empty($param['aliases'])) {
+                foreach ($param['aliases'] as $alias) {
+                    if (\array_key_exists($alias, $payload)) {
+                        $payloadKey = $alias;
+                        break;
+                    }
+                }
+            }
+
             // Get value from route or request object
-            $value = $payload[$key] ?? $param['default'];
+            $value = $payload[$payloadKey] ?? $param['default'];
             $value =
                 $value === '' || $value === null ? $param['default'] : $value;
 

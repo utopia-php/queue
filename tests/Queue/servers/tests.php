@@ -2,7 +2,7 @@
 
 use Utopia\Queue;
 
-function handleRequest(Queue\Message $job): void
+function handleRequest(Queue\Message $job, ?string $aliasValue = null): void
 {
     $type = $job->getPayload()['type'];
     $value = $job->getPayload()['value'] ?? null;
@@ -37,6 +37,11 @@ function handleRequest(Queue\Message $job): void
             assert($value['number'] === 123);
             assert($value['bool'] === true);
             assert($value['null'] === null);
+
+            break;
+        case 'test_alias':
+            // payload's `value` field carries the expected resolved alias value
+            assert($aliasValue === $value);
 
             break;
         case 'test_exception':

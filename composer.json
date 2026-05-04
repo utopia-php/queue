@@ -16,7 +16,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\E2E\\": "tests/Queue/E2E"
+            "Tests\\E2E\\": "tests/Queue/E2E",
+            "Tests\\Unit\\": "tests/Queue/Unit"
         }
     },
     "scripts":{
@@ -29,7 +30,7 @@
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
         "utopia-php/di": "0.3.*",
-        "utopia-php/servers": "0.3.*",
+        "utopia-php/servers": "dev-feat-param-aliases as 0.3.99",
         "utopia-php/pools": "1.*",
         "utopia-php/telemetry": "0.2.*",
         "utopia-php/validators": "0.2.*"
