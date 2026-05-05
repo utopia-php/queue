@@ -95,6 +95,43 @@ abstract class Base extends TestCase
         $this->assertTrue($result);
     }
 
+    public function testParamAliases(): void
+    {
+        $publisher = $this->getPublisher();
+
+        // Resolves via canonical key
+        $this->assertTrue($publisher->enqueue($this->getQueue(), [
+            'type' => 'test_alias',
+            'aliasValue' => 'canonical',
+            'value' => 'canonical',
+        ]));
+
+        // Resolves via first alias when canonical absent
+        $this->assertTrue($publisher->enqueue($this->getQueue(), [
+            'type' => 'test_alias',
+            'alias_value' => 'first-alias',
+            'value' => 'first-alias',
+        ]));
+
+        // Falls through to later alias when earlier ones absent
+        $this->assertTrue($publisher->enqueue($this->getQueue(), [
+            'type' => 'test_alias',
+            'aliased' => 'second-alias',
+            'value' => 'second-alias',
+        ]));
+
+        // Canonical key wins when both canonical and aliases are present
+        $this->assertTrue($publisher->enqueue($this->getQueue(), [
+            'type' => 'test_alias',
+            'aliasValue' => 'canonical-wins',
+            'alias_value' => 'should-lose',
+            'aliased' => 'should-lose',
+            'value' => 'canonical-wins',
+        ]));
+
+        sleep(1);
+    }
+
     /**
      * @depends testEvents
      */
