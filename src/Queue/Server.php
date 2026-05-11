@@ -8,6 +8,7 @@ use Utopia\DI\Container;
 use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
+use Utopia\Telemetry\Gauge;
 use Utopia\Telemetry\Histogram;
 use Utopia\Validator;
 
@@ -67,6 +68,7 @@ class Server
 
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
+    private Gauge $queueDepth;
 
     /**
      * Creates an instance of a Queue server.
@@ -158,6 +160,30 @@ class Server
                 ],
             ],
         );
+
+        $this->queueDepth = $telemetry->createGauge(
+            'messaging.queue.depth',
+            '{message}',
+            'Number of pending messages in the queue.',
+        );
+    }
+
+    private function recordQueueDepth(): void
+    {
+        if (!$this->adapter->consumer instanceof Publisher) {
+            return;
+        }
+
+        try {
+            $this->queueDepth->record(
+                $this->adapter->consumer->getQueueSize($this->adapter->queue),
+                [
+                    'messaging.destination.name' => $this->adapter->queue->name,
+                    'messaging.destination.namespace' => $this->adapter->queue->namespace,
+                ],
+            );
+        } catch (Throwable) {
+        }
     }
 
     /**
@@ -216,6 +242,8 @@ class Server
                     $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
                 }
 
+                $this->recordQueueDepth();
+
                 $this->adapter->consumer->consume(
                     $this->adapter->queue,
                     function (Message $message) {
@@ -269,6 +297,7 @@ class Server
                             $processDuration =
                                 microtime(true) - $receivedAtTimestamp;
                             $this->processDuration->record($processDuration);
+                            $this->recordQueueDepth();
                         }
                     },
                     function (Message $message) {
