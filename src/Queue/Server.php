@@ -8,6 +8,7 @@ use Utopia\DI\Container;
 use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
+use Utopia\Telemetry\Counter;
 use Utopia\Telemetry\Gauge;
 use Utopia\Telemetry\Histogram;
 use Utopia\Validator;
@@ -69,6 +70,7 @@ class Server
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
     private Gauge $queueDepth;
+    private Counter $queueDepthErrors;
 
     /**
      * Creates an instance of a Queue server.
@@ -166,6 +168,12 @@ class Server
             '{message}',
             'Number of pending messages in the queue.',
         );
+
+        $this->queueDepthErrors = $telemetry->createCounter(
+            'messaging.queue.depth.errors',
+            '{error}',
+            'Number of failed attempts to record queue depth.',
+        );
     }
 
     private function recordQueueDepth(): void
@@ -182,7 +190,12 @@ class Server
                     'messaging.destination.namespace' => $this->adapter->queue->namespace,
                 ],
             );
-        } catch (Throwable) {
+        } catch (Throwable $error) {
+            $this->queueDepthErrors->add(1, [
+                'messaging.destination.name' => $this->adapter->queue->name,
+                'messaging.destination.namespace' => $this->adapter->queue->namespace,
+                'error.type' => $error::class,
+            ]);
         }
     }
 

@@ -56,6 +56,28 @@ class ServerTelemetryTest extends TestCase
         $this->assertObjectHasProperty('values', $queueDepth);
         $this->assertSame([], $queueDepth->values);
     }
+
+    public function testRecordsQueueDepthErrors(): void
+    {
+        $consumer = new ServerTelemetryFailingPublisherConsumer();
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $telemetry = new TestTelemetry();
+
+        $server = new Server($adapter);
+        $server->setTelemetry($telemetry);
+        $server
+            ->job()
+            ->inject('message')
+            ->action(fn (Message $message) => null);
+
+        $server->start();
+
+        $this->assertArrayHasKey('messaging.queue.depth.errors', $telemetry->counters);
+        /** @var object{values: array<int, float|int>} $queueDepthErrors */
+        $queueDepthErrors = $telemetry->counters['messaging.queue.depth.errors'];
+        $this->assertObjectHasProperty('values', $queueDepthErrors);
+        $this->assertSame([1, 1], $queueDepthErrors->values);
+    }
 }
 
 final class ServerTelemetryAdapter extends Adapter
@@ -152,5 +174,22 @@ final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer imp
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {
         return array_shift($this->queueSizes) ?? 0;
+    }
+}
+
+final class ServerTelemetryFailingPublisherConsumer extends ServerTelemetryConsumer implements Publisher
+{
+    public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
+    {
+        return true;
+    }
+
+    public function retry(Queue $queue, ?int $limit = null): void
+    {
+    }
+
+    public function getQueueSize(Queue $queue, bool $failedJobs = false): int
+    {
+        throw new \RuntimeException('Queue size unavailable.');
     }
 }
