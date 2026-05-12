@@ -57,7 +57,7 @@ class ServerTelemetryTest extends TestCase
         $this->assertSame([], $queueDepth->values);
     }
 
-    public function testRecordsQueueDepthErrors(): void
+    public function testSkipsQueueDepthWhenConsumerCannotReadSize(): void
     {
         $consumer = new ServerTelemetryFailingPublisherConsumer();
         $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
@@ -72,11 +72,12 @@ class ServerTelemetryTest extends TestCase
 
         $server->start();
 
-        $this->assertArrayHasKey('messaging.queue.depth.errors', $telemetry->counters);
-        /** @var object{values: array<int, float|int>} $queueDepthErrors */
-        $queueDepthErrors = $telemetry->counters['messaging.queue.depth.errors'];
-        $this->assertObjectHasProperty('values', $queueDepthErrors);
-        $this->assertSame([1, 1], $queueDepthErrors->values);
+        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->gauges);
+        /** @var object{values: array<int, float|int>} $queueDepth */
+        $queueDepth = $telemetry->gauges['messaging.queue.depth'];
+        $this->assertObjectHasProperty('values', $queueDepth);
+        $this->assertSame([], $queueDepth->values);
+        $this->assertArrayNotHasKey('messaging.queue.depth.errors', $telemetry->counters);
     }
 }
 
