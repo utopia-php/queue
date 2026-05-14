@@ -142,9 +142,14 @@ class AMQP implements Publisher, Consumer
             'timestamp' => time(),
             'payload' => $payload
         ];
-        $message = new AMQPMessage(json_encode($payload), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
-        $this->withChannel(function (AMQPChannel $channel) use ($message, $queue) {
-            $channel->basic_publish($message, $queue->namespace, routing_key: $queue->name);
+        $headers = [
+            'content-type' => 'application/json',
+            'delivery-mode' => 2, // 2 = persistent
+        ];
+        $this->withChannel(function (Channel $channel) use ($payload, $headers, $queue) {
+            // Ensure the exchange and queue exist before publishing
+            $this->setupIfNeeded($queue);
+            $channel->publish(json_encode($payload), $headers, $queue->namespace, routingKey: $queue->name);
         });
         return true;
     }
@@ -221,5 +226,35 @@ class AMQP implements Publisher, Consumer
             $this->channel = $createChannel();
             $callback($this->channel);
         }
+    }
+
+    private function setupIfNeeded(Queue $queue): void
+    {
+        // Check if setup has already been done by trying to get queue info
+        // If it fails, we need to set up the topology
+        try {
+            $this->channel->queueDeclarePassive($queue->name);
+        } catch (\Throwable) {
+            // Queue doesn't exist, set up the full topology
+            $this->setup($queue);
+        }
+    }
+
+    private function setup(Queue $queue): void
+    {
+        // This method contains the full setup logic for exchanges and queues
+        $this->withChannel(function (AMQPChannel $channel) use ($queue) {
+            // Declare the exchange and a dead-letter-exchange.
+            $channel->exchange_declare($queue->namespace, AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
+            $channel->exchange_declare("{$queue->namespace}.failed", AMQPExchangeType::TOPIC, durable: true, auto_delete: false, arguments: new AMQPTable($this->exchangeArguments));
+
+            // Declare the working queue and configure the DLX for receiving rejected messages.
+            $channel->queue_declare($queue->name, durable: true, auto_delete: false, arguments: new AMQPTable(array_merge($this->queueArguments, ["x-dead-letter-exchange" => "{$queue->namespace}.failed"])));
+            $channel->queue_bind($queue->name, $queue->namespace, routing_key: $queue->name);
+
+            // Declare the dead-letter-queue and bind it to the DLX.
+            $channel->queue_declare("{$queue->name}.failed", durable: true, auto_delete: false, arguments: new AMQPTable($this->queueArguments));
+            $channel->queue_bind("{$queue->name}.failed", "{$queue->namespace}.failed", routing_key: $queue->name);
+        });
     }
 }
