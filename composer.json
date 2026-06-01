@@ -29,6 +29,7 @@
         "php": ">=8.3",
         "php-amqplib/php-amqplib": "^3.7",
         "utopia-php/di": "0.3.*",
+        "utopia-php/lock": "0.2.*",
         "utopia-php/servers": "0.4.*",
         "utopia-php/pools": "1.*",
         "utopia-php/telemetry": "0.4.*",
