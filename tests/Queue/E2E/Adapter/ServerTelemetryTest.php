@@ -28,11 +28,9 @@ class ServerTelemetryTest extends TestCase
 
         $server->start();
 
-        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->gauges);
-        /** @var object{values: array<int, float|int>} $queueDepth */
-        $queueDepth = $telemetry->gauges['messaging.queue.depth'];
-        $this->assertObjectHasProperty('values', $queueDepth);
-        $this->assertSame([3, 2], $queueDepth->values);
+        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
+        $this->assertSame([3], $this->collectObservations($telemetry, 'messaging.queue.depth'));
+        $this->assertSame([2], $this->collectObservations($telemetry, 'messaging.queue.depth'));
     }
 
     public function testSkipsQueueDepthWhenConsumerCannotReportSize(): void
@@ -50,11 +48,8 @@ class ServerTelemetryTest extends TestCase
 
         $server->start();
 
-        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->gauges);
-        /** @var object{values: array<int, float|int>} $queueDepth */
-        $queueDepth = $telemetry->gauges['messaging.queue.depth'];
-        $this->assertObjectHasProperty('values', $queueDepth);
-        $this->assertSame([], $queueDepth->values);
+        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
+        $this->assertSame([], $this->collectObservations($telemetry, 'messaging.queue.depth'));
     }
 
     public function testSkipsQueueDepthWhenConsumerCannotReadSize(): void
@@ -72,12 +67,27 @@ class ServerTelemetryTest extends TestCase
 
         $server->start();
 
-        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->gauges);
-        /** @var object{values: array<int, float|int>} $queueDepth */
-        $queueDepth = $telemetry->gauges['messaging.queue.depth'];
-        $this->assertObjectHasProperty('values', $queueDepth);
-        $this->assertSame([], $queueDepth->values);
+        $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
+        $this->assertSame([], $this->collectObservations($telemetry, 'messaging.queue.depth'));
         $this->assertArrayNotHasKey('messaging.queue.depth.errors', $telemetry->counters);
+    }
+
+    /**
+     * @return array<int, float|int>
+     */
+    private function collectObservations(TestTelemetry $telemetry, string $name): array
+    {
+        /** @var object{callback: ?\Closure} $gauge */
+        $gauge = $telemetry->observableGauges[$name];
+
+        $values = [];
+        if ($gauge->callback !== null) {
+            ($gauge->callback)(function (float|int $value, iterable $attributes = []) use (&$values): void {
+                $values[] = $value;
+            });
+        }
+
+        return $values;
     }
 }
 

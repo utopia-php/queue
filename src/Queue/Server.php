@@ -8,8 +8,8 @@ use Utopia\DI\Container;
 use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
-use Utopia\Telemetry\Gauge;
 use Utopia\Telemetry\Histogram;
+use Utopia\Telemetry\ObservableGauge;
 use Utopia\Validator;
 
 class Server
@@ -68,7 +68,7 @@ class Server
 
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
-    private Gauge $queueDepth;
+    private ObservableGauge $queueDepth;
 
     /**
      * Creates an instance of a Queue server.
@@ -161,29 +161,28 @@ class Server
             ],
         );
 
-        $this->queueDepth = $telemetry->createGauge(
+        $this->queueDepth = $telemetry->createObservableGauge(
             'messaging.queue.depth',
             '{message}',
             'Number of pending messages in the queue.',
         );
-    }
 
-    private function recordQueueDepth(): void
-    {
-        if (!$this->adapter->consumer instanceof Publisher) {
-            return;
-        }
+        $this->queueDepth->observe(function (callable $observe): void {
+            if (!$this->adapter->consumer instanceof Publisher) {
+                return;
+            }
 
-        try {
-            $this->queueDepth->record(
-                $this->adapter->consumer->getQueueSize($this->adapter->queue),
-                [
-                    'messaging.destination.name' => $this->adapter->queue->name,
-                    'messaging.destination.namespace' => $this->adapter->queue->namespace,
-                ],
-            );
-        } catch (Throwable) {
-        }
+            try {
+                $size = $this->adapter->consumer->getQueueSize($this->adapter->queue);
+            } catch (Throwable) {
+                return;
+            }
+
+            $observe($size, [
+                'messaging.destination.name' => $this->adapter->queue->name,
+                'messaging.destination.namespace' => $this->adapter->queue->namespace,
+            ]);
+        });
     }
 
     /**
@@ -242,8 +241,6 @@ class Server
                     $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
                 }
 
-                $this->recordQueueDepth();
-
                 $this->adapter->consumer->consume(
                     $this->adapter->queue,
                     function (Message $message) {
@@ -297,7 +294,6 @@ class Server
                             $processDuration =
                                 microtime(true) - $receivedAtTimestamp;
                             $this->processDuration->record($processDuration);
-                            $this->recordQueueDepth();
                         }
                     },
                     function (Message $message) {
