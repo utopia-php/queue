@@ -167,9 +167,6 @@ class Server
             'Number of pending messages in the queue.',
         );
 
-        // Sampled by the telemetry SDK at each collection interval rather than
-        // on the message hot path, so the depth stays fresh even when the queue
-        // is idle or stuck and isn't re-recorded once per processed message.
         $this->queueDepth->observe(function (callable $observe): void {
             if (!$this->adapter->consumer instanceof Publisher) {
                 return;

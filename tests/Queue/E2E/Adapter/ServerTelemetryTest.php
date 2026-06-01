@@ -29,8 +29,6 @@ class ServerTelemetryTest extends TestCase
         $server->start();
 
         $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
-        // Each collection samples the live queue size, so two collections
-        // observe the two successive depths reported by the consumer.
         $this->assertSame([3], $this->collectObservations($telemetry, 'messaging.queue.depth'));
         $this->assertSame([2], $this->collectObservations($telemetry, 'messaging.queue.depth'));
     }
@@ -75,9 +73,6 @@ class ServerTelemetryTest extends TestCase
     }
 
     /**
-     * Invoke an observable gauge's registered callback once and capture the
-     * values it reports, mirroring a single telemetry collection cycle.
-     *
      * @return array<int, float|int>
      */
     private function collectObservations(TestTelemetry $telemetry, string $name): array
