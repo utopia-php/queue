@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1f8c2839dc26ae8525c7adcca7838164",
+    "content-hash": "1d5f6649fb727b85e109128125f7ff9d",
     "packages": [
         {
             "name": "brick/math",
@@ -2235,6 +2235,57 @@
                 "source": "https://github.com/utopia-php/di/tree/0.3.2"
             },
             "time": "2026-03-21T07:42:10+00:00"
+        },
+        {
+            "name": "utopia-php/lock",
+            "version": "0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/utopia-php/lock.git",
+                "reference": "49317c9493d8f747e4299aa24c22862aa5f6e106"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/utopia-php/lock/zipball/49317c9493d8f747e4299aa24c22862aa5f6e106",
+                "reference": "49317c9493d8f747e4299aa24c22862aa5f6e106",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.3"
+            },
+            "require-dev": {
+                "laravel/pint": "1.*",
+                "phpstan/phpstan": "2.*",
+                "phpunit/phpunit": "11.*",
+                "swoole/ide-helper": "*"
+            },
+            "suggest": {
+                "ext-pcntl": "Required to run the File lock tests",
+                "ext-redis": "Required for the Distributed lock",
+                "ext-swoole": "Required for the Mutex and Semaphore locks (>=6.0)"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Utopia\\Lock\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Appwrite Team",
+                    "email": "team@appwrite.io"
+                }
+            ],
+            "description": "Mutex, semaphore, file and distributed locks for PHP — one interface, four backends.",
+            "support": {
+                "issues": "https://github.com/utopia-php/lock/issues",
+                "source": "https://github.com/utopia-php/lock/tree/0.2.0"
+            },
+            "time": "2026-04-24T10:47:56+00:00"
         },
         {
             "name": "utopia-php/pools",
