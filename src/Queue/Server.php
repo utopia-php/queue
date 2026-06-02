@@ -15,13 +15,6 @@ use Utopia\Validator;
 class Server
 {
     /**
-     * Queue Adapter
-     *
-     * @var Adapter
-     */
-    protected Adapter $adapter;
-
-    /**
      * Job
      *
      * @var Job
@@ -63,9 +56,6 @@ class Server
      */
     protected array $workerStopHooks = [];
 
-    protected Container $container;
-    protected ?Container $messageContainer = null;
-
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
     private ObservableGauge $queueDepth;
@@ -73,12 +63,9 @@ class Server
     /**
      * Creates an instance of a Queue server.
      * @param Adapter $adapter
-     * @param Container|null $container
      */
-    public function __construct(Adapter $adapter, ?Container $container = null)
+    public function __construct(protected Adapter $adapter)
     {
-        $this->adapter = $adapter;
-        $this->container = $container ?? new Container();
         $this->setTelemetry(new NoTelemetry());
     }
 
@@ -89,25 +76,28 @@ class Server
     }
 
     /**
-     * Set a new resource on the container
+     * Static resources container.
      *
-     * @param string $name
-     * @param callable $callback
-     * @param array $injections
-     *
-     * @return void
+     * Shortcut for the underlying adapter's {@see Adapter::resources()}. Use
+     * `$server->resources()->set(...)` to register app-wide services that are
+     * shared across every message for the lifetime of the server.
      */
-    public function setResource(
-        string $name,
-        callable $callback,
-        array $injections = [],
-    ): void {
-        $this->container->set($name, $callback, $injections);
+    public function resources(): Container
+    {
+        return $this->adapter->resources();
     }
 
-    public function getContainer(): Container
+    /**
+     * Per-message context container.
+     *
+     * Shortcut for the underlying adapter's {@see Adapter::context()}. Use
+     * `$server->context()->set(...)` to register message-scoped resources and
+     * `$server->context()->get(...)` to read them. Lookups fall through to the
+     * static resources container, so app-wide services remain accessible.
+     */
+    public function context(): Container
     {
-        return $this->messageContainer ?? $this->container;
+        return $this->adapter->context();
     }
 
     public function setTelemetry(Telemetry $telemetry): void
@@ -206,9 +196,9 @@ class Server
         try {
             $this->adapter->stop();
         } catch (Throwable $error) {
-            $this->getContainer()->set('error', fn () => $error);
+            $this->resources()->set('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
-                $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
+                $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
         }
         return $this;
@@ -235,31 +225,28 @@ class Server
     {
         try {
             $this->adapter->workerStart(function (string $workerId) {
-                $this->getContainer()->set('workerId', fn () => $workerId);
+                $this->resources()->set('workerId', fn () => $workerId);
 
                 foreach ($this->workerStartHooks as $hook) {
-                    $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
+                    $hook->getAction()(...$this->getArguments($this->resources(), $hook));
                 }
 
-                $this->adapter->consumer->consume(
-                    $this->adapter->queue,
+                $this->adapter->consume(
                     function (Message $message) {
-                        $this->messageContainer = new Container($this->container);
-
                         $receivedAtTimestamp = microtime(true);
                         try {
                             $waitDuration =
                                 microtime(true) - $message->getTimestamp();
                             $this->jobWaitTime->record($waitDuration);
 
-                            $this->getContainer()->set('message', fn () => $message);
+                            $this->context()->set('message', fn () => $message);
 
                             if ($this->job->getHook()) {
                                 foreach ($this->initHooks as $hook) {
                                     // Global init hooks
                                     if (\in_array('*', $hook->getGroups())) {
                                         $arguments = $this->getArguments(
-                                            $this->getContainer(),
+                                            $this->context(),
                                             $hook,
                                             $message->getPayload(),
                                         );
@@ -273,7 +260,7 @@ class Server
                                     // Group init hooks
                                     if (\in_array($group, $hook->getGroups())) {
                                         $arguments = $this->getArguments(
-                                            $this->getContainer(),
+                                            $this->context(),
                                             $hook,
                                             $message->getPayload(),
                                         );
@@ -285,7 +272,7 @@ class Server
                             return \call_user_func_array(
                                 $this->job->getAction(),
                                 $this->getArguments(
-                                    $this->getContainer(),
+                                    $this->context(),
                                     $this->job,
                                     $message->getPayload(),
                                 ),
@@ -297,14 +284,14 @@ class Server
                         }
                     },
                     function (Message $message) {
-                        $this->getContainer()->set('message', fn () => $message);
+                        $this->context()->set('message', fn () => $message);
 
                         if ($this->job->getHook()) {
                             foreach ($this->shutdownHooks as $hook) {
                                 // Global shutdown hooks
                                 if (\in_array('*', $hook->getGroups())) {
                                     $arguments = $this->getArguments(
-                                        $this->getContainer(),
+                                        $this->context(),
                                         $hook,
                                         $message->getPayload(),
                                     );
@@ -318,7 +305,7 @@ class Server
                                 // Group shutdown hooks
                                 if (\in_array($group, $hook->getGroups())) {
                                     $arguments = $this->getArguments(
-                                        $this->getContainer(),
+                                        $this->context(),
                                         $hook,
                                         $message->getPayload(),
                                     );
@@ -328,26 +315,26 @@ class Server
                         }
                     },
                     function (?Message $message, Throwable $th) {
-                        $this->getContainer()->set('error', fn () => $th);
+                        $this->context()->set('error', fn () => $th);
                         if ($message !== null) {
-                            $this->getContainer()->set('message', fn () => $message);
+                            $this->context()->set('message', fn () => $message);
                         }
 
                         foreach ($this->errorHooks as $hook) {
-                            $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
+                            $hook->getAction()(...$this->getArguments($this->context(), $hook));
                         }
                     },
                 );
             });
 
             $this->adapter->workerStop(function (string $workerId) {
-                $this->getContainer()->set('workerId', fn () => $workerId);
+                $this->resources()->set('workerId', fn () => $workerId);
 
                 try {
                     // Call user-defined workerStop hooks
                     foreach ($this->workerStopHooks as $hook) {
                         try {
-                            $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
+                            $hook->getAction()(...$this->getArguments($this->resources(), $hook));
                         } catch (Throwable $e) {
                         }
                     }
@@ -359,9 +346,9 @@ class Server
 
             $this->adapter->start();
         } catch (Throwable $error) {
-            $this->getContainer()->set('error', fn () => $error);
+            $this->resources()->set('error', fn () => $error);
             foreach ($this->errorHooks as $hook) {
-                $hook->getAction()(...$this->getArguments($this->getContainer(), $hook));
+                $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
         }
         return $this;
@@ -412,12 +399,12 @@ class Server
     /**
      * Get Arguments
      *
-     * @param Container $container
+     * @param Container $context
      * @param Hook $hook
      * @param array $payload
      * @return array
      */
-    protected function getArguments(Container $container, Hook $hook, array $payload = []): array
+    protected function getArguments(Container $context, Hook $hook, array $payload = []): array
     {
         $arguments = [];
         foreach ($hook->getParams() as $key => $param) {
@@ -436,13 +423,13 @@ class Server
             $value =
                 $value === '' || $value === null ? $param['default'] : $value;
 
-            $this->validate($key, $param, $value, $container);
+            $this->validate($key, $param, $value, $context);
             $hook->setParamValue($key, $value);
             $arguments[$param['order']] = $value;
         }
 
         foreach ($hook->getInjections() as $key => $injection) {
-            $arguments[$injection['order']] = $container->get(
+            $arguments[$injection['order']] = $context->get(
                 $injection['name'],
             );
         }
@@ -458,21 +445,21 @@ class Server
      * @param string $key
      * @param array $param
      * @param mixed $value
-     * @param Container $container
+     * @param Container $context
      *
      * @throws Exception
      *
      * @return void
      */
-    protected function validate(string $key, array $param, mixed $value, Container $container): void
+    protected function validate(string $key, array $param, mixed $value, Container $context): void
     {
         if ('' !== $value && $value !== null) {
             $validator = $param['validator']; // checking whether the class exists
 
             if (\is_callable($validator)) {
                 $validatorKey = '_validator:' . $key;
-                $container->set($validatorKey, $validator, $param['injections']);
-                $validator = $container->get($validatorKey);
+                $context->set($validatorKey, $validator, $param['injections']);
+                $validator = $context->get($validatorKey);
             }
 
             if (!$validator instanceof Validator) {

@@ -3,12 +3,18 @@
 namespace Utopia\Queue\Adapter;
 
 use Swoole\Coroutine;
+use Swoole\Coroutine\Channel;
 use Swoole\Process;
+use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
+use Utopia\Queue\Error\ConsumerFailures;
+use Utopia\Queue\Message;
 
 class Swoole extends Adapter
 {
+    protected const string CONTEXT_KEY = '__utopia__';
+
     /** @var Process[] */
     protected array $workers = [];
 
@@ -23,9 +29,11 @@ class Swoole extends Adapter
         int $workerNum,
         string $queue,
         string $namespace = 'utopia-queue',
+        protected int $maxCoroutines = 1,
+        Container $resources = new Container(),
     ) {
-        parent::__construct($workerNum, $queue, $namespace);
-        $this->consumer = $consumer;
+        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
+        $this->maxCoroutines = \max(1, $maxCoroutines);
     }
 
     public function start(): self
@@ -69,6 +77,65 @@ class Swoole extends Adapter
 
         $pid = $process->start();
         $this->workers[$pid] = $process;
+    }
+
+    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        $messageCallback = function (Message $message) use ($messageCallback) {
+            Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
+
+            return $messageCallback($message);
+        };
+
+        $errorCallback = function (?Message $message, \Throwable $error) use ($errorCallback) {
+            if ($message === null) {
+                Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
+            }
+
+            $errorCallback($message, $error);
+        };
+
+        $channel = new Channel($this->maxCoroutines);
+        $errors = [];
+
+        for ($i = 0; $i < $this->maxCoroutines; $i++) {
+            Coroutine::create(function () use ($messageCallback, $successCallback, $errorCallback, $channel, &$errors) {
+                try {
+                    $this->consumer->consume(
+                        $this->queue,
+                        $messageCallback,
+                        $successCallback,
+                        $errorCallback,
+                    );
+                } catch (\Throwable $error) {
+                    $errors[] = $error;
+                    $this->consumer->close();
+                    $channel->push(true);
+                    return;
+                }
+
+                $channel->push(true);
+            });
+        }
+
+        for ($i = 0; $i < $this->maxCoroutines; $i++) {
+            $channel->pop();
+        }
+
+        $channel->close();
+
+        if ($errors !== []) {
+            throw new ConsumerFailures($errors);
+        }
+    }
+
+    public function context(): Container
+    {
+        if (Coroutine::getCid() !== -1) {
+            return Coroutine::getContext()[self::CONTEXT_KEY] ?? $this->resources();
+        }
+
+        return $this->resources();
     }
 
     protected function reap(): void
