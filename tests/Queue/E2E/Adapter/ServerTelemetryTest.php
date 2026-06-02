@@ -3,6 +3,7 @@
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
+use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Message;
@@ -72,6 +73,78 @@ class ServerTelemetryTest extends TestCase
         $this->assertArrayNotHasKey('messaging.queue.depth.errors', $telemetry->counters);
     }
 
+    public function testInjectsAdapterResourcesAndContext(): void
+    {
+        $consumer = new ServerTelemetryConsumer();
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $server = new Server($adapter);
+        $injections = [];
+
+        $server->resources()->set('resourceValue', fn () => 'resource');
+
+        $server
+            ->init()
+            ->inject('message')
+            ->action(function (Message $message) use ($server): void {
+                $server->context()->set('contextValue', fn () => $message->getPid());
+            });
+
+        $server
+            ->job()
+            ->inject('message')
+            ->inject('resourceValue')
+            ->inject('contextValue')
+            ->action(function (Message $message, string $resourceValue, string $contextValue) use (&$injections): void {
+                $injections = [$message->getPid(), $resourceValue, $contextValue];
+            });
+
+        $server->start();
+
+        $this->assertSame(['test-pid', 'resource', 'test-pid'], $injections);
+    }
+
+    public function testContextDoesNotLeakBetweenMessages(): void
+    {
+        $consumer = new ServerTelemetryMultiMessageConsumer([
+            new Message([
+                'pid' => 'first-pid',
+                'queue' => 'emails',
+                'timestamp' => time() - 1,
+                'payload' => [],
+            ]),
+            new Message([
+                'pid' => 'second-pid',
+                'queue' => 'emails',
+                'timestamp' => time() - 1,
+                'payload' => [],
+            ]),
+        ]);
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $server = new Server($adapter);
+        $contextValues = [];
+
+        $server
+            ->init()
+            ->inject('message')
+            ->action(function (Message $message) use ($server): void {
+                if ($message->getPid() === 'first-pid') {
+                    $server->context()->set('contextValue', fn () => $message->getPid());
+                }
+            });
+
+        $server
+            ->job()
+            ->action(function () use ($server, &$contextValues): void {
+                $contextValues[] = $server->context()->has('contextValue')
+                    ? $server->context()->get('contextValue')
+                    : null;
+            });
+
+        $server->start();
+
+        $this->assertSame(['first-pid', null], $contextValues);
+    }
+
     /**
      * @return array<int, float|int>
      */
@@ -103,10 +176,14 @@ final class ServerTelemetryAdapter extends Adapter
      */
     private array $onWorkerStop = [];
 
-    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
-    {
-        parent::__construct($workerNum, $queue, $namespace);
-        $this->consumer = $consumer;
+    public function __construct(
+        Consumer $consumer,
+        int $workerNum,
+        string $queue,
+        string $namespace = 'utopia-queue',
+        Container $resources = new Container(),
+    ) {
+        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
     }
 
     public function start(): self
@@ -157,6 +234,32 @@ class ServerTelemetryConsumer implements Consumer
 
         $messageCallback($message);
         $successCallback($message);
+    }
+
+    public function close(): void
+    {
+    }
+}
+
+final class ServerTelemetryMultiMessageConsumer implements Consumer
+{
+    /**
+     * @param Message[] $messages
+     */
+    public function __construct(private array $messages)
+    {
+    }
+
+    public function consume(
+        Queue $queue,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback
+    ): void {
+        foreach ($this->messages as $message) {
+            $messageCallback($message);
+            $successCallback($message);
+        }
     }
 
     public function close(): void

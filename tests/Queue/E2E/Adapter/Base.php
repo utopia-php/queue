@@ -2,6 +2,7 @@
 
 namespace Tests\E2E\Adapter;
 
+use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
@@ -132,9 +133,7 @@ abstract class Base extends TestCase
         sleep(1);
     }
 
-    /**
-     * @depends testEvents
-     */
+    #[Depends('testEvents')]
     public function testRetry(): void
     {
         $publisher = $this->getPublisher();

@@ -2,6 +2,7 @@
 
 namespace Utopia\Queue\Adapter;
 
+use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
 use Workerman\Worker;
@@ -10,13 +11,17 @@ class Workerman extends Adapter
 {
     protected Worker $worker;
 
-    public function __construct(Consumer $consumer, int $workerNum, string $queue, string $namespace = 'utopia-queue')
-    {
-        parent::__construct($workerNum, $queue, $namespace);
+    public function __construct(
+        Consumer $consumer,
+        int $workerNum,
+        string $queue,
+        string $namespace = 'utopia-queue',
+        Container $resources = new Container(),
+    ) {
+        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
 
         $this->worker = new Worker();
         $this->worker->count = $workerNum;
-        $this->consumer = $consumer;
     }
 
     public function start(): self

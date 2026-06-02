@@ -2,16 +2,20 @@
 
 namespace Utopia\Queue;
 
+use Utopia\DI\Container;
+
 abstract class Adapter
 {
-    public int $workerNum;
     public Queue $queue;
-    public string $namespace;
-    public Consumer $consumer;
+    protected ?Container $context = null;
 
-    public function __construct(int $workerNum, string $queue, string $namespace = 'utopia-queue')
-    {
-        $this->workerNum = $workerNum;
+    public function __construct(
+        public Consumer $consumer,
+        public int $workerNum,
+        string $queue,
+        public string $namespace = 'utopia-queue',
+        protected Container $resources = new Container(),
+    ) {
         $this->queue = new Queue($queue, $namespace);
     }
 
@@ -26,6 +30,36 @@ abstract class Adapter
      * @return self
      */
     abstract public function stop(): self;
+
+    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        $this->consumer->consume(
+            $this->queue,
+            function (Message $message) use ($messageCallback) {
+                $this->context = new Container($this->resources());
+
+                return $messageCallback($message);
+            },
+            $successCallback,
+            function (?Message $message, \Throwable $error) use ($errorCallback) {
+                if ($message === null) {
+                    $this->context = new Container($this->resources());
+                }
+
+                $errorCallback($message, $error);
+            },
+        );
+    }
+
+    public function resources(): Container
+    {
+        return $this->resources;
+    }
+
+    public function context(): Container
+    {
+        return $this->context ??= new Container($this->resources());
+    }
 
     /**
      * Is called when a Worker starts.

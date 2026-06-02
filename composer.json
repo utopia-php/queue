@@ -21,7 +21,7 @@
     },
     "scripts":{
         "test": "phpunit",
-        "check": "vendor/bin/phpstan analyse",
+        "check": "vendor/bin/phpstan analyse --memory-limit=1G",
         "format": "vendor/bin/pint",
         "lint": "vendor/bin/pint --test"
     },
