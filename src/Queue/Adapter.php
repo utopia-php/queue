@@ -51,25 +51,24 @@ abstract class Adapter
     }
 
     /**
-     * Never throws: a failing handler, commit, reject, or error callback is all
-     * routed to $errorCallback so nothing escapes (and is lost) on a coroutine.
+     * Never throws: a failed handler is rejected and reported to $errorCallback;
+     * a failing reject or callback is swallowed rather than left to escape (and
+     * be lost on a coroutine).
      */
     protected function process(Message $message, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         try {
-            try {
-                $messageCallback($message);
-                $this->consumer->commit($this->queue, $message);
-                $successCallback($message);
-            } catch (\Throwable $error) {
-                $this->consumer->reject($this->queue, $message);
-                $errorCallback($message, $error);
-            }
+            $messageCallback($message);
+            $this->consumer->commit($this->queue, $message);
+            $successCallback($message);
         } catch (\Throwable $error) {
+            try {
+                $this->consumer->reject($this->queue, $message);
+            } catch (\Throwable) {
+            }
             try {
                 $errorCallback($message, $error);
             } catch (\Throwable) {
-                // the error callback itself failed; nothing left to do
             }
         }
     }
