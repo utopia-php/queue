@@ -16,7 +16,7 @@ class SwooleTest extends Base
 
     protected function getPublisher(): Publisher
     {
-        return new RedisBroker($this->getConnection());
+        return new RedisBroker($this->getConnection(), $this->getConnection());
     }
 
     protected function getQueue(): Queue

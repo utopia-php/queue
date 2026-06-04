@@ -20,7 +20,7 @@ class SwooleRedisClusterTest extends Base
 
     protected function getPublisher(): Publisher
     {
-        return new Redis($this->getConnection());
+        return new Redis($this->getConnection(), $this->getConnection());
     }
 
     protected function getQueue(): Queue

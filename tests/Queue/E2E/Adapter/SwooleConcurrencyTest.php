@@ -37,7 +37,7 @@ class SwooleConcurrencyTest extends TestCase
     private function runWorker(int $messages, int $maxCoroutines): array
     {
         $connection = new InMemoryConnection();
-        $broker = new Redis($connection);
+        $broker = new Redis($connection, $connection);
         $queue = new Queue(self::QUEUE, self::NAMESPACE);
 
         $active = 0;

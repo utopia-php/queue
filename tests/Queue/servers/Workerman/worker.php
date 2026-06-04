@@ -9,7 +9,10 @@ use Utopia\Queue\Connection\Redis as RedisConnection;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Validator\Text;
 
-$consumer = new Redis(new RedisConnection('redis'));
+$consumer = new Redis(
+    receive: new RedisConnection('redis'),
+    commands: new RedisConnection('redis'),
+);
 $adapter = new Workerman($consumer, 12, 'wokerman');
 $server = new Queue\Server($adapter);
 

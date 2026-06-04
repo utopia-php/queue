@@ -11,8 +11,7 @@ class WorkermanTest extends Base
 {
     protected function getPublisher(): Publisher
     {
-        $connection = new Redis('redis', 6379);
-        return new RedisPublisher($connection);
+        return new RedisPublisher(new Redis('redis', 6379), new Redis('redis', 6379));
     }
 
     protected function getQueue(): Queue
