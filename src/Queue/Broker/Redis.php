@@ -14,9 +14,6 @@ class Redis implements Publisher, Consumer
     private const int RECONNECT_BACKOFF_MS = 100;
     private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
 
-    /** Drives the blocking receive loop and its claim writes (single caller). */
-    private readonly Connection $receive;
-
     /** Carries acks and publishing; wrap in Locking when shared by coroutines. */
     private readonly Connection $commands;
 
@@ -33,10 +30,10 @@ class Redis implements Publisher, Consumer
     private $reconnectSuccessCallback = null;
 
     public function __construct(
-        Connection $receive,
+        // Drives the blocking receive loop and its claim writes (single caller).
+        private readonly Connection $receive,
         ?Connection $commands = null,
     ) {
-        $this->receive = $receive;
         $this->commands = $commands ?? $receive;
     }
 
