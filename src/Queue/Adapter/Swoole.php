@@ -6,7 +6,8 @@ use Swoole\Coroutine;
 use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
-use Utopia\Queue\Message;
+use Utopia\Queue\Concurrency\Coroutine as CoroutineExecutor;
+use Utopia\Queue\Consumer;
 
 class Swoole extends Adapter
 {
@@ -20,6 +21,25 @@ class Swoole extends Adapter
 
     /** @var callable[] */
     protected array $onWorkerStop = [];
+
+    /**
+     * @param int $maxCoroutines Number of messages a worker may process
+     *                           concurrently. This is where the Swoole adapter
+     *                           owns its concurrency: it fans message processing
+     *                           out across coroutines while the receive loop
+     *                           keeps pulling work.
+     */
+    public function __construct(
+        Consumer $consumer,
+        int $workerNum,
+        string $queue,
+        string $namespace = 'utopia-queue',
+        int $maxCoroutines = 1,
+        Container $resources = new Container(),
+    ) {
+        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
+        $this->executor = new CoroutineExecutor($maxCoroutines);
+    }
 
     public function start(): self
     {
@@ -48,7 +68,10 @@ class Swoole extends Adapter
             Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
 
             Coroutine\run(function () use ($workerId) {
-                Process::signal(SIGTERM, fn () => $this->consumer->close());
+                Process::signal(SIGTERM, function () {
+                    $this->stopped = true;
+                    $this->consumer->close();
+                });
 
                 foreach ($this->onWorkerStart as $callback) {
                     $callback((string)$workerId);
@@ -65,29 +88,12 @@ class Swoole extends Adapter
     }
 
     /**
-     * Drives the consumer's receive loop. Concurrency is the broker's concern
-     * now (it fans message processing out via an Executor); the adapter only
-     * gives each processed message its own DI container, stored in the
-     * coroutine context so it stays isolated across concurrent handlers.
+     * Store the per-message container in the coroutine context so concurrent
+     * handlers each see their own, rather than sharing one on the adapter.
      */
-    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    protected function setContext(Container $context): void
     {
-        $this->consumer->consume(
-            $this->queue,
-            function (Message $message) use ($messageCallback) {
-                Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
-
-                return $messageCallback($message);
-            },
-            $successCallback,
-            function (?Message $message, \Throwable $error) use ($errorCallback) {
-                if ($message === null) {
-                    Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
-                }
-
-                $errorCallback($message, $error);
-            },
-        );
+        Coroutine::getContext()[self::CONTEXT_KEY] = $context;
     }
 
     public function context(): Container
@@ -108,9 +114,12 @@ class Swoole extends Adapter
 
     public function stop(): self
     {
+        $this->stopped = true;
+
         foreach ($this->workers as $pid => $process) {
             Process::kill($pid, SIGTERM);
         }
+
         return $this;
     }
 

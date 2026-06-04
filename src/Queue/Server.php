@@ -434,6 +434,12 @@ class Server
             );
         }
 
+        // Params and injections are collected in two passes, so $arguments ends
+        // up keyed by declared order but not necessarily iterated in it. Sort by
+        // key: call_user_func_array passes integer-keyed values positionally in
+        // iteration order, so an unordered array would mis-assign arguments.
+        \ksort($arguments);
+
         return $arguments;
     }
 

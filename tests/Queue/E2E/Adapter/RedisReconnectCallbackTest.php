@@ -27,12 +27,12 @@ class RedisReconnectCallbackTest extends TestCase
             $broker->close();
         });
 
-        $broker->consume(
-            $queue,
-            fn () => null,
-            fn () => null,
-            fn () => null,
-        );
+        // The adapter would call receive() in a loop; a failed pop reconnects
+        // and returns null, after which the callback has closed the broker so
+        // further calls are no-ops.
+        for ($i = 0; $i < 3; $i++) {
+            $broker->receive($queue, 1);
+        }
 
         $this->assertSame(1, $connection->popAttempts);
         $this->assertCount(1, $calls);
@@ -61,12 +61,11 @@ class RedisReconnectCallbackTest extends TestCase
             $broker->close();
         });
 
-        $broker->consume(
-            $queue,
-            fn () => null,
-            fn () => null,
-            fn () => null,
-        );
+        // First receive() fails and reconnects; the second succeeds (empty pop)
+        // and fires the success callback, which closes the broker.
+        for ($i = 0; $i < 3; $i++) {
+            $broker->receive($queue, 1);
+        }
 
         $this->assertSame(2, $connection->popAttempts);
         $this->assertCount(1, $calls);

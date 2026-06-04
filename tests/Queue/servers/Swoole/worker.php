@@ -5,21 +5,19 @@ require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue\Server;
 use Utopia\Queue\Adapter\Swoole;
-use Utopia\Queue\Concurrency\Coroutine;
 use Utopia\Queue\Connection\Locking;
 use Utopia\Queue\Connection\Redis as RedisConnection;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Validator\Text;
 
 // One connection drives the blocking receive loop; a separate, locked
-// connection carries the bookkeeping for the handlers fanned out across
-// coroutines.
+// connection carries the acks for the handlers the Swoole adapter fans out
+// across coroutines (maxCoroutines).
 $consumer = new Redis(
     receive: new RedisConnection('redis'),
     work: new Locking(new RedisConnection('redis')),
-    executor: new Coroutine(maxCoroutines: 5),
 );
-$adapter = new Swoole($consumer, 12, 'swoole');
+$adapter = new Swoole($consumer, 12, 'swoole', maxCoroutines: 5);
 $server = new Server($adapter);
 
 $server->job()

@@ -1,4 +1,4 @@
-FROM phpswoole/swoole:php8.3-alpine
+FROM phpswoole/swoole:php8.4-alpine
 
 RUN apk add autoconf build-base
 

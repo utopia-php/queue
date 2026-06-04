@@ -3,6 +3,7 @@
 namespace Utopia\Queue\Broker;
 
 use Utopia\Queue\Consumer;
+use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
 use Utopia\Pools\Pool as UtopiaPool;
@@ -30,12 +31,18 @@ readonly class Pool implements Publisher, Consumer
         return $this->delegatePublish(__FUNCTION__, \func_get_args());
     }
 
-    public function consume(
-        Queue $queue,
-        callable $messageCallback,
-        callable $successCallback,
-        callable $errorCallback,
-    ): void {
+    public function receive(Queue $queue, int $timeout): ?Message
+    {
+        return $this->delegateConsumer(__FUNCTION__, \func_get_args());
+    }
+
+    public function commit(Queue $queue, Message $message): void
+    {
+        $this->delegateConsumer(__FUNCTION__, \func_get_args());
+    }
+
+    public function reject(Queue $queue, Message $message): void
+    {
         $this->delegateConsumer(__FUNCTION__, \func_get_args());
     }
 
