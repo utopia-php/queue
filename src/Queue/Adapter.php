@@ -45,6 +45,7 @@ abstract class Adapter
                 continue;
             }
 
+            $this->context = new Container($this->resources());
             $this->process($message, $messageCallback, $successCallback, $errorCallback);
         }
     }
@@ -56,8 +57,6 @@ abstract class Adapter
     protected function process(Message $message, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         try {
-            $this->setContext(new Container($this->resources()));
-
             try {
                 $messageCallback($message);
                 $this->consumer->commit($this->queue, $message);
@@ -73,11 +72,6 @@ abstract class Adapter
                 // the error callback itself failed; nothing left to do
             }
         }
-    }
-
-    protected function setContext(Container $context): void
-    {
-        $this->context = $context;
     }
 
     public function resources(): Container

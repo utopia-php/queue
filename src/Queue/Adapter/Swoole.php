@@ -120,16 +120,12 @@ class Swoole extends Adapter
         $waitGroup->wait();
     }
 
-    protected function setContext(Container $context): void
-    {
-        // coroutine-local so concurrent handlers don't share a context
-        Coroutine::getContext()[self::CONTEXT_KEY] = $context;
-    }
-
     public function context(): Container
     {
+        // Each message runs in its own coroutine, so the container is created
+        // lazily per coroutine and stays isolated across concurrent handlers.
         if (Coroutine::getCid() !== -1) {
-            return Coroutine::getContext()[self::CONTEXT_KEY] ?? $this->resources();
+            return Coroutine::getContext()[self::CONTEXT_KEY] ??= new Container($this->resources());
         }
 
         return $this->resources();

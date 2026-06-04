@@ -208,6 +208,7 @@ final class ServerTelemetryAdapter extends Adapter
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         while (($message = $this->consumer->receive($this->queue, 0)) !== null) {
+            $this->context = new Container($this->resources());
             $this->process($message, $messageCallback, $successCallback, $errorCallback);
         }
     }
