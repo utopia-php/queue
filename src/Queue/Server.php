@@ -434,6 +434,10 @@ class Server
             );
         }
 
+        // call_user_func_array passes integer keys in iteration order, not key
+        // order, so sort the two-pass (params, then injections) array by key.
+        \ksort($arguments);
+
         return $arguments;
     }
 

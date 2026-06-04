@@ -9,12 +9,14 @@ use Utopia\Queue\Adapter\Swoole;
 use Utopia\Queue\Server;
 use Utopia\Validator\Text;
 
+$nodes = [
+    'redis-cluster-0:6379',
+    'redis-cluster-1:6379',
+    'redis-cluster-2:6379',
+];
 $consumer = new Redis(
-    new RedisCluster([
-        'redis-cluster-0:6379',
-        'redis-cluster-1:6379',
-        'redis-cluster-2:6379',
-    ]),
+    receive: new RedisCluster($nodes),
+    commands: new RedisCluster($nodes),
 );
 $adapter = new Swoole($consumer, 12, 'swoole-redis-cluster');
 $server = new Server($adapter);

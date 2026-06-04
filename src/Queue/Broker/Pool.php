@@ -3,6 +3,7 @@
 namespace Utopia\Queue\Broker;
 
 use Utopia\Queue\Consumer;
+use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
 use Utopia\Pools\Pool as UtopiaPool;
@@ -17,26 +18,32 @@ readonly class Pool implements Publisher, Consumer
 
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
-        return $this->delegatePublish(__FUNCTION__, \func_get_args());
+        return $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
     }
 
     public function retry(Queue $queue, ?int $limit = null): void
     {
-        $this->delegatePublish(__FUNCTION__, \func_get_args());
+        $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
     }
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {
-        return $this->delegatePublish(__FUNCTION__, \func_get_args());
+        return $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
     }
 
-    public function consume(
-        Queue $queue,
-        callable $messageCallback,
-        callable $successCallback,
-        callable $errorCallback,
-    ): void {
-        $this->delegateConsumer(__FUNCTION__, \func_get_args());
+    public function receive(Queue $queue, int $timeout): ?Message
+    {
+        return $this->delegate($this->consumer, __FUNCTION__, \func_get_args());
+    }
+
+    public function commit(Queue $queue, Message $message): void
+    {
+        $this->delegate($this->consumer, __FUNCTION__, \func_get_args());
+    }
+
+    public function reject(Queue $queue, Message $message): void
+    {
+        $this->delegate($this->consumer, __FUNCTION__, \func_get_args());
     }
 
     public function close(): void
@@ -44,23 +51,11 @@ readonly class Pool implements Publisher, Consumer
         // TODO: Implement closing all connections in the pool
     }
 
-    protected function delegatePublish(string $method, array $args): mixed
+    /**
+     * @param array<mixed> $args
+     */
+    protected function delegate(?UtopiaPool $pool, string $method, array $args): mixed
     {
-        return $this->publisher?->use(function (Publisher $adapter) use (
-            $method,
-            $args,
-        ) {
-            return $adapter->$method(...$args);
-        });
-    }
-
-    protected function delegateConsumer(string $method, array $args): mixed
-    {
-        return $this->consumer?->use(function (Consumer $adapter) use (
-            $method,
-            $args,
-        ) {
-            return $adapter->$method(...$args);
-        });
+        return $pool?->use(fn (Publisher|Consumer $adapter) => $adapter->$method(...$args));
     }
 }

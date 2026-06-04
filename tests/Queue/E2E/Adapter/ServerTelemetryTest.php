@@ -204,6 +204,15 @@ final class ServerTelemetryAdapter extends Adapter
         return $this;
     }
 
+    /** Drain every message the consumer offers, then return (bounded for tests). */
+    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        while (($message = $this->consumer->receive($this->queue, 0)) !== null) {
+            $this->context = new Container($this->resources());
+            $this->process($message, $messageCallback, $successCallback, $errorCallback);
+        }
+    }
+
     public function workerStart(callable $callback): self
     {
         $this->onWorkerStart[] = $callback;
@@ -219,21 +228,30 @@ final class ServerTelemetryAdapter extends Adapter
 
 class ServerTelemetryConsumer implements Consumer
 {
-    public function consume(
-        Queue $queue,
-        callable $messageCallback,
-        callable $successCallback,
-        callable $errorCallback
-    ): void {
-        $message = new Message([
+    private bool $delivered = false;
+
+    public function receive(Queue $queue, int $timeout): ?Message
+    {
+        if ($this->delivered) {
+            return null;
+        }
+
+        $this->delivered = true;
+
+        return new Message([
             'pid' => 'test-pid',
             'queue' => $queue->name,
             'timestamp' => time() - 1,
             'payload' => [],
         ]);
+    }
 
-        $messageCallback($message);
-        $successCallback($message);
+    public function commit(Queue $queue, Message $message): void
+    {
+    }
+
+    public function reject(Queue $queue, Message $message): void
+    {
     }
 
     public function close(): void
@@ -250,16 +268,19 @@ final class ServerTelemetryMultiMessageConsumer implements Consumer
     {
     }
 
-    public function consume(
-        Queue $queue,
-        callable $messageCallback,
-        callable $successCallback,
-        callable $errorCallback
-    ): void {
-        foreach ($this->messages as $message) {
-            $messageCallback($message);
-            $successCallback($message);
-        }
+    public function receive(Queue $queue, int $timeout): ?Message
+    {
+        $message = array_shift($this->messages);
+
+        return $message instanceof Message ? $message : null;
+    }
+
+    public function commit(Queue $queue, Message $message): void
+    {
+    }
+
+    public function reject(Queue $queue, Message $message): void
+    {
     }
 
     public function close(): void

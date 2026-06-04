@@ -13,7 +13,7 @@ class RedisReconnectCallbackTest extends TestCase
     {
         $queue = new Queue('reconnect-callback');
         $connection = new FailingRedisConnection();
-        $broker = new RedisBroker($connection);
+        $broker = new RedisBroker($connection, $connection);
         $calls = [];
 
         $broker->setReconnectCallback(function (Queue $queue, \Throwable $error, int $attempt, int $sleepMs) use (&$calls, $broker): void {
@@ -27,12 +27,11 @@ class RedisReconnectCallbackTest extends TestCase
             $broker->close();
         });
 
-        $broker->consume(
-            $queue,
-            fn () => null,
-            fn () => null,
-            fn () => null,
-        );
+        // A failed pop reconnects and returns null; the callback then closes
+        // the broker, so the remaining calls are no-ops.
+        for ($i = 0; $i < 3; $i++) {
+            $broker->receive($queue, 1);
+        }
 
         $this->assertSame(1, $connection->popAttempts);
         $this->assertCount(1, $calls);
@@ -48,7 +47,7 @@ class RedisReconnectCallbackTest extends TestCase
     {
         $queue = new Queue('reconnect-success-callback');
         $connection = new RecoveringRedisConnection();
-        $broker = new RedisBroker($connection);
+        $broker = new RedisBroker($connection, $connection);
         $calls = [];
 
         $broker->setReconnectCallback(fn () => null);
@@ -61,12 +60,11 @@ class RedisReconnectCallbackTest extends TestCase
             $broker->close();
         });
 
-        $broker->consume(
-            $queue,
-            fn () => null,
-            fn () => null,
-            fn () => null,
-        );
+        // First receive() fails and reconnects; the second succeeds (empty pop)
+        // and fires the success callback, which closes the broker.
+        for ($i = 0; $i < 3; $i++) {
+            $broker->receive($queue, 1);
+        }
 
         $this->assertSame(2, $connection->popAttempts);
         $this->assertCount(1, $calls);

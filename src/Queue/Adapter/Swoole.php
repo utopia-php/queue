@@ -4,12 +4,11 @@ namespace Utopia\Queue\Adapter;
 
 use Swoole\Coroutine;
 use Swoole\Coroutine\Channel;
+use Swoole\Coroutine\WaitGroup;
 use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
-use Utopia\Queue\Error\ConsumerFailures;
-use Utopia\Queue\Message;
 
 class Swoole extends Adapter
 {
@@ -24,12 +23,14 @@ class Swoole extends Adapter
     /** @var callable[] */
     protected array $onWorkerStop = [];
 
+    protected int $maxCoroutines;
+
     public function __construct(
         Consumer $consumer,
         int $workerNum,
         string $queue,
         string $namespace = 'utopia-queue',
-        protected int $maxCoroutines = 1,
+        int $maxCoroutines = 1,
         Container $resources = new Container(),
     ) {
         parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
@@ -63,7 +64,10 @@ class Swoole extends Adapter
             Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
 
             Coroutine\run(function () use ($workerId) {
-                Process::signal(SIGTERM, fn () => $this->consumer->close());
+                Process::signal(SIGTERM, function () {
+                    $this->stopped = true;
+                    $this->consumer->close();
+                });
 
                 foreach ($this->onWorkerStart as $callback) {
                     $callback((string)$workerId);
@@ -79,60 +83,49 @@ class Swoole extends Adapter
         $this->workers[$pid] = $process;
     }
 
+    /**
+     * Receive on one loop, process each message on its own coroutine. The
+     * channel caps concurrency at $maxCoroutines: push() blocks the loop while
+     * the pool is full.
+     */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        $messageCallback = function (Message $message) use ($messageCallback) {
-            Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
+        $this->stopped = false;
+        $slots = new Channel($this->maxCoroutines);
+        $waitGroup = new WaitGroup();
 
-            return $messageCallback($message);
-        };
+        while (!$this->stopped) {
+            $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
-        $errorCallback = function (?Message $message, \Throwable $error) use ($errorCallback) {
             if ($message === null) {
-                Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
+                continue;
             }
 
-            $errorCallback($message, $error);
-        };
+            $slots->push(true);
+            $waitGroup->add();
 
-        $channel = new Channel($this->maxCoroutines);
-        $errors = [];
-
-        for ($i = 0; $i < $this->maxCoroutines; $i++) {
-            Coroutine::create(function () use ($messageCallback, $successCallback, $errorCallback, $channel, &$errors) {
+            Coroutine::create(function () use ($message, $messageCallback, $successCallback, $errorCallback, $slots, $waitGroup) {
                 try {
-                    $this->consumer->consume(
-                        $this->queue,
-                        $messageCallback,
-                        $successCallback,
-                        $errorCallback,
-                    );
+                    $this->process($message, $messageCallback, $successCallback, $errorCallback);
                 } catch (\Throwable $error) {
-                    $errors[] = $error;
-                    $this->consumer->close();
-                    $channel->push(true);
-                    return;
+                    // process() is total; net for a stray throw so it isn't lost
+                    \error_log('Uncaught error while processing queue message: ' . $error->getMessage());
+                } finally {
+                    $waitGroup->done();
+                    $slots->pop();
                 }
-
-                $channel->push(true);
             });
         }
 
-        for ($i = 0; $i < $this->maxCoroutines; $i++) {
-            $channel->pop();
-        }
-
-        $channel->close();
-
-        if ($errors !== []) {
-            throw new ConsumerFailures($errors);
-        }
+        $waitGroup->wait();
     }
 
     public function context(): Container
     {
+        // Each message runs in its own coroutine, so the container is created
+        // lazily per coroutine and stays isolated across concurrent handlers.
         if (Coroutine::getCid() !== -1) {
-            return Coroutine::getContext()[self::CONTEXT_KEY] ?? $this->resources();
+            return Coroutine::getContext()[self::CONTEXT_KEY] ??= new Container($this->resources());
         }
 
         return $this->resources();
@@ -147,9 +140,12 @@ class Swoole extends Adapter
 
     public function stop(): self
     {
+        $this->stopped = true;
+
         foreach ($this->workers as $pid => $process) {
             Process::kill($pid, SIGTERM);
         }
+
         return $this;
     }
 

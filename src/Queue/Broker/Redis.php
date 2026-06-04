@@ -15,6 +15,8 @@ class Redis implements Publisher, Consumer
     private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
 
     private bool $closed = false;
+    private int $reconnectAttempt = 0;
+    private int $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
     /**
      * @var (callable(Queue, \Throwable, int, int): void)|null
      */
@@ -24,8 +26,12 @@ class Redis implements Publisher, Consumer
      */
     private $reconnectSuccessCallback = null;
 
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        // Blocking receive loop + claim writes (single caller).
+        private readonly Connection $receive,
+        // Acks and publishing; wrap in Locking when shared by coroutines.
+        private readonly Connection $commands,
+    ) {
     }
 
     public function setReconnectCallback(?callable $callback): self
@@ -42,107 +48,77 @@ class Redis implements Publisher, Consumer
         return $this;
     }
 
-    public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    public function receive(Queue $queue, int $timeout): ?Message
     {
-        $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
-        $reconnectAttempt = 0;
-
-        while (!$this->closed) {
-            /**
-             * Waiting for next Job.
-             */
-            try {
-                $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
-                if ($reconnectAttempt > 0) {
-                    $this->triggerReconnectSuccessCallback($queue, $reconnectAttempt);
-                }
-
-                $reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
-                $reconnectAttempt = 0;
-            } catch (\RedisException|\RedisClusterException $e) {
-                if ($this->closed) {
-                    break;
-                }
-
-                $reconnectAttempt++;
-
-                try {
-                    $this->connection->close();
-                } catch (\Throwable) {
-                }
-
-                $sleepMs = \mt_rand(0, $reconnectBackoffMs);
-                $this->triggerReconnectCallback($queue, $e, $reconnectAttempt, $sleepMs);
-
-                \usleep($sleepMs * 1000);
-                $reconnectBackoffMs = \min(self::RECONNECT_MAX_BACKOFF_MS, $reconnectBackoffMs * 2);
-
-                continue;
-            }
-
-            if (!$nextMessage) {
-                continue;
-            }
-
-            $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
-
-            $message = new Message($nextMessage);
-
-            /**
-             * Move Job to Jobs and it's PID to the processing list.
-             */
-            $this->connection->setArray("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}", $nextMessage, $queue->jobTtl);
-            $this->connection->leftPush("{$queue->namespace}.processing.{$queue->name}", $message->getPid());
-
-            /**
-             * Increment Total Jobs Received from Stats.
-             */
-            $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.total");
-
-            try {
-                /**
-                 * Increment Processing Jobs from Stats.
-                 */
-                $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.processing");
-
-                $messageCallback($message);
-
-                /**
-                 * Remove Jobs if successful.
-                 */
-                $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}");
-
-                /**
-                 * Increment Successful Jobs from Stats.
-                 */
-                $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.success");
-
-
-                $successCallback($message);
-            } catch (\Throwable $th) {
-                /**
-                 * Move failed Job to Failed list.
-                 */
-                $this->connection->leftPush("{$queue->namespace}.failed.{$queue->name}", $message->getPid());
-
-                /**
-                 * Increment Failed Jobs from Stats.
-                 */
-                $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.failed");
-
-                $errorCallback($message, $th);
-            } finally {
-                /**
-                 * Remove Job from Processing.
-                 */
-                $this->connection->listRemove("{$queue->namespace}.processing.{$queue->name}", $message->getPid());
-
-                /**
-                 * Decrease Processing Jobs from Stats.
-                 */
-                $this->connection->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
-            }
+        if ($this->closed) {
+            return null;
         }
+
+        try {
+            $nextMessage = $this->receive->rightPopArray("{$queue->namespace}.queue.{$queue->name}", $timeout);
+            if ($this->reconnectAttempt > 0) {
+                $this->triggerReconnectSuccessCallback($queue, $this->reconnectAttempt);
+            }
+
+            $this->reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
+            $this->reconnectAttempt = 0;
+        } catch (\RedisException|\RedisClusterException $e) {
+            if ($this->closed) {
+                return null;
+            }
+
+            $this->reconnectAttempt++;
+
+            try {
+                $this->receive->close();
+            } catch (\Throwable) {
+            }
+
+            $sleepMs = \mt_rand(0, $this->reconnectBackoffMs);
+            $this->triggerReconnectCallback($queue, $e, $this->reconnectAttempt, $sleepMs);
+
+            \usleep($sleepMs * 1000);
+            $this->reconnectBackoffMs = \min(self::RECONNECT_MAX_BACKOFF_MS, $this->reconnectBackoffMs * 2);
+
+            return null;
+        }
+
+        if (!$nextMessage) {
+            return null;
+        }
+
+        $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
+
+        $message = new Message($nextMessage);
+        $pid = $message->getPid();
+
+        // Claim: store the job, mark it processing, bump received stats.
+        $this->receive->setArray("{$queue->namespace}.jobs.{$queue->name}.{$pid}", $nextMessage, $queue->jobTtl);
+        $this->receive->leftPush("{$queue->namespace}.processing.{$queue->name}", $pid);
+        $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.total");
+        $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.processing");
+
+        return $message;
+    }
+
+    public function commit(Queue $queue, Message $message): void
+    {
+        $pid = $message->getPid();
+
+        $this->commands->remove("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
+        $this->commands->increment("{$queue->namespace}.stats.{$queue->name}.success");
+        $this->commands->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
+        $this->commands->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
+    }
+
+    public function reject(Queue $queue, Message $message): void
+    {
+        $pid = $message->getPid();
+
+        $this->commands->leftPush("{$queue->namespace}.failed.{$queue->name}", $pid);
+        $this->commands->increment("{$queue->namespace}.stats.{$queue->name}.failed");
+        $this->commands->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
+        $this->commands->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
     }
 
     public function close(): void
@@ -183,9 +159,9 @@ class Redis implements Publisher, Consumer
             'payload' => $payload
         ];
         if ($priority) {
-            return $this->connection->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+            return $this->commands->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
         }
-        return $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+        return $this->commands->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }
 
     /**
@@ -198,7 +174,7 @@ class Redis implements Publisher, Consumer
         $processed = 0;
 
         while (true) {
-            $pid = $this->connection->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
+            $pid = $this->commands->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
 
             // No more jobs to retry
             if ($pid === false) {
@@ -229,14 +205,16 @@ class Redis implements Publisher, Consumer
 
     private function getJob(Queue $queue, string $pid): Message|false
     {
-        $value = $this->connection->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
+        $value = $this->commands->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
 
-        if ($value === false) {
+        // Missing/expired jobs return false or null depending on the driver.
+        if (!\is_string($value)) {
             return false;
         }
 
         $job = json_decode($value, true);
-        return new Message($job);
+
+        return \is_array($job) ? new Message($job) : false;
     }
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
@@ -245,6 +223,6 @@ class Redis implements Publisher, Consumer
         if ($failedJobs) {
             $queueName = "{$queue->namespace}.failed.{$queue->name}";
         }
-        return $this->connection->listSize($queueName);
+        return $this->commands->listSize($queueName);
     }
 }

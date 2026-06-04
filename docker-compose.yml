@@ -8,7 +8,6 @@ services:
       - ./tests:/usr/src/code/tests
     depends_on:
       - swoole
-      - swoole-amqp
       - swoole-redis-cluster
       - workerman
 
@@ -33,18 +32,6 @@ services:
       - ./tests:/usr/src/code/tests
     depends_on:
       redis-cluster-0:
-        condition: service_healthy
-
-  swoole-amqp:
-    container_name: swoole-amqp
-    build: ./tests/Queue/servers/AMQP/.
-    command: php /usr/src/code/tests/Queue/servers/AMQP/worker.php
-    volumes:
-      - ./vendor:/usr/src/code/vendor
-      - ./src:/usr/src/code/src
-      - ./tests:/usr/src/code/tests
-    depends_on:
-      amqp:
         condition: service_healthy
 
   workerman:
@@ -114,16 +101,5 @@ services:
       - REDIS_NODES=redis-cluster-0 redis-cluster-1 redis-cluster-2 redis-cluster-3
     healthcheck:
       test: [ "CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping" ]
-      start_interval: 1s
-      start_period: 0s
-
-  amqp:
-    image: rabbitmq:4
-    environment:
-      RABBITMQ_DEFAULT_USER: amqp
-      RABBITMQ_DEFAULT_PASS: amqp
-      RABBITMQ_DEFAULT_VHOST: "/"
-    healthcheck:
-      test: [ "CMD", "rabbitmqctl", "node_health_check" ]
       start_interval: 1s
       start_period: 0s

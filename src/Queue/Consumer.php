@@ -2,27 +2,17 @@
 
 namespace Utopia\Queue;
 
-use Utopia\Queue\Result\Commit;
-use Utopia\Queue\Result\NoCommit;
-
 interface Consumer
 {
-    /**
-     * @param Queue $queue
-     * @param callable(Message $message): (Commit|NoCommit|mixed) $messageCallback
-     * @param callable(Message $message): void $successCallback
-     * @param callable(Message $message, \Throwable $th): void $errorCallback
-     * @return void
-     */
-    public function consume(
-        Queue $queue,
-        callable $messageCallback,
-        callable $successCallback,
-        callable $errorCallback
-    ): void;
+    /** Block up to $timeout seconds for the next message and claim it, or null on timeout. */
+    public function receive(Queue $queue, int $timeout): ?Message;
 
-    /**
-     * Closes the consumer and frees any underlying resources.
-     */
+    /** Acknowledge a processed message. */
+    public function commit(Queue $queue, Message $message): void;
+
+    /** Mark a message as failed. */
+    public function reject(Queue $queue, Message $message): void;
+
+    /** Close the consumer and free resources. */
     public function close(): void;
 }

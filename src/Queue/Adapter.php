@@ -6,8 +6,11 @@ use Utopia\DI\Container;
 
 abstract class Adapter
 {
+    protected const int RECEIVE_TIMEOUT = 2;
+
     public Queue $queue;
     protected ?Container $context = null;
+    protected bool $stopped = false;
 
     public function __construct(
         public Consumer $consumer,
@@ -33,22 +36,41 @@ abstract class Adapter
 
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        $this->consumer->consume(
-            $this->queue,
-            function (Message $message) use ($messageCallback) {
-                $this->context = new Container($this->resources());
+        $this->stopped = false;
 
-                return $messageCallback($message);
-            },
-            $successCallback,
-            function (?Message $message, \Throwable $error) use ($errorCallback) {
-                if ($message === null) {
-                    $this->context = new Container($this->resources());
-                }
+        while (!$this->stopped) {
+            $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
+            if ($message === null) {
+                continue;
+            }
+
+            $this->context = new Container($this->resources());
+            $this->process($message, $messageCallback, $successCallback, $errorCallback);
+        }
+    }
+
+    /**
+     * Never throws: a failed handler is rejected and reported to $errorCallback;
+     * a failing reject or callback is swallowed rather than left to escape (and
+     * be lost on a coroutine).
+     */
+    protected function process(Message $message, callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        try {
+            $messageCallback($message);
+            $this->consumer->commit($this->queue, $message);
+            $successCallback($message);
+        } catch (\Throwable $error) {
+            try {
+                $this->consumer->reject($this->queue, $message);
+            } catch (\Throwable) {
+            }
+            try {
                 $errorCallback($message, $error);
-            },
-        );
+            } catch (\Throwable) {
+            }
+        }
     }
 
     public function resources(): Container
