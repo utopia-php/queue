@@ -6,13 +6,10 @@ use Utopia\DI\Container;
 
 abstract class Adapter
 {
-    /** Seconds to block for a message before re-checking the stop flag. */
     protected const int RECEIVE_TIMEOUT = 2;
 
     public Queue $queue;
     protected ?Container $context = null;
-
-    /** Set to break out of the receive loop. */
     protected bool $stopped = false;
 
     public function __construct(
@@ -37,9 +34,6 @@ abstract class Adapter
      */
     abstract public function stop(): self;
 
-    /**
-     * Receive and process messages one at a time until stopped.
-     */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         $this->stopped = false;
@@ -56,10 +50,8 @@ abstract class Adapter
     }
 
     /**
-     * Run the handler for one message, then commit or reject it. Never throws:
-     * any failure — including a failing commit/reject or error callback — is
-     * routed to $errorCallback so it can't escape and be lost (e.g. swallowed
-     * by a coroutine's default handler).
+     * Never throws: a failing handler, commit, reject, or error callback is all
+     * routed to $errorCallback so nothing escapes (and is lost) on a coroutine.
      */
     protected function process(Message $message, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
@@ -78,12 +70,11 @@ abstract class Adapter
             try {
                 $errorCallback($message, $error);
             } catch (\Throwable) {
-                // Nothing left to do — the error callback itself failed.
+                // the error callback itself failed; nothing left to do
             }
         }
     }
 
-    /** Install the per-message context container. */
     protected function setContext(Container $context): void
     {
         $this->context = $context;

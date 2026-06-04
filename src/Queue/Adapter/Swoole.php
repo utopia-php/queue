@@ -23,7 +23,6 @@ class Swoole extends Adapter
     /** @var callable[] */
     protected array $onWorkerStop = [];
 
-    /** Messages a worker may process concurrently. */
     protected int $maxCoroutines;
 
     public function __construct(
@@ -85,9 +84,9 @@ class Swoole extends Adapter
     }
 
     /**
-     * Receive on a single loop and process each message on its own coroutine,
-     * at most $maxCoroutines at a time. The channel is a semaphore: push()
-     * blocks the loop once the pool is full until a handler frees a slot.
+     * Receive on one loop, process each message on its own coroutine. The
+     * channel caps concurrency at $maxCoroutines: push() blocks the loop while
+     * the pool is full.
      */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
@@ -109,8 +108,7 @@ class Swoole extends Adapter
                 try {
                     $this->process($message, $messageCallback, $successCallback, $errorCallback);
                 } catch (\Throwable $error) {
-                    // process() is total; last-resort net so a stray throw is
-                    // logged, not swallowed by Swoole's default handler.
+                    // process() is total; net for a stray throw so it isn't lost
                     \error_log('Uncaught error while processing queue message: ' . $error->getMessage());
                 } finally {
                     $waitGroup->done();
@@ -119,13 +117,12 @@ class Swoole extends Adapter
             });
         }
 
-        // Let in-flight handlers finish before returning.
         $waitGroup->wait();
     }
 
-    /** Keep the per-message container coroutine-local so handlers don't share it. */
     protected function setContext(Container $context): void
     {
+        // coroutine-local so concurrent handlers don't share a context
         Coroutine::getContext()[self::CONTEXT_KEY] = $context;
     }
 

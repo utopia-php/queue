@@ -18,7 +18,7 @@ class Redis implements Publisher, Consumer
     private readonly Connection $receive;
 
     /** Carries acks and publishing; wrap in Locking when shared by coroutines. */
-    private readonly Connection $work;
+    private readonly Connection $commands;
 
     private bool $closed = false;
     private int $reconnectAttempt = 0;
@@ -32,16 +32,12 @@ class Redis implements Publisher, Consumer
      */
     private $reconnectSuccessCallback = null;
 
-    /**
-     * @param Connection|null $work Defaults to $receive; pass a separate, locked
-     *                              connection when processing concurrently.
-     */
     public function __construct(
         Connection $receive,
-        ?Connection $work = null,
+        ?Connection $commands = null,
     ) {
         $this->receive = $receive;
-        $this->work = $work ?? $receive;
+        $this->commands = $commands ?? $receive;
     }
 
     public function setReconnectCallback(?callable $callback): self
@@ -115,20 +111,20 @@ class Redis implements Publisher, Consumer
     {
         $pid = $message->getPid();
 
-        $this->work->remove("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
-        $this->work->increment("{$queue->namespace}.stats.{$queue->name}.success");
-        $this->work->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
-        $this->work->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
+        $this->commands->remove("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
+        $this->commands->increment("{$queue->namespace}.stats.{$queue->name}.success");
+        $this->commands->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
+        $this->commands->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
     }
 
     public function reject(Queue $queue, Message $message): void
     {
         $pid = $message->getPid();
 
-        $this->work->leftPush("{$queue->namespace}.failed.{$queue->name}", $pid);
-        $this->work->increment("{$queue->namespace}.stats.{$queue->name}.failed");
-        $this->work->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
-        $this->work->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
+        $this->commands->leftPush("{$queue->namespace}.failed.{$queue->name}", $pid);
+        $this->commands->increment("{$queue->namespace}.stats.{$queue->name}.failed");
+        $this->commands->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
+        $this->commands->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
     }
 
     public function close(): void
@@ -169,9 +165,9 @@ class Redis implements Publisher, Consumer
             'payload' => $payload
         ];
         if ($priority) {
-            return $this->work->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+            return $this->commands->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
         }
-        return $this->work->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+        return $this->commands->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }
 
     /**
@@ -184,7 +180,7 @@ class Redis implements Publisher, Consumer
         $processed = 0;
 
         while (true) {
-            $pid = $this->work->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
+            $pid = $this->commands->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
 
             // No more jobs to retry
             if ($pid === false) {
@@ -215,7 +211,7 @@ class Redis implements Publisher, Consumer
 
     private function getJob(Queue $queue, string $pid): Message|false
     {
-        $value = $this->work->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
+        $value = $this->commands->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
 
         // Missing/expired jobs return false or null depending on the driver.
         if (!\is_string($value)) {
@@ -233,6 +229,6 @@ class Redis implements Publisher, Consumer
         if ($failedJobs) {
             $queueName = "{$queue->namespace}.failed.{$queue->name}";
         }
-        return $this->work->listSize($queueName);
+        return $this->commands->listSize($queueName);
     }
 }
