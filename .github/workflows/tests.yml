@@ -15,10 +15,12 @@ jobs:
       matrix:
         adapter:
           [
-            AMQP,
+            Concurrency,
+            Locking,
             Pool,
             SwooleRedisCluster,
             Swoole,
+            SwooleConcurrency,
             Workerman,
           ]
 

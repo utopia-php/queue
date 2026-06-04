@@ -3,12 +3,9 @@
 namespace Utopia\Queue\Adapter;
 
 use Swoole\Coroutine;
-use Swoole\Coroutine\Channel;
 use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
-use Utopia\Queue\Consumer;
-use Utopia\Queue\Error\ConsumerFailures;
 use Utopia\Queue\Message;
 
 class Swoole extends Adapter
@@ -23,18 +20,6 @@ class Swoole extends Adapter
 
     /** @var callable[] */
     protected array $onWorkerStop = [];
-
-    public function __construct(
-        Consumer $consumer,
-        int $workerNum,
-        string $queue,
-        string $namespace = 'utopia-queue',
-        protected int $maxCoroutines = 1,
-        Container $resources = new Container(),
-    ) {
-        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
-        $this->maxCoroutines = \max(1, $maxCoroutines);
-    }
 
     public function start(): self
     {
@@ -79,54 +64,30 @@ class Swoole extends Adapter
         $this->workers[$pid] = $process;
     }
 
+    /**
+     * Drives the consumer's receive loop. Concurrency is the broker's concern
+     * now (it fans message processing out via an Executor); the adapter only
+     * gives each processed message its own DI container, stored in the
+     * coroutine context so it stays isolated across concurrent handlers.
+     */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        $messageCallback = function (Message $message) use ($messageCallback) {
-            Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
-
-            return $messageCallback($message);
-        };
-
-        $errorCallback = function (?Message $message, \Throwable $error) use ($errorCallback) {
-            if ($message === null) {
+        $this->consumer->consume(
+            $this->queue,
+            function (Message $message) use ($messageCallback) {
                 Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
-            }
 
-            $errorCallback($message, $error);
-        };
-
-        $channel = new Channel($this->maxCoroutines);
-        $errors = [];
-
-        for ($i = 0; $i < $this->maxCoroutines; $i++) {
-            Coroutine::create(function () use ($messageCallback, $successCallback, $errorCallback, $channel, &$errors) {
-                try {
-                    $this->consumer->consume(
-                        $this->queue,
-                        $messageCallback,
-                        $successCallback,
-                        $errorCallback,
-                    );
-                } catch (\Throwable $error) {
-                    $errors[] = $error;
-                    $this->consumer->close();
-                    $channel->push(true);
-                    return;
+                return $messageCallback($message);
+            },
+            $successCallback,
+            function (?Message $message, \Throwable $error) use ($errorCallback) {
+                if ($message === null) {
+                    Coroutine::getContext()[self::CONTEXT_KEY] = new Container($this->resources());
                 }
 
-                $channel->push(true);
-            });
-        }
-
-        for ($i = 0; $i < $this->maxCoroutines; $i++) {
-            $channel->pop();
-        }
-
-        $channel->close();
-
-        if ($errors !== []) {
-            throw new ConsumerFailures($errors);
-        }
+                $errorCallback($message, $error);
+            },
+        );
     }
 
     public function context(): Container

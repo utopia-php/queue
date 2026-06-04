@@ -3,92 +3,105 @@
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
-use Utopia\Queue\Adapter\Swoole;
-use Utopia\Queue\Consumer;
-use Utopia\Queue\Error\ConsumerFailures;
+use Utopia\Queue\Concurrency\Coroutine;
+use Utopia\Queue\Concurrency\Inline;
+use Utopia\Queue\Broker\Redis;
 use Utopia\Queue\Queue;
 
 class SwooleConcurrencyTest extends TestCase
 {
-    public function testMaxCoroutinesConsumeInParallel(): void
-    {
-        $consumer = new ConcurrentConsumer();
+    private const string QUEUE = 'concurrency';
+    private const string NAMESPACE = 'tests';
 
-        \Swoole\Coroutine\run(function () use ($consumer) {
-            $adapter = new Swoole($consumer, 1, 'swoole-concurrency', maxCoroutines: 3);
-            $adapter->consume(fn () => null, fn () => null, fn () => null);
+    /**
+     * With a concurrent executor the broker receives messages on its receive
+     * connection and processes them on overlapping coroutines, bounded by the
+     * executor's limit — one receiver fanning out to many handlers.
+     */
+    public function testRedisFansProcessingOutAcrossCoroutines(): void
+    {
+        $connection = new InMemoryConnection();
+        $queue = new Queue(self::QUEUE, self::NAMESPACE);
+        $this->enqueue($connection, $queue, 9);
+
+        $active = 0;
+        $maxActive = 0;
+        $processed = 0;
+
+        \Swoole\Coroutine\run(function () use ($connection, $queue, &$active, &$maxActive, &$processed) {
+            $broker = new Redis(
+                receive: $connection,
+                work: $connection,
+                executor: new Coroutine(maxCoroutines: 3),
+            );
+
+            $broker->consume(
+                $queue,
+                function () use ($broker, &$active, &$maxActive, &$processed) {
+                    $active++;
+                    $maxActive = \max($maxActive, $active);
+                    \Swoole\Coroutine::sleep(0.02);
+                    $active--;
+
+                    if (++$processed === 9) {
+                        $broker->close();
+                    }
+                },
+                fn () => null,
+                fn () => null,
+            );
         });
 
-        $this->assertSame(3, $consumer->consumeCalls);
-        $this->assertSame(3, $consumer->maxActive);
+        $this->assertSame(9, $processed, 'every enqueued message should be processed');
+        $this->assertSame(3, $maxActive, 'concurrency is bounded by the executor limit');
     }
 
-    public function testPreservesAllCoroutineConsumerErrors(): void
+    /**
+     * The default (Inline) executor processes one message fully before the next
+     * is received, so handlers never overlap.
+     */
+    public function testInlineProcessesOneMessageAtATime(): void
     {
-        $consumer = new FailingConcurrentConsumer();
-        $failure = null;
+        $connection = new InMemoryConnection();
+        $queue = new Queue(self::QUEUE, self::NAMESPACE);
+        $this->enqueue($connection, $queue, 5);
 
-        \Swoole\Coroutine\run(function () use ($consumer, &$failure) {
-            $adapter = new Swoole($consumer, 1, 'swoole-concurrency', maxCoroutines: 3);
+        $active = 0;
+        $maxActive = 0;
+        $processed = 0;
 
-            try {
-                $adapter->consume(fn () => null, fn () => null, fn () => null);
-            } catch (ConsumerFailures $error) {
-                $failure = $error;
-            }
+        \Swoole\Coroutine\run(function () use ($connection, $queue, &$active, &$maxActive, &$processed) {
+            $broker = new Redis(receive: $connection, executor: new Inline());
+
+            $broker->consume(
+                $queue,
+                function () use ($broker, &$active, &$maxActive, &$processed) {
+                    $active++;
+                    $maxActive = \max($maxActive, $active);
+                    $active--;
+
+                    if (++$processed === 5) {
+                        $broker->close();
+                    }
+                },
+                fn () => null,
+                fn () => null,
+            );
         });
 
-        $this->assertInstanceOf(ConsumerFailures::class, $failure);
-        $this->assertSame(3, $consumer->consumeCalls);
-        $this->assertSame(3, $consumer->closed);
-        $this->assertCount(3, $failure->getErrors());
-        $messages = \array_map(fn (\Throwable $error) => $error->getMessage(), $failure->getErrors());
-        \sort($messages);
-
-        $this->assertSame(['consumer 1 failed', 'consumer 2 failed', 'consumer 3 failed'], $messages);
-        $this->assertSame($failure->getErrors()[0], $failure->getPrevious());
-    }
-}
-
-final class ConcurrentConsumer implements Consumer
-{
-    public int $active = 0;
-    public int $consumeCalls = 0;
-    public int $maxActive = 0;
-
-    public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
-        $this->consumeCalls++;
-        $this->active++;
-        $this->maxActive = \max($this->maxActive, $this->active);
-
-        \Swoole\Coroutine::sleep(0.05);
-
-        $this->active--;
+        $this->assertSame(5, $processed);
+        $this->assertSame(1, $maxActive, 'inline processing never overlaps');
     }
 
-    public function close(): void
+    private function enqueue(InMemoryConnection $connection, Queue $queue, int $count): void
     {
-    }
-}
-
-final class FailingConcurrentConsumer implements Consumer
-{
-    public int $closed = 0;
-    public int $consumeCalls = 0;
-
-    public function consume(Queue $queue, callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
-        $this->consumeCalls++;
-        $id = $this->consumeCalls;
-
-        \Swoole\Coroutine::sleep(0.05);
-
-        throw new \RuntimeException("consumer {$id} failed");
-    }
-
-    public function close(): void
-    {
-        $this->closed++;
+        for ($i = 0; $i < $count; $i++) {
+            $connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", [
+                'pid' => "pid-{$i}",
+                'queue' => $queue->name,
+                'timestamp' => 0,
+                'payload' => ['n' => $i],
+            ]);
+        }
     }
 }

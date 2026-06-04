@@ -2,6 +2,8 @@
 
 namespace Utopia\Queue\Broker;
 
+use Utopia\Queue\Concurrency\Executor;
+use Utopia\Queue\Concurrency\Inline;
 use Utopia\Queue\Connection;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Message;
@@ -14,6 +16,22 @@ class Redis implements Publisher, Consumer
     private const int RECONNECT_BACKOFF_MS = 100;
     private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
 
+    /**
+     * Dedicated to the blocking receive loop, which is driven by a single
+     * coroutine. Because it has exactly one user it never needs locking.
+     */
+    private readonly Connection $receive;
+
+    /**
+     * Carries every other command — the per-message bookkeeping, acknowledging
+     * and publishing. When messages are processed concurrently (see the
+     * {@see Executor}), several coroutines share this connection, so it should
+     * be wrapped in {@see \Utopia\Queue\Connection\Locking}.
+     */
+    private readonly Connection $work;
+
+    private readonly Executor $executor;
+
     private bool $closed = false;
     /**
      * @var (callable(Queue, \Throwable, int, int): void)|null
@@ -24,8 +42,22 @@ class Redis implements Publisher, Consumer
      */
     private $reconnectSuccessCallback = null;
 
-    public function __construct(private readonly Connection $connection)
-    {
+    /**
+     * @param Connection      $receive  Connection used for the blocking receive loop.
+     * @param Connection|null $work     Connection used for every other command; defaults
+     *                                  to $receive, which is safe while processing inline.
+     *                                  Pass a separate, locked connection when using a
+     *                                  concurrent executor.
+     * @param Executor        $executor Strategy for processing each received message.
+     */
+    public function __construct(
+        Connection $receive,
+        ?Connection $work = null,
+        Executor $executor = new Inline(),
+    ) {
+        $this->receive = $receive;
+        $this->work = $work ?? $receive;
+        $this->executor = $executor;
     }
 
     public function setReconnectCallback(?callable $callback): self
@@ -49,10 +81,11 @@ class Redis implements Publisher, Consumer
 
         while (!$this->closed) {
             /**
-             * Waiting for next Job.
+             * Waiting for next Job. The receive loop runs in a single coroutine,
+             * so the blocking pop has exclusive use of its connection.
              */
             try {
-                $nextMessage = $this->connection->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
+                $nextMessage = $this->receive->rightPopArray("{$queue->namespace}.queue.{$queue->name}", self::POP_TIMEOUT);
                 if ($reconnectAttempt > 0) {
                     $this->triggerReconnectSuccessCallback($queue, $reconnectAttempt);
                 }
@@ -67,7 +100,7 @@ class Redis implements Publisher, Consumer
                 $reconnectAttempt++;
 
                 try {
-                    $this->connection->close();
+                    $this->receive->close();
                 } catch (\Throwable) {
                 }
 
@@ -89,59 +122,91 @@ class Redis implements Publisher, Consumer
             $message = new Message($nextMessage);
 
             /**
-             * Move Job to Jobs and it's PID to the processing list.
+             * Hand the message off to the executor. Inline runs it here and now;
+             * a concurrent executor fans it out onto a coroutine while the loop
+             * goes back to receiving (bounded by the executor's backpressure).
              */
-            $this->connection->setArray("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}", $nextMessage, $queue->jobTtl);
-            $this->connection->leftPush("{$queue->namespace}.processing.{$queue->name}", $message->getPid());
+            $this->executor->submit(function () use ($queue, $message, $nextMessage, $messageCallback, $successCallback, $errorCallback) {
+                $this->process($queue, $message, $nextMessage, $messageCallback, $successCallback, $errorCallback);
+            });
+        }
+
+        /**
+         * Wait for in-flight messages to finish before returning, so a graceful
+         * shutdown does not abandon work that was already received.
+         */
+        $this->executor->drain();
+    }
+
+    /**
+     * Process a single received message: record it as in-flight, run the
+     * handler, then acknowledge or fail it. Every command here runs on the
+     * $work connection so it is safe to invoke from many coroutines at once.
+     *
+     * @param array<string, mixed> $raw The decoded message payload.
+     */
+    private function process(
+        Queue $queue,
+        Message $message,
+        array $raw,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+    ): void {
+        $pid = $message->getPid();
+
+        /**
+         * Move Job to Jobs and it's PID to the processing list.
+         */
+        $this->work->setArray("{$queue->namespace}.jobs.{$queue->name}.{$pid}", $raw, $queue->jobTtl);
+        $this->work->leftPush("{$queue->namespace}.processing.{$queue->name}", $pid);
+
+        /**
+         * Increment Total Jobs Received from Stats.
+         */
+        $this->work->increment("{$queue->namespace}.stats.{$queue->name}.total");
+
+        try {
+            /**
+             * Increment Processing Jobs from Stats.
+             */
+            $this->work->increment("{$queue->namespace}.stats.{$queue->name}.processing");
+
+            $messageCallback($message);
 
             /**
-             * Increment Total Jobs Received from Stats.
+             * Remove Jobs if successful.
              */
-            $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.total");
+            $this->work->remove("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
 
-            try {
-                /**
-                 * Increment Processing Jobs from Stats.
-                 */
-                $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.processing");
+            /**
+             * Increment Successful Jobs from Stats.
+             */
+            $this->work->increment("{$queue->namespace}.stats.{$queue->name}.success");
 
-                $messageCallback($message);
+            $successCallback($message);
+        } catch (\Throwable $th) {
+            /**
+             * Move failed Job to Failed list.
+             */
+            $this->work->leftPush("{$queue->namespace}.failed.{$queue->name}", $pid);
 
-                /**
-                 * Remove Jobs if successful.
-                 */
-                $this->connection->remove("{$queue->namespace}.jobs.{$queue->name}.{$message->getPid()}");
+            /**
+             * Increment Failed Jobs from Stats.
+             */
+            $this->work->increment("{$queue->namespace}.stats.{$queue->name}.failed");
 
-                /**
-                 * Increment Successful Jobs from Stats.
-                 */
-                $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.success");
+            $errorCallback($message, $th);
+        } finally {
+            /**
+             * Remove Job from Processing.
+             */
+            $this->work->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
 
-
-                $successCallback($message);
-            } catch (\Throwable $th) {
-                /**
-                 * Move failed Job to Failed list.
-                 */
-                $this->connection->leftPush("{$queue->namespace}.failed.{$queue->name}", $message->getPid());
-
-                /**
-                 * Increment Failed Jobs from Stats.
-                 */
-                $this->connection->increment("{$queue->namespace}.stats.{$queue->name}.failed");
-
-                $errorCallback($message, $th);
-            } finally {
-                /**
-                 * Remove Job from Processing.
-                 */
-                $this->connection->listRemove("{$queue->namespace}.processing.{$queue->name}", $message->getPid());
-
-                /**
-                 * Decrease Processing Jobs from Stats.
-                 */
-                $this->connection->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
-            }
+            /**
+             * Decrease Processing Jobs from Stats.
+             */
+            $this->work->decrement("{$queue->namespace}.stats.{$queue->name}.processing");
         }
     }
 
@@ -183,9 +248,9 @@ class Redis implements Publisher, Consumer
             'payload' => $payload
         ];
         if ($priority) {
-            return $this->connection->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+            return $this->work->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
         }
-        return $this->connection->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
+        return $this->work->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }
 
     /**
@@ -198,7 +263,7 @@ class Redis implements Publisher, Consumer
         $processed = 0;
 
         while (true) {
-            $pid = $this->connection->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
+            $pid = $this->work->rightPop("{$queue->namespace}.failed.{$queue->name}", self::POP_TIMEOUT);
 
             // No more jobs to retry
             if ($pid === false) {
@@ -229,7 +294,7 @@ class Redis implements Publisher, Consumer
 
     private function getJob(Queue $queue, string $pid): Message|false
     {
-        $value = $this->connection->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
+        $value = $this->work->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
 
         if ($value === false) {
             return false;
@@ -245,6 +310,6 @@ class Redis implements Publisher, Consumer
         if ($failedJobs) {
             $queueName = "{$queue->namespace}.failed.{$queue->name}";
         }
-        return $this->connection->listSize($queueName);
+        return $this->work->listSize($queueName);
     }
 }

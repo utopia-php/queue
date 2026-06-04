@@ -31,7 +31,12 @@ class SwooleRedisClusterTest extends Base
     public function testPriorityJobIsConsumedBeforeNormalJobs(): void
     {
         $connection = $this->getConnection();
-        $key = "{$this->getQueue()->namespace}.queue.{$this->getQueue()->name}";
+
+        // Priority ordering is purely a property of enqueue, so use a queue no
+        // worker consumes — otherwise the live consumer drains these jobs before
+        // we can observe their order.
+        $queue = new Queue($this->getQueue()->name . '-priority', $this->getQueue()->namespace);
+        $key = "{$queue->namespace}.queue.{$queue->name}";
 
         // Flush any leftover state from previous runs.
         while ($connection->rightPopArray($key, 1) !== false) {
@@ -39,12 +44,12 @@ class SwooleRedisClusterTest extends Base
         }
 
         // Enqueue three normal jobs (pushed to head/left).
-        $this->getPublisher()->enqueue($this->getQueue(), ['order' => 'normal-1']);
-        $this->getPublisher()->enqueue($this->getQueue(), ['order' => 'normal-2']);
-        $this->getPublisher()->enqueue($this->getQueue(), ['order' => 'normal-3']);
+        $this->getPublisher()->enqueue($queue, ['order' => 'normal-1']);
+        $this->getPublisher()->enqueue($queue, ['order' => 'normal-2']);
+        $this->getPublisher()->enqueue($queue, ['order' => 'normal-3']);
 
         // Enqueue one priority job (pushed to tail/right — same end BRPOP reads from).
-        $this->getPublisher()->enqueue($this->getQueue(), ['order' => 'priority'], priority: true);
+        $this->getPublisher()->enqueue($queue, ['order' => 'priority'], priority: true);
 
         // The first pop should yield the priority job.
         $first = $connection->rightPopArray($key, 1);
