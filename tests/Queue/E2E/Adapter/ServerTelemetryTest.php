@@ -204,10 +204,7 @@ final class ServerTelemetryAdapter extends Adapter
         return $this;
     }
 
-    /**
-     * Drain every message the consumer offers, then return — the loop is
-     * bounded for tests rather than running until a stop signal.
-     */
+    /** Drain every message the consumer offers, then return (bounded for tests). */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         while (($message = $this->consumer->receive($this->queue, 0)) !== null) {

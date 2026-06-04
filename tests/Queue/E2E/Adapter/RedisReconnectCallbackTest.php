@@ -27,9 +27,8 @@ class RedisReconnectCallbackTest extends TestCase
             $broker->close();
         });
 
-        // The adapter would call receive() in a loop; a failed pop reconnects
-        // and returns null, after which the callback has closed the broker so
-        // further calls are no-ops.
+        // A failed pop reconnects and returns null; the callback then closes
+        // the broker, so the remaining calls are no-ops.
         for ($i = 0; $i < 3; $i++) {
             $broker->receive($queue, 1);
         }

@@ -6,12 +6,9 @@ use Swoole\Coroutine;
 use Utopia\Queue\Connection;
 
 /**
- * A minimal in-memory {@see Connection} for tests: lists are plain arrays and
- * counters live in a map. Enough to drive the Redis broker's consume loop
- * without a real Redis server.
- *
- * When a pop finds an empty list it yields (inside a coroutine) so a busy
- * receive loop cannot starve the handler coroutines it is feeding.
+ * Minimal in-memory {@see Connection} for tests, backing the broker without a
+ * real Redis server. An empty pop yields so a busy receive loop doesn't starve
+ * the handler coroutines.
  */
 class InMemoryConnection implements Connection
 {
@@ -178,10 +175,7 @@ class InMemoryConnection implements Connection
     {
     }
 
-    /**
-     * Pop from either end, yielding when empty so a tight receive loop does not
-     * monopolise the scheduler.
-     */
+    /** Pop from either end, yielding when empty so the receive loop doesn't spin. */
     private function pop(string $queue, bool $fromTail): mixed
     {
         if (empty($this->lists[$queue])) {

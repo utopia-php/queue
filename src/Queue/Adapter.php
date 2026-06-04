@@ -3,29 +3,16 @@
 namespace Utopia\Queue;
 
 use Utopia\DI\Container;
-use Utopia\Queue\Concurrency\Executor;
-use Utopia\Queue\Concurrency\Inline;
 
 abstract class Adapter
 {
-    /**
-     * How long the receive loop blocks for a message before looping back to
-     * re-check whether it should keep running.
-     */
+    /** Seconds to block for a message before re-checking the stop flag. */
     protected const int RECEIVE_TIMEOUT = 2;
 
     public Queue $queue;
     protected ?Container $context = null;
 
-    /**
-     * Strategy for processing each received message. Defaults to running them
-     * inline, one at a time; a concurrent adapter (e.g. Swoole) swaps in an
-     * executor that fans processing out across coroutines. This is where the
-     * adapter — not the broker — owns the concurrency model.
-     */
-    protected Executor $executor;
-
-    /** Set to break out of the receive loop on its next iteration. */
+    /** Set to break out of the receive loop. */
     protected bool $stopped = false;
 
     public function __construct(
@@ -36,7 +23,6 @@ abstract class Adapter
         protected Container $resources = new Container(),
     ) {
         $this->queue = new Queue($queue, $namespace);
-        $this->executor = new Inline();
     }
 
     /**
@@ -52,10 +38,7 @@ abstract class Adapter
     abstract public function stop(): self;
 
     /**
-     * Receive messages on a single loop and hand each one to the executor. With
-     * the default {@see Inline} executor a message is processed before the next
-     * is received; a concurrent executor processes several at once while the
-     * loop keeps receiving (bounded by the executor's back-pressure).
+     * Receive and process messages one at a time until stopped.
      */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
@@ -68,36 +51,39 @@ abstract class Adapter
                 continue;
             }
 
-            $this->executor->submit(function () use ($message, $messageCallback, $successCallback, $errorCallback) {
-                $this->process($message, $messageCallback, $successCallback, $errorCallback);
-            });
+            $this->process($message, $messageCallback, $successCallback, $errorCallback);
         }
-
-        $this->executor->drain();
     }
 
     /**
-     * Process one message: give it a fresh context, run the handler, then
-     * acknowledge or reject it.
+     * Run the handler for one message, then commit or reject it. Never throws:
+     * any failure — including a failing commit/reject or error callback — is
+     * routed to $errorCallback so it can't escape and be lost (e.g. swallowed
+     * by a coroutine's default handler).
      */
     protected function process(Message $message, callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        $this->setContext(new Container($this->resources()));
-
         try {
-            $messageCallback($message);
-            $this->consumer->commit($this->queue, $message);
-            $successCallback($message);
+            $this->setContext(new Container($this->resources()));
+
+            try {
+                $messageCallback($message);
+                $this->consumer->commit($this->queue, $message);
+                $successCallback($message);
+            } catch (\Throwable $error) {
+                $this->consumer->reject($this->queue, $message);
+                $errorCallback($message, $error);
+            }
         } catch (\Throwable $error) {
-            $this->consumer->reject($this->queue, $message);
-            $errorCallback($message, $error);
+            try {
+                $errorCallback($message, $error);
+            } catch (\Throwable) {
+                // Nothing left to do — the error callback itself failed.
+            }
         }
     }
 
-    /**
-     * Install the per-message context container. Overridden by concurrent
-     * adapters to keep the container coroutine-local.
-     */
+    /** Install the per-message context container. */
     protected function setContext(Container $context): void
     {
         $this->context = $context;

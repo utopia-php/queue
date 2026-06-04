@@ -12,34 +12,25 @@ class SwooleConcurrencyTest extends TestCase
     private const string QUEUE = 'concurrency';
     private const string NAMESPACE = 'tests';
 
-    /**
-     * The Swoole adapter owns concurrency: it receives on a single loop and
-     * fans message processing out across coroutines, with at most
-     * maxCoroutines handlers running at once.
-     */
-    public function testAdapterFansProcessingOutUpToMaxCoroutines(): void
+    public function testProcessesUpToMaxCoroutinesAtOnce(): void
     {
         [$processed, $maxActive] = $this->runWorker(messages: 9, maxCoroutines: 3);
 
-        $this->assertSame(9, $processed, 'every enqueued message should be processed');
+        $this->assertSame(9, $processed);
         $this->assertSame(3, $maxActive, 'concurrency is bounded by maxCoroutines');
     }
 
-    /**
-     * With maxCoroutines of 1 the adapter degrades to sequential processing —
-     * handlers never overlap.
-     */
-    public function testMaxCoroutinesOfOneProcessesSequentially(): void
+    public function testOneCoroutineNeverOverlaps(): void
     {
         [$processed, $maxActive] = $this->runWorker(messages: 5, maxCoroutines: 1);
 
         $this->assertSame(5, $processed);
-        $this->assertSame(1, $maxActive, 'a single coroutine never overlaps');
+        $this->assertSame(1, $maxActive);
     }
 
     /**
-     * Enqueue $messages jobs, run the adapter's consume loop until they are all
-     * processed, and report how many ran and the peak concurrency observed.
+     * Run the consume loop until $messages are processed; return the count and
+     * the peak concurrency observed.
      *
      * @return array{0: int, 1: int} [processed, maxActive]
      */

@@ -3,10 +3,11 @@
 namespace Utopia\Queue\Adapter;
 
 use Swoole\Coroutine;
+use Swoole\Coroutine\Channel;
+use Swoole\Coroutine\WaitGroup;
 use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
-use Utopia\Queue\Concurrency\Coroutine as CoroutineExecutor;
 use Utopia\Queue\Consumer;
 
 class Swoole extends Adapter
@@ -22,13 +23,9 @@ class Swoole extends Adapter
     /** @var callable[] */
     protected array $onWorkerStop = [];
 
-    /**
-     * @param int $maxCoroutines Number of messages a worker may process
-     *                           concurrently. This is where the Swoole adapter
-     *                           owns its concurrency: it fans message processing
-     *                           out across coroutines while the receive loop
-     *                           keeps pulling work.
-     */
+    /** Messages a worker may process concurrently. */
+    protected int $maxCoroutines;
+
     public function __construct(
         Consumer $consumer,
         int $workerNum,
@@ -38,7 +35,7 @@ class Swoole extends Adapter
         Container $resources = new Container(),
     ) {
         parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
-        $this->executor = new CoroutineExecutor($maxCoroutines);
+        $this->maxCoroutines = \max(1, $maxCoroutines);
     }
 
     public function start(): self
@@ -88,9 +85,45 @@ class Swoole extends Adapter
     }
 
     /**
-     * Store the per-message container in the coroutine context so concurrent
-     * handlers each see their own, rather than sharing one on the adapter.
+     * Receive on a single loop and process each message on its own coroutine,
+     * at most $maxCoroutines at a time. The channel is a semaphore: push()
+     * blocks the loop once the pool is full until a handler frees a slot.
      */
+    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        $this->stopped = false;
+        $slots = new Channel($this->maxCoroutines);
+        $waitGroup = new WaitGroup();
+
+        while (!$this->stopped) {
+            $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
+
+            if ($message === null) {
+                continue;
+            }
+
+            $slots->push(true);
+            $waitGroup->add();
+
+            Coroutine::create(function () use ($message, $messageCallback, $successCallback, $errorCallback, $slots, $waitGroup) {
+                try {
+                    $this->process($message, $messageCallback, $successCallback, $errorCallback);
+                } catch (\Throwable $error) {
+                    // process() is total; last-resort net so a stray throw is
+                    // logged, not swallowed by Swoole's default handler.
+                    \error_log('Uncaught error while processing queue message: ' . $error->getMessage());
+                } finally {
+                    $waitGroup->done();
+                    $slots->pop();
+                }
+            });
+        }
+
+        // Let in-flight handlers finish before returning.
+        $waitGroup->wait();
+    }
+
+    /** Keep the per-message container coroutine-local so handlers don't share it. */
     protected function setContext(Container $context): void
     {
         Coroutine::getContext()[self::CONTEXT_KEY] = $context;

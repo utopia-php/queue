@@ -14,18 +14,10 @@ class Redis implements Publisher, Consumer
     private const int RECONNECT_BACKOFF_MS = 100;
     private const int RECONNECT_MAX_BACKOFF_MS = 5_000;
 
-    /**
-     * Dedicated to the blocking receive loop and its claim writes. A single
-     * caller drives it, so it never needs locking.
-     */
+    /** Drives the blocking receive loop and its claim writes (single caller). */
     private readonly Connection $receive;
 
-    /**
-     * Carries acknowledgements and publishing. When the adapter processes
-     * messages concurrently, several coroutines share this connection, so it
-     * should be wrapped in {@see \Utopia\Queue\Connection\Locking}. Defaults to
-     * $receive, which is safe while processing inline.
-     */
+    /** Carries acks and publishing; wrap in Locking when shared by coroutines. */
     private readonly Connection $work;
 
     private bool $closed = false;
@@ -41,10 +33,8 @@ class Redis implements Publisher, Consumer
     private $reconnectSuccessCallback = null;
 
     /**
-     * @param Connection      $receive Connection used for the blocking receive loop.
-     * @param Connection|null $work    Connection used for acknowledgements and publishing;
-     *                                 defaults to $receive. Pass a separate, locked
-     *                                 connection when an adapter processes concurrently.
+     * @param Connection|null $work Defaults to $receive; pass a separate, locked
+     *                              connection when processing concurrently.
      */
     public function __construct(
         Connection $receive,
@@ -74,11 +64,6 @@ class Redis implements Publisher, Consumer
             return null;
         }
 
-        /**
-         * Wait for the next Job. The receive loop is single-threaded, so the
-         * blocking pop and the claim writes below have exclusive use of this
-         * connection and need no locking.
-         */
         try {
             $nextMessage = $this->receive->rightPopArray("{$queue->namespace}.queue.{$queue->name}", $timeout);
             if ($this->reconnectAttempt > 0) {
@@ -117,10 +102,7 @@ class Redis implements Publisher, Consumer
         $message = new Message($nextMessage);
         $pid = $message->getPid();
 
-        /**
-         * Claim the Job: record it under Jobs, add its PID to the processing
-         * list and bump the received/processing stats.
-         */
+        // Claim: store the job, mark it processing, bump received stats.
         $this->receive->setArray("{$queue->namespace}.jobs.{$queue->name}.{$pid}", $nextMessage, $queue->jobTtl);
         $this->receive->leftPush("{$queue->namespace}.processing.{$queue->name}", $pid);
         $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.total");
@@ -133,9 +115,6 @@ class Redis implements Publisher, Consumer
     {
         $pid = $message->getPid();
 
-        /**
-         * Remove the Job, bump the success stat, then clear it from processing.
-         */
         $this->work->remove("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
         $this->work->increment("{$queue->namespace}.stats.{$queue->name}.success");
         $this->work->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
@@ -146,10 +125,6 @@ class Redis implements Publisher, Consumer
     {
         $pid = $message->getPid();
 
-        /**
-         * Move the Job to the failed list, bump the failed stat, then clear it
-         * from processing.
-         */
         $this->work->leftPush("{$queue->namespace}.failed.{$queue->name}", $pid);
         $this->work->increment("{$queue->namespace}.stats.{$queue->name}.failed");
         $this->work->listRemove("{$queue->namespace}.processing.{$queue->name}", $pid);
@@ -242,12 +217,14 @@ class Redis implements Publisher, Consumer
     {
         $value = $this->work->get("{$queue->namespace}.jobs.{$queue->name}.{$pid}");
 
-        if ($value === false) {
+        // Missing/expired jobs return false or null depending on the driver.
+        if (!\is_string($value)) {
             return false;
         }
 
         $job = json_decode($value, true);
-        return new Message($job);
+
+        return \is_array($job) ? new Message($job) : false;
     }
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int

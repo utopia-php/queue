@@ -10,9 +10,7 @@ use Utopia\Queue\Connection\Redis as RedisConnection;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Validator\Text;
 
-// One connection drives the blocking receive loop; a separate, locked
-// connection carries the acks for the handlers the Swoole adapter fans out
-// across coroutines (maxCoroutines).
+// Separate receive (blocking pop) and work (locked, shared by coroutines) connections.
 $consumer = new Redis(
     receive: new RedisConnection('redis'),
     work: new Locking(new RedisConnection('redis')),
