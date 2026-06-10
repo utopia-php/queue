@@ -29,7 +29,7 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit --testsuite unit",
+        "test": "phpunit --testsuite unit",
         "test:e2e": "tests/e2e.sh"
     },
     "require": {
@@ -44,7 +44,6 @@
     "require-dev": {
         "ext-redis": "*",
         "swoole/ide-helper": "4.8.8",
-        "phpunit/phpunit": "^11.0",
         "workerman/workerman": "^4.0"
     },
     "suggest": {

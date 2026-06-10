@@ -16,4 +16,4 @@ trap cleanup EXIT INT TERM
 
 sleep 3
 
-vendor/bin/phpunit --testsuite e2e
+phpunit --testsuite e2e
