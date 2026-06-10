@@ -50,7 +50,7 @@ class RedisReconnectCallbackTest extends TestCase
         $broker = new RedisBroker($connection, $connection);
         $calls = [];
 
-        $broker->setReconnectCallback(fn () => null);
+        $broker->setReconnectCallback(fn() => null);
         $broker->setReconnectSuccessCallback(function (Queue $queue, int $attempts) use (&$calls, $broker): void {
             $calls[] = [
                 'queue' => $queue,
@@ -184,9 +184,7 @@ class FailingRedisConnection implements Connection
         return false;
     }
 
-    public function close(): void
-    {
-    }
+    public function close(): void {}
 }
 
 class RecoveringRedisConnection extends FailingRedisConnection

@@ -39,7 +39,7 @@ class Workerman extends Adapter
     public function workerStart(callable $callback): self
     {
         $this->worker->onWorkerStart = function ($worker) use ($callback) {
-            call_user_func($callback, $worker->workerId);
+            \call_user_func($callback, $worker->workerId);
         };
 
         return $this;
@@ -47,7 +47,7 @@ class Workerman extends Adapter
     public function workerStop(callable $callback): self
     {
         $this->worker->onWorkerStop = function ($worker) use ($callback) {
-            call_user_func($callback, $worker->workerId);
+            \call_user_func($callback, $worker->workerId);
         };
 
         return $this;

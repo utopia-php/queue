@@ -1,6 +1,0 @@
-{
-    "preset": "psr12",
-    "rules": {
-        "single_quote": true
-    }
-}

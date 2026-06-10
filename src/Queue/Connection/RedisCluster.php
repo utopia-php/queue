@@ -205,27 +205,27 @@ class RedisCluster implements Connection
                     throw new \RedisClusterException(
                         \sprintf(
                             'Failed to connect to Redis cluster nodes [%s] after %d attempts: %s',
-                            \implode(', ', $this->seeds),
+                            implode(', ', $this->seeds),
                             self::CONNECT_MAX_ATTEMPTS,
                             $e->getMessage(),
                         ),
-                        (int)$e->getCode(),
+                        (int) $e->getCode(),
                         $e,
                     );
                 }
 
                 // Exponential backoff with full jitter to avoid thundering herd on recovery.
-                $backoffMs = \min(
+                $backoffMs = min(
                     self::CONNECT_MAX_BACKOFF_MS,
                     self::CONNECT_BACKOFF_MS * (2 ** ($attempt - 1)),
                 );
-                \usleep(\mt_rand(0, $backoffMs) * 1000);
+                usleep(mt_rand(0, $backoffMs) * 1000);
             }
         }
 
         throw new \RedisClusterException(\sprintf(
             'Unreachable: Redis cluster connect loop for nodes [%s] exited after %d attempts without success or exception.',
-            \implode(', ', $this->seeds),
+            implode(', ', $this->seeds),
             self::CONNECT_MAX_ATTEMPTS,
         ));
     }

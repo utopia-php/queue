@@ -196,7 +196,7 @@ class Server
         try {
             $this->adapter->stop();
         } catch (Throwable $error) {
-            $this->resources()->set('error', fn () => $error);
+            $this->resources()->set('error', fn() => $error);
             foreach ($this->errorHooks as $hook) {
                 $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
@@ -225,7 +225,7 @@ class Server
     {
         try {
             $this->adapter->workerStart(function (string $workerId) {
-                $this->resources()->set('workerId', fn () => $workerId);
+                $this->resources()->set('workerId', fn() => $workerId);
 
                 foreach ($this->workerStartHooks as $hook) {
                     $hook->getAction()(...$this->getArguments($this->resources(), $hook));
@@ -235,11 +235,11 @@ class Server
                     function (Message $message) {
                         $receivedAtTimestamp = microtime(true);
                         try {
-                            $waitDuration =
-                                microtime(true) - $message->getTimestamp();
+                            $waitDuration
+                                = microtime(true) - $message->getTimestamp();
                             $this->jobWaitTime->record($waitDuration);
 
-                            $this->context()->set('message', fn () => $message);
+                            $this->context()->set('message', fn() => $message);
 
                             if ($this->job->getHook()) {
                                 foreach ($this->initHooks as $hook) {
@@ -278,13 +278,13 @@ class Server
                                 ),
                             );
                         } finally {
-                            $processDuration =
-                                microtime(true) - $receivedAtTimestamp;
+                            $processDuration
+                                = microtime(true) - $receivedAtTimestamp;
                             $this->processDuration->record($processDuration);
                         }
                     },
                     function (Message $message) {
-                        $this->context()->set('message', fn () => $message);
+                        $this->context()->set('message', fn() => $message);
 
                         if ($this->job->getHook()) {
                             foreach ($this->shutdownHooks as $hook) {
@@ -315,9 +315,9 @@ class Server
                         }
                     },
                     function (?Message $message, Throwable $th) {
-                        $this->context()->set('error', fn () => $th);
+                        $this->context()->set('error', fn() => $th);
                         if ($message !== null) {
-                            $this->context()->set('message', fn () => $message);
+                            $this->context()->set('message', fn() => $message);
                         }
 
                         foreach ($this->errorHooks as $hook) {
@@ -328,7 +328,7 @@ class Server
             });
 
             $this->adapter->workerStop(function (string $workerId) {
-                $this->resources()->set('workerId', fn () => $workerId);
+                $this->resources()->set('workerId', fn() => $workerId);
 
                 try {
                     // Call user-defined workerStop hooks
@@ -346,7 +346,7 @@ class Server
 
             $this->adapter->start();
         } catch (Throwable $error) {
-            $this->resources()->set('error', fn () => $error);
+            $this->resources()->set('error', fn() => $error);
             foreach ($this->errorHooks as $hook) {
                 $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
@@ -420,8 +420,8 @@ class Server
 
             // Get value from route or request object
             $value = $payload[$payloadKey] ?? $param['default'];
-            $value =
-                $value === '' || $value === null ? $param['default'] : $value;
+            $value
+                = $value === '' || $value === null ? $param['default'] : $value;
 
             $this->validate($key, $param, $value, $context);
             $hook->setParamValue($key, $value);
@@ -436,7 +436,7 @@ class Server
 
         // call_user_func_array passes integer keys in iteration order, not key
         // order, so sort the two-pass (params, then injections) array by key.
-        \ksort($arguments);
+        ksort($arguments);
 
         return $arguments;
     }

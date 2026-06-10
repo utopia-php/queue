@@ -25,7 +25,7 @@ class ServerTelemetryTest extends TestCase
         $server
             ->job()
             ->inject('message')
-            ->action(fn (Message $message) => null);
+            ->action(fn(Message $message) => null);
 
         $server->start();
 
@@ -45,7 +45,7 @@ class ServerTelemetryTest extends TestCase
         $server
             ->job()
             ->inject('message')
-            ->action(fn (Message $message) => null);
+            ->action(fn(Message $message) => null);
 
         $server->start();
 
@@ -64,7 +64,7 @@ class ServerTelemetryTest extends TestCase
         $server
             ->job()
             ->inject('message')
-            ->action(fn (Message $message) => null);
+            ->action(fn(Message $message) => null);
 
         $server->start();
 
@@ -80,13 +80,13 @@ class ServerTelemetryTest extends TestCase
         $server = new Server($adapter);
         $injections = [];
 
-        $server->resources()->set('resourceValue', fn () => 'resource');
+        $server->resources()->set('resourceValue', fn() => 'resource');
 
         $server
             ->init()
             ->inject('message')
             ->action(function (Message $message) use ($server): void {
-                $server->context()->set('contextValue', fn () => $message->getPid());
+                $server->context()->set('contextValue', fn() => $message->getPid());
             });
 
         $server
@@ -128,7 +128,7 @@ class ServerTelemetryTest extends TestCase
             ->inject('message')
             ->action(function (Message $message) use ($server): void {
                 if ($message->getPid() === 'first-pid') {
-                    $server->context()->set('contextValue', fn () => $message->getPid());
+                    $server->context()->set('contextValue', fn() => $message->getPid());
                 }
             });
 
@@ -246,17 +246,11 @@ class ServerTelemetryConsumer implements Consumer
         ]);
     }
 
-    public function commit(Queue $queue, Message $message): void
-    {
-    }
+    public function commit(Queue $queue, Message $message): void {}
 
-    public function reject(Queue $queue, Message $message): void
-    {
-    }
+    public function reject(Queue $queue, Message $message): void {}
 
-    public function close(): void
-    {
-    }
+    public function close(): void {}
 }
 
 final class ServerTelemetryMultiMessageConsumer implements Consumer
@@ -264,9 +258,7 @@ final class ServerTelemetryMultiMessageConsumer implements Consumer
     /**
      * @param Message[] $messages
      */
-    public function __construct(private array $messages)
-    {
-    }
+    public function __construct(private array $messages) {}
 
     public function receive(Queue $queue, int $timeout): ?Message
     {
@@ -275,17 +267,11 @@ final class ServerTelemetryMultiMessageConsumer implements Consumer
         return $message instanceof Message ? $message : null;
     }
 
-    public function commit(Queue $queue, Message $message): void
-    {
-    }
+    public function commit(Queue $queue, Message $message): void {}
 
-    public function reject(Queue $queue, Message $message): void
-    {
-    }
+    public function reject(Queue $queue, Message $message): void {}
 
-    public function close(): void
-    {
-    }
+    public function close(): void {}
 }
 
 final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer implements Publisher
@@ -293,18 +279,14 @@ final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer imp
     /**
      * @param int[] $queueSizes
      */
-    public function __construct(private array $queueSizes)
-    {
-    }
+    public function __construct(private array $queueSizes) {}
 
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
         return true;
     }
 
-    public function retry(Queue $queue, ?int $limit = null): void
-    {
-    }
+    public function retry(Queue $queue, ?int $limit = null): void {}
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {
@@ -319,9 +301,7 @@ final class ServerTelemetryFailingPublisherConsumer extends ServerTelemetryConsu
         return true;
     }
 
-    public function retry(Queue $queue, ?int $limit = null): void
-    {
-    }
+    public function retry(Queue $queue, ?int $limit = null): void {}
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {

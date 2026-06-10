@@ -34,7 +34,7 @@ class Swoole extends Adapter
         Container $resources = new Container(),
     ) {
         parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
-        $this->maxCoroutines = \max(1, $maxCoroutines);
+        $this->maxCoroutines = max(1, $maxCoroutines);
     }
 
     public function start(): self
@@ -46,9 +46,9 @@ class Swoole extends Adapter
         Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
 
         Coroutine\run(function () {
-            Process::signal(SIGTERM, fn () => $this->stop());
-            Process::signal(SIGINT, fn () => $this->stop());
-            Process::signal(SIGCHLD, fn () => $this->reap());
+            Process::signal(SIGTERM, fn() => $this->stop());
+            Process::signal(SIGINT, fn() => $this->stop());
+            Process::signal(SIGCHLD, fn() => $this->reap());
 
             while (\count($this->workers) > 0) {
                 Coroutine::sleep(1);
@@ -70,11 +70,11 @@ class Swoole extends Adapter
                 });
 
                 foreach ($this->onWorkerStart as $callback) {
-                    $callback((string)$workerId);
+                    $callback((string) $workerId);
                 }
 
                 foreach ($this->onWorkerStop as $callback) {
-                    $callback((string)$workerId);
+                    $callback((string) $workerId);
                 }
             });
         }, false, 0, false);
@@ -109,7 +109,7 @@ class Swoole extends Adapter
                     $this->process($message, $messageCallback, $successCallback, $errorCallback);
                 } catch (\Throwable $error) {
                     // process() is total; net for a stray throw so it isn't lost
-                    \error_log('Uncaught error while processing queue message: ' . $error->getMessage());
+                    error_log('Uncaught error while processing queue message: ' . $error->getMessage());
                 } finally {
                     $waitGroup->done();
                     $slots->pop();

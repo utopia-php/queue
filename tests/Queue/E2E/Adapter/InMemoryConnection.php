@@ -40,7 +40,7 @@ class InMemoryConnection implements Connection
         $value = $this->rightPopArray($queue, $timeout);
         if (\is_array($value)) {
             $this->lists[$destination] ??= [];
-            \array_unshift($this->lists[$destination], $value);
+            array_unshift($this->lists[$destination], $value);
         }
 
         return $value;
@@ -49,7 +49,7 @@ class InMemoryConnection implements Connection
     public function leftPushArray(string $queue, array $payload): bool
     {
         $this->lists[$queue] ??= [];
-        \array_unshift($this->lists[$queue], $payload);
+        array_unshift($this->lists[$queue], $payload);
 
         return true;
     }
@@ -80,7 +80,7 @@ class InMemoryConnection implements Connection
         $value = $this->rightPop($queue, $timeout);
         if (\is_string($value)) {
             $this->lists[$destination] ??= [];
-            \array_unshift($this->lists[$destination], $value);
+            array_unshift($this->lists[$destination], $value);
         }
 
         return $value;
@@ -89,7 +89,7 @@ class InMemoryConnection implements Connection
     public function leftPush(string $queue, string $payload): bool
     {
         $this->lists[$queue] ??= [];
-        \array_unshift($this->lists[$queue], $payload);
+        array_unshift($this->lists[$queue], $payload);
 
         return true;
     }
@@ -104,13 +104,13 @@ class InMemoryConnection implements Connection
     public function listRemove(string $queue, string $key): bool
     {
         $list = $this->lists[$queue] ?? [];
-        $index = \array_search($key, $list, true);
+        $index = array_search($key, $list, true);
         if ($index === false) {
             return false;
         }
 
         unset($list[$index]);
-        $this->lists[$queue] = \array_values($list);
+        $this->lists[$queue] = array_values($list);
 
         return true;
     }
@@ -171,9 +171,7 @@ class InMemoryConnection implements Connection
         return true;
     }
 
-    public function close(): void
-    {
-    }
+    public function close(): void {}
 
     /** Pop from either end, yielding when empty so the receive loop doesn't spin. */
     private function pop(string $queue, bool $fromTail): mixed
@@ -186,6 +184,6 @@ class InMemoryConnection implements Connection
             return null;
         }
 
-        return $fromTail ? \array_pop($this->lists[$queue]) : \array_shift($this->lists[$queue]);
+        return $fromTail ? array_pop($this->lists[$queue]) : array_shift($this->lists[$queue]);
     }
 }

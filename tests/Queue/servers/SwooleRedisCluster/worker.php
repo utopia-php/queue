@@ -3,9 +3,9 @@
 require_once __DIR__ . '/../../../../vendor/autoload.php';
 require_once __DIR__ . '/../tests.php';
 
+use Utopia\Queue\Adapter\Swoole;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Queue\Connection\RedisCluster;
-use Utopia\Queue\Adapter\Swoole;
 use Utopia\Queue\Server;
 use Utopia\Validator\Text;
 

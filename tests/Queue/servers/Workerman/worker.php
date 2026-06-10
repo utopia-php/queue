@@ -5,8 +5,8 @@ require_once __DIR__ . '/../tests.php';
 
 use Utopia\Queue;
 use Utopia\Queue\Adapter\Workerman;
-use Utopia\Queue\Connection\Redis as RedisConnection;
 use Utopia\Queue\Broker\Redis;
+use Utopia\Queue\Connection\Redis as RedisConnection;
 use Utopia\Validator\Text;
 
 $consumer = new Redis(

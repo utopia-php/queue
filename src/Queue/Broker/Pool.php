@@ -2,19 +2,18 @@
 
 namespace Utopia\Queue\Broker;
 
+use Utopia\Pools\Pool as UtopiaPool;
 use Utopia\Queue\Consumer;
 use Utopia\Queue\Message;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
-use Utopia\Pools\Pool as UtopiaPool;
 
 readonly class Pool implements Publisher, Consumer
 {
     public function __construct(
         private ?UtopiaPool $publisher = null,
         private ?UtopiaPool $consumer = null,
-    ) {
-    }
+    ) {}
 
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
@@ -56,6 +55,6 @@ readonly class Pool implements Publisher, Consumer
      */
     protected function delegate(?UtopiaPool $pool, string $method, array $args): mixed
     {
-        return $pool?->use(fn (Publisher|Consumer $adapter) => $adapter->$method(...$args));
+        return $pool?->use(fn(Publisher|Consumer $adapter) => $adapter->$method(...$args));
     }
 }

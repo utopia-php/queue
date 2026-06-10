@@ -3,11 +3,11 @@
 require_once __DIR__ . '/../../../../vendor/autoload.php';
 require_once __DIR__ . '/../tests.php';
 
-use Utopia\Queue\Server;
 use Utopia\Queue\Adapter\Swoole;
+use Utopia\Queue\Broker\Redis;
 use Utopia\Queue\Connection\Locking;
 use Utopia\Queue\Connection\Redis as RedisConnection;
-use Utopia\Queue\Broker\Redis;
+use Utopia\Queue\Server;
 use Utopia\Validator\Text;
 
 // Dedicated blocking-receive connection; a separate locked connection for commands.

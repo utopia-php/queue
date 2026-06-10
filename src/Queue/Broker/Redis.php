@@ -31,8 +31,7 @@ class Redis implements Publisher, Consumer
         private readonly Connection $receive,
         // Acks and publishing; wrap in Locking when shared by coroutines.
         private readonly Connection $commands,
-    ) {
-    }
+    ) {}
 
     public function setReconnectCallback(?callable $callback): self
     {
@@ -74,11 +73,11 @@ class Redis implements Publisher, Consumer
             } catch (\Throwable) {
             }
 
-            $sleepMs = \mt_rand(0, $this->reconnectBackoffMs);
+            $sleepMs = mt_rand(0, $this->reconnectBackoffMs);
             $this->triggerReconnectCallback($queue, $e, $this->reconnectAttempt, $sleepMs);
 
-            \usleep($sleepMs * 1000);
-            $this->reconnectBackoffMs = \min(self::RECONNECT_MAX_BACKOFF_MS, $this->reconnectBackoffMs * 2);
+            usleep($sleepMs * 1000);
+            $this->reconnectBackoffMs = min(self::RECONNECT_MAX_BACKOFF_MS, $this->reconnectBackoffMs * 2);
 
             return null;
         }
@@ -87,7 +86,7 @@ class Redis implements Publisher, Consumer
             return null;
         }
 
-        $nextMessage['timestamp'] = (int)$nextMessage['timestamp'];
+        $nextMessage['timestamp'] = (int) $nextMessage['timestamp'];
 
         $message = new Message($nextMessage);
         $pid = $message->getPid();
@@ -153,10 +152,10 @@ class Redis implements Publisher, Consumer
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
         $payload = [
-            'pid' => \uniqid(more_entropy: true),
+            'pid' => uniqid(more_entropy: true),
             'queue' => $queue->name,
             'timestamp' => time(),
-            'payload' => $payload
+            'payload' => $payload,
         ];
         if ($priority) {
             return $this->commands->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
@@ -170,7 +169,7 @@ class Redis implements Publisher, Consumer
      */
     public function retry(Queue $queue, ?int $limit = null): void
     {
-        $start = \time();
+        $start = time();
         $processed = 0;
 
         while (true) {

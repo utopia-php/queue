@@ -54,7 +54,7 @@ class SwooleConcurrencyTest extends TestCase
             $adapter->consume(
                 function () use ($adapter, $messages, &$active, &$maxActive, &$processed) {
                     $active++;
-                    $maxActive = \max($maxActive, $active);
+                    $maxActive = max($maxActive, $active);
                     \Swoole\Coroutine::sleep(0.02);
                     $active--;
 
@@ -62,8 +62,8 @@ class SwooleConcurrencyTest extends TestCase
                         $adapter->stop();
                     }
                 },
-                fn () => null,
-                fn () => null,
+                fn() => null,
+                fn() => null,
             );
         });
 

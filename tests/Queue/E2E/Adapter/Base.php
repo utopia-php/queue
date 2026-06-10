@@ -2,12 +2,12 @@
 
 namespace Tests\E2E\Adapter;
 
+use function Co\run;
+
 use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
-
-use function Co\run;
 
 abstract class Base extends TestCase
 {
@@ -18,31 +18,31 @@ abstract class Base extends TestCase
         $this->payloads = [];
         $this->payloads[] = [
             'type' => 'test_string',
-            'value' => 'lorem ipsum'
+            'value' => 'lorem ipsum',
         ];
         $this->payloads[] = [
             'type' => 'test_number',
-            'value' => 123
+            'value' => 123,
         ];
         $this->payloads[] = [
             'type' => 'test_number',
-            'value' => 123.456
+            'value' => 123.456,
         ];
         $this->payloads[] = [
             'type' => 'test_bool',
-            'value' => true
+            'value' => true,
         ];
         $this->payloads[] = [
             'type' => 'test_null',
-            'value' => null
+            'value' => null,
         ];
         $this->payloads[] = [
             'type' => 'test_array',
             'value' => [
                 1,
                 2,
-                3
-            ]
+                3,
+            ],
         ];
         $this->payloads[] = [
             'type' => 'test_assoc',
@@ -50,8 +50,8 @@ abstract class Base extends TestCase
                 'string' => 'ipsum',
                 'number' => 123,
                 'bool' => true,
-                'null' => null
-            ]
+                'null' => null,
+            ],
         ];
     }
 
@@ -140,28 +140,28 @@ abstract class Base extends TestCase
 
         $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
-            'id' => 1
+            'id' => 1,
         ]);
 
         $this->assertTrue($published);
 
         $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
-            'id' => 2
+            'id' => 2,
         ]);
 
         $this->assertTrue($published);
 
         $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
-            'id' => 3
+            'id' => 3,
         ]);
 
         $this->assertTrue($published);
 
         $published = $publisher->enqueue($this->getQueue(), [
             'type' => 'test_exception',
-            'id' => 4
+            'id' => 4,
         ]);
 
         $this->assertTrue($published);

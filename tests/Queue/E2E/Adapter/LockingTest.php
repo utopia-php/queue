@@ -91,18 +91,18 @@ class LockingTest extends TestCase
      */
     public function testEveryConnectionMethodIsCovered(): void
     {
-        $declared = \array_map(
-            static fn (\ReflectionMethod $method): string => $method->getName(),
+        $declared = array_map(
+            static fn(\ReflectionMethod $method): string => $method->getName(),
             (new \ReflectionClass(Connection::class))->getMethods(),
         );
 
-        $covered = \array_map(
-            static fn (array $case): string => $case[0],
-            \iterator_to_array($this->operationProvider(), false),
+        $covered = array_map(
+            static fn(array $case): string => $case[0],
+            iterator_to_array($this->operationProvider(), false),
         );
 
-        \sort($declared);
-        \sort($covered);
+        sort($declared);
+        sort($covered);
 
         $this->assertSame($declared, $covered, 'Every Connection method must be covered by the Locking test.');
     }
@@ -154,9 +154,7 @@ class Recorder
 
 class RecordingLock implements Lock
 {
-    public function __construct(private readonly Recorder $recorder)
-    {
-    }
+    public function __construct(private readonly Recorder $recorder) {}
 
     public function acquire(float $timeout = 0.0): bool
     {
@@ -168,9 +166,7 @@ class RecordingLock implements Lock
         return true;
     }
 
-    public function release(): void
-    {
-    }
+    public function release(): void {}
 
     public function withLock(callable $callback, float $timeout = 0.0): mixed
     {
@@ -187,9 +183,7 @@ class RecordingLock implements Lock
 
 class RecordingConnection implements Connection
 {
-    public function __construct(private readonly Recorder $recorder)
-    {
-    }
+    public function __construct(private readonly Recorder $recorder) {}
 
     private function record(string $method, array $args): void
     {
@@ -457,7 +451,5 @@ class ThrowingConnection implements Connection
         throw new \RuntimeException('boom');
     }
 
-    public function close(): void
-    {
-    }
+    public function close(): void {}
 }
