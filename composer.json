@@ -2,7 +2,14 @@
     "name": "utopia-php/queue",
     "description": "A powerful task queue.",
     "type": "library",
-    "keywords": ["php","framework", "upf", "utopia", "tasks", "queue"],
+    "keywords": [
+        "php",
+        "framework",
+        "upf",
+        "utopia",
+        "tasks",
+        "queue"
+    ],
     "license": "MIT",
     "minimum-stability": "stable",
     "authors": [
@@ -12,18 +19,17 @@
         }
     ],
     "autoload": {
-        "psr-4": {"Utopia\\Queue\\": "src/Queue"}
+        "psr-4": {
+            "Utopia\\Queue\\": "src/Queue"
+        }
     },
     "autoload-dev": {
         "psr-4": {
             "Tests\\E2E\\": "tests/Queue/E2E"
         }
     },
-    "scripts":{
-        "test": "phpunit",
-        "check": "vendor/bin/phpstan analyse --memory-limit=1G",
-        "format": "vendor/bin/pint",
-        "lint": "vendor/bin/pint --test"
+    "scripts": {
+        "test": "phpunit"
     },
     "require": {
         "php": ">=8.4",
@@ -38,9 +44,7 @@
         "ext-redis": "*",
         "swoole/ide-helper": "4.8.8",
         "phpunit/phpunit": "^11.0",
-        "laravel/pint": "^1.0",
-        "workerman/workerman": "^4.0",
-        "phpstan/phpstan": "^1.8"
+        "workerman/workerman": "^4.0"
     },
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
