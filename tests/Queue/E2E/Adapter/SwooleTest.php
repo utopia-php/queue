@@ -11,7 +11,7 @@ class SwooleTest extends Base
 {
     private function getConnection(): Redis
     {
-        return new Redis('redis', 6379);
+        return new Redis('127.0.0.1', 16379);
     }
 
     protected function getPublisher(): Publisher

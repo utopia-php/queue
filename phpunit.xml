@@ -5,8 +5,17 @@
          stopOnFailure="false"
         >
     <testsuites>
-        <testsuite name="E2E">
-            <directory>./tests/Queue/E2E/Adapter</directory>
+        <testsuite name="unit">
+            <file>./tests/Queue/E2E/Adapter/LockingTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/RedisReconnectCallbackTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/ServerTelemetryTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/SwooleConcurrencyTest.php</file>
+        </testsuite>
+        <testsuite name="e2e">
+            <file>./tests/Queue/E2E/Adapter/PoolTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/SwooleTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/SwooleRedisClusterTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/WorkermanTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

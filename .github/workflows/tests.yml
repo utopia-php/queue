@@ -7,31 +7,26 @@ concurrency:
 on: [pull_request]
 
 jobs:
-  adapter_test:
-    name: Adapter Tests
+  test:
+    name: Tests
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        adapter:
-          [
-            Locking,
-            Pool,
-            SwooleRedisCluster,
-            Swoole,
-            SwooleConcurrency,
-            Workerman,
-          ]
-
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Load and Start Services
-        run: |
-          docker compose build
-          docker compose up -d
-          sleep 10
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: redis, swoole
+          coverage: none
 
-      - name: Run Tests
-        run: docker compose exec -T tests vendor/bin/phpunit /usr/local/src/tests/Queue/E2E/Adapter/${{matrix.adapter}}Test.php --debug
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Unit tests
+        run: composer test
+
+      - name: Start services
+        run: docker compose up -d --wait
+
+      - name: E2E tests
+        run: composer test:e2e

@@ -29,7 +29,8 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "vendor/bin/phpunit --testsuite unit",
+        "test:e2e": "tests/e2e.sh"
     },
     "require": {
         "php": ">=8.4",

@@ -15,7 +15,7 @@ class PoolTest extends Base
     protected function getPublisher(): Publisher
     {
         $pool = new UtopiaPool(new Stack(), 'redis', 1, function () {
-            return new RedisBroker(new Redis('redis', 6379), new Redis('redis', 6379));
+            return new RedisBroker(new Redis('127.0.0.1', 16379), new Redis('127.0.0.1', 16379));
         });
 
         return new Pool($pool, $pool);

@@ -10,9 +10,9 @@ use Utopia\Queue\Server;
 use Utopia\Validator\Text;
 
 $nodes = [
-    'redis-cluster-0:6379',
-    'redis-cluster-1:6379',
-    'redis-cluster-2:6379',
+    '127.0.0.1:17000',
+    '127.0.0.1:17001',
+    '127.0.0.1:17002',
 ];
 $consumer = new Redis(
     receive: new RedisCluster($nodes),

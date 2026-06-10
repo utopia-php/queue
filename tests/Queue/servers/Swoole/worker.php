@@ -12,8 +12,8 @@ use Utopia\Validator\Text;
 
 // Dedicated blocking-receive connection; a separate locked connection for commands.
 $consumer = new Redis(
-    receive: new RedisConnection('redis'),
-    commands: new Locking(new RedisConnection('redis')),
+    receive: new RedisConnection('127.0.0.1', 16379),
+    commands: new Locking(new RedisConnection('127.0.0.1', 16379)),
 );
 $adapter = new Swoole($consumer, 12, 'swoole', maxCoroutines: 5);
 $server = new Server($adapter);
