@@ -150,12 +150,12 @@ class ServerTelemetryTest extends TestCase
      */
     private function collectObservations(TestTelemetry $telemetry, string $name): array
     {
-        /** @var object{callback: ?\Closure} $gauge */
+        /** @var object{callbacks: array<int, \Closure>} $gauge */
         $gauge = $telemetry->observableGauges[$name];
 
         $values = [];
-        if ($gauge->callback !== null) {
-            ($gauge->callback)(function (float|int $value, iterable $attributes = []) use (&$values): void {
+        foreach ($gauge->callbacks as $callback) {
+            $callback(function (float|int $value, iterable $attributes = []) use (&$values): void {
                 $values[] = $value;
             });
         }
