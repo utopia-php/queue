@@ -38,7 +38,6 @@ class RedisReconnectCallbackTest extends TestCase
         $this->assertSame($queue, $calls[0]['queue']);
         $this->assertInstanceOf(\RedisException::class, $calls[0]['error']);
         $this->assertSame(1, $calls[0]['attempt']);
-        $this->assertIsInt($calls[0]['sleepMs']);
         $this->assertGreaterThanOrEqual(0, $calls[0]['sleepMs']);
         $this->assertLessThanOrEqual(100, $calls[0]['sleepMs']);
     }
@@ -145,11 +144,6 @@ class FailingRedisConnection implements Connection
     }
 
     public function remove(string $key): bool
-    {
-        return true;
-    }
-
-    public function move(string $queue, string $destination): bool
     {
         return true;
     }

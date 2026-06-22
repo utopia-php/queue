@@ -45,8 +45,6 @@ function handleRequest(Queue\Message $job, ?string $aliasValue = null): void
 
             break;
         case 'test_exception':
-            assert(false);
-
-            break;
+            throw new Exception('Forced failure for test_exception');
     }
 }

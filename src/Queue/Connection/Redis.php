@@ -68,6 +68,7 @@ class Redis implements Connection
         return !!$this->getRedis()->lPush($queue, $value);
     }
 
+    /** @phpstan-impure */
     public function rightPopArray(string $queue, int $timeout): array|false
     {
         $response = $this->rightPop($queue, $timeout);
@@ -120,11 +121,6 @@ class Redis implements Connection
     public function remove(string $key): bool
     {
         return !!$this->getRedis()->del($key);
-    }
-
-    public function move(string $queue, string $destination): bool
-    {
-        return $this->getRedis()->move($queue, $destination);
     }
 
     public function setArray(string $key, array $value, int $ttl = 0): bool
@@ -200,11 +196,9 @@ class Redis implements Connection
 
         for ($attempt = 1; $attempt <= self::CONNECT_MAX_ATTEMPTS; $attempt++) {
             $redis = new \Redis();
-            $connected = false;
 
             try {
                 $redis->connect($this->host, $this->port, $connectTimeout);
-                $connected = true;
 
                 if ($this->readTimeout >= 0) {
                     $redis->setOption(\Redis::OPT_READ_TIMEOUT, $this->readTimeout);
@@ -213,11 +207,9 @@ class Redis implements Connection
                 $this->redis = $redis;
                 return $this->redis;
             } catch (\RedisException $e) {
-                if ($connected) {
-                    try {
-                        $redis->close();
-                    } catch (\Throwable) {
-                    }
+                try {
+                    $redis->close();
+                } catch (\Throwable) {
                 }
 
                 if ($attempt === self::CONNECT_MAX_ATTEMPTS) {

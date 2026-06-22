@@ -62,6 +62,7 @@ class RedisCluster implements Connection
         return !!$this->getRedis()->lPush($queue, $value);
     }
 
+    /** @phpstan-impure */
     public function rightPopArray(string $queue, int $timeout): array|false
     {
         $response = $this->rightPop($queue, $timeout);
@@ -86,7 +87,7 @@ class RedisCluster implements Connection
 
     public function leftPopArray(string $queue, int $timeout): array|false
     {
-        $response = $this->getRedis()->blPop($queue, $timeout);
+        $response = $this->getRedis()->blPop([$queue], $timeout);
 
         if (empty($response)) {
             return false;
@@ -97,7 +98,7 @@ class RedisCluster implements Connection
 
     public function leftPop(string $queue, int $timeout): string|false
     {
-        $response = $this->getRedis()->blPop($queue, $timeout);
+        $response = $this->getRedis()->blPop([$queue], $timeout);
 
         if (empty($response)) {
             return false;
@@ -114,12 +115,6 @@ class RedisCluster implements Connection
     public function remove(string $key): bool
     {
         return !!$this->getRedis()->del($key);
-    }
-
-    public function move(string $queue, string $destination): bool
-    {
-        // Move is not supported for Redis Cluster
-        return false;
     }
 
     public function setArray(string $key, array $value, int $ttl = 0): bool

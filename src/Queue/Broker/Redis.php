@@ -49,7 +49,7 @@ class Redis implements Publisher, Consumer
 
     public function receive(Queue $queue, int $timeout): ?Message
     {
-        if ($this->closed) {
+        if ($this->isClosed()) {
             return null;
         }
 
@@ -62,7 +62,7 @@ class Redis implements Publisher, Consumer
             $this->reconnectBackoffMs = self::RECONNECT_BACKOFF_MS;
             $this->reconnectAttempt = 0;
         } catch (\RedisException|\RedisClusterException $e) {
-            if ($this->closed) {
+            if ($this->isClosed()) {
                 return null;
             }
 
@@ -123,6 +123,12 @@ class Redis implements Publisher, Consumer
     public function close(): void
     {
         $this->closed = true;
+    }
+
+    /** @phpstan-impure close() flips this from another coroutine mid-receive(). */
+    private function isClosed(): bool
+    {
+        return $this->closed;
     }
 
     private function triggerReconnectCallback(Queue $queue, \Throwable $error, int $attempt, int $sleepMs): void

@@ -109,11 +109,6 @@ class Locking implements Connection
         return $this->synchronize(fn() => $this->connection->remove($key));
     }
 
-    public function move(string $queue, string $destination): bool
-    {
-        return $this->synchronize(fn() => $this->connection->move($queue, $destination));
-    }
-
     public function set(string $key, string $value, int $ttl = 0): bool
     {
         return $this->synchronize(fn() => $this->connection->set($key, $value, $ttl));

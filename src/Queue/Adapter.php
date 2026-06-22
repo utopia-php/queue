@@ -34,11 +34,17 @@ abstract class Adapter
      */
     abstract public function stop(): self;
 
+    /** @phpstan-impure stop() flips this from a signal handler mid-consume(). */
+    protected function isStopped(): bool
+    {
+        return $this->stopped;
+    }
+
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         $this->stopped = false;
 
-        while (!$this->stopped) {
+        while (!$this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
             if ($message === null) {

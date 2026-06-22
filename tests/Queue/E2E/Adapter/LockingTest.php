@@ -126,7 +126,6 @@ class LockingTest extends TestCase
         yield 'listSize' => ['listSize', ['key'], 7];
         yield 'listRange' => ['listRange', ['key', 10, 0], ['a', 'b']];
         yield 'remove' => ['remove', ['key'], true];
-        yield 'move' => ['move', ['queue', 'dest'], true];
         yield 'set' => ['set', ['key', 'value', 60], true];
         yield 'get' => ['get', ['key'], 'value'];
         yield 'setArray' => ['setArray', ['key', ['a' => 1], 60], true];
@@ -289,13 +288,6 @@ class RecordingConnection implements Connection
         return true;
     }
 
-    public function move(string $queue, string $destination): bool
-    {
-        $this->record('move', [$queue, $destination]);
-
-        return true;
-    }
-
     public function set(string $key, string $value, int $ttl = 0): bool
     {
         $this->record('set', [$key, $value, $ttl]);
@@ -412,11 +404,6 @@ class ThrowingConnection implements Connection
     }
 
     public function remove(string $key): bool
-    {
-        return true;
-    }
-
-    public function move(string $queue, string $destination): bool
     {
         return true;
     }

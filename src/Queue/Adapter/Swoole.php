@@ -94,7 +94,7 @@ class Swoole extends Adapter
         $slots = new Channel($this->maxCoroutines);
         $waitGroup = new WaitGroup();
 
-        while (!$this->stopped) {
+        while (!$this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
             if ($message === null) {

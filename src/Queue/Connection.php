@@ -18,7 +18,6 @@ interface Connection
     public function listSize(string $key): int;
     public function listRange(string $key, int $total, int $offset): array;
     public function remove(string $key): bool;
-    public function move(string $queue, string $destination): bool;
     public function set(string $key, string $value, int $ttl = 0): bool;
     public function get(string $key): array|string|null;
     public function setArray(string $key, array $value, int $ttl = 0): bool;

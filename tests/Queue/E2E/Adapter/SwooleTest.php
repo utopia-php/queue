@@ -54,12 +54,15 @@ class SwooleTest extends Base
 
         // The remaining three should be normal jobs (consumed oldest-first).
         $second = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($second, 'Expected a job but queue was empty');
         $this->assertSame('normal-1', $second['payload']['order']);
 
         $third = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($third, 'Expected a job but queue was empty');
         $this->assertSame('normal-2', $third['payload']['order']);
 
         $fourth = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($fourth, 'Expected a job but queue was empty');
         $this->assertSame('normal-3', $fourth['payload']['order']);
 
         // Queue should now be empty.
