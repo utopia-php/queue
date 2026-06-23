@@ -1,0 +1,75 @@
+<?php
+
+namespace Tests\E2E\Adapter;
+
+use Utopia\Queue\Broker\Redis;
+use Utopia\Queue\Connection\RedisCluster;
+use Utopia\Queue\Publisher;
+use Utopia\Queue\Queue;
+
+class SwooleRedisClusterTest extends Base
+{
+    private function getConnection(): RedisCluster
+    {
+        return new RedisCluster([
+            '127.0.0.1:17000',
+            '127.0.0.1:17001',
+            '127.0.0.1:17002',
+        ]);
+    }
+
+    protected function getPublisher(): Publisher
+    {
+        return new Redis($this->getConnection(), $this->getConnection());
+    }
+
+    protected function getQueue(): Queue
+    {
+        return new Queue('swoole-redis-cluster');
+    }
+
+    public function testPriorityJobIsConsumedBeforeNormalJobs(): void
+    {
+        $connection = $this->getConnection();
+
+        // Priority ordering is purely a property of enqueue, so use a queue no
+        // worker consumes — otherwise the live consumer drains these jobs before
+        // we can observe their order.
+        $queue = new Queue($this->getQueue()->name . '-priority', $this->getQueue()->namespace);
+        $key = "{$queue->namespace}.queue.{$queue->name}";
+
+        // Flush any leftover state from previous runs.
+        while ($connection->rightPopArray($key, 1) !== false) {
+            // drain
+        }
+
+        // Enqueue three normal jobs (pushed to head/left).
+        $this->getPublisher()->enqueue($queue, ['order' => 'normal-1']);
+        $this->getPublisher()->enqueue($queue, ['order' => 'normal-2']);
+        $this->getPublisher()->enqueue($queue, ['order' => 'normal-3']);
+
+        // Enqueue one priority job (pushed to tail/right — same end BRPOP reads from).
+        $this->getPublisher()->enqueue($queue, ['order' => 'priority'], priority: true);
+
+        // The first pop should yield the priority job.
+        $first = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($first, 'Expected a job but queue was empty');
+        $this->assertSame('priority', $first['payload']['order'], 'Priority job should be consumed first');
+
+        // The remaining three should be normal jobs (consumed oldest-first).
+        $second = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($second, 'Expected a job but queue was empty');
+        $this->assertSame('normal-1', $second['payload']['order']);
+
+        $third = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($third, 'Expected a job but queue was empty');
+        $this->assertSame('normal-2', $third['payload']['order']);
+
+        $fourth = $connection->rightPopArray($key, 1);
+        $this->assertNotFalse($fourth, 'Expected a job but queue was empty');
+        $this->assertSame('normal-3', $fourth['payload']['order']);
+
+        // Queue should now be empty.
+        $this->assertFalse($connection->rightPopArray($key, 1));
+    }
+}
