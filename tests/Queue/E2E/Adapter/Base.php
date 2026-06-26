@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use function Co\run;
@@ -55,9 +57,6 @@ abstract class Base extends TestCase
         ];
     }
 
-    /**
-     * @return Publisher
-     */
     abstract protected function getPublisher(): Publisher;
 
     abstract protected function getQueue(): Queue;
@@ -75,9 +74,9 @@ abstract class Base extends TestCase
 
     public function testConcurrency(): void
     {
-        run(function () {
+        run(function (): void {
             $publisher = $this->getPublisher();
-            go(function () use ($publisher) {
+            go(function () use ($publisher): void {
                 foreach ($this->payloads as $payload) {
                     $this->assertTrue($publisher->enqueue($this->getQueue(), $payload));
                 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
@@ -12,7 +14,7 @@ use Utopia\Queue\Queue;
 use Utopia\Queue\Server;
 use Utopia\Telemetry\Adapter\Test as TestTelemetry;
 
-class ServerTelemetryTest extends TestCase
+final class ServerTelemetryTest extends TestCase
 {
     public function testRecordsQueueDepth(): void
     {
@@ -25,7 +27,7 @@ class ServerTelemetryTest extends TestCase
         $server
             ->job()
             ->inject('message')
-            ->action(fn(Message $message) => null);
+            ->action(fn(Message $message): null => null);
 
         $server->start();
 
@@ -45,7 +47,7 @@ class ServerTelemetryTest extends TestCase
         $server
             ->job()
             ->inject('message')
-            ->action(fn(Message $message) => null);
+            ->action(fn(Message $message): null => null);
 
         $server->start();
 
@@ -64,7 +66,7 @@ class ServerTelemetryTest extends TestCase
         $server
             ->job()
             ->inject('message')
-            ->action(fn(Message $message) => null);
+            ->action(fn(Message $message): null => null);
 
         $server->start();
 
@@ -80,13 +82,13 @@ class ServerTelemetryTest extends TestCase
         $server = new Server($adapter);
         $injections = [];
 
-        $server->resources()->set('resourceValue', fn() => 'resource');
+        $server->resources()->set('resourceValue', fn(): string => 'resource');
 
         $server
             ->init()
             ->inject('message')
             ->action(function (Message $message) use ($server): void {
-                $server->context()->set('contextValue', fn() => $message->getPid());
+                $server->context()->set('contextValue', fn(): string => $message->getPid());
             });
 
         $server
@@ -128,7 +130,7 @@ class ServerTelemetryTest extends TestCase
             ->inject('message')
             ->action(function (Message $message) use ($server): void {
                 if ($message->getPid() === 'first-pid') {
-                    $server->context()->set('contextValue', fn() => $message->getPid());
+                    $server->context()->set('contextValue', fn(): string => $message->getPid());
                 }
             });
 
@@ -205,9 +207,10 @@ final class ServerTelemetryAdapter extends Adapter
     }
 
     /** Drain every message the consumer offers, then return (bounded for tests). */
+    #[\Override]
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        while (($message = $this->consumer->receive($this->queue, 0)) !== null) {
+        while (($message = $this->consumer->receive($this->queue, 0)) instanceof \Utopia\Queue\Message) {
             $this->context = new Container($this->resources());
             $this->process($message, $messageCallback, $successCallback, $errorCallback);
         }

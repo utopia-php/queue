@@ -41,102 +41,102 @@ class Locking implements Connection
 
     public function rightPushArray(string $queue, array $payload): bool
     {
-        return $this->synchronize(fn() => $this->connection->rightPushArray($queue, $payload));
+        return $this->synchronize(fn(): bool => $this->connection->rightPushArray($queue, $payload));
     }
 
     public function rightPopArray(string $queue, int $timeout): array|false
     {
-        return $this->synchronize(fn() => $this->connection->rightPopArray($queue, $timeout));
+        return $this->synchronize(fn(): array|false => $this->connection->rightPopArray($queue, $timeout));
     }
 
     public function rightPopLeftPushArray(string $queue, string $destination, int $timeout): array|false
     {
-        return $this->synchronize(fn() => $this->connection->rightPopLeftPushArray($queue, $destination, $timeout));
+        return $this->synchronize(fn(): array|false => $this->connection->rightPopLeftPushArray($queue, $destination, $timeout));
     }
 
     public function leftPushArray(string $queue, array $payload): bool
     {
-        return $this->synchronize(fn() => $this->connection->leftPushArray($queue, $payload));
+        return $this->synchronize(fn(): bool => $this->connection->leftPushArray($queue, $payload));
     }
 
     public function leftPopArray(string $queue, int $timeout): array|false
     {
-        return $this->synchronize(fn() => $this->connection->leftPopArray($queue, $timeout));
+        return $this->synchronize(fn(): array|false => $this->connection->leftPopArray($queue, $timeout));
     }
 
     public function rightPush(string $queue, string $payload): bool
     {
-        return $this->synchronize(fn() => $this->connection->rightPush($queue, $payload));
+        return $this->synchronize(fn(): bool => $this->connection->rightPush($queue, $payload));
     }
 
     public function rightPop(string $queue, int $timeout): string|false
     {
-        return $this->synchronize(fn() => $this->connection->rightPop($queue, $timeout));
+        return $this->synchronize(fn(): string|false => $this->connection->rightPop($queue, $timeout));
     }
 
     public function rightPopLeftPush(string $queue, string $destination, int $timeout): string|false
     {
-        return $this->synchronize(fn() => $this->connection->rightPopLeftPush($queue, $destination, $timeout));
+        return $this->synchronize(fn(): string|false => $this->connection->rightPopLeftPush($queue, $destination, $timeout));
     }
 
     public function leftPush(string $queue, string $payload): bool
     {
-        return $this->synchronize(fn() => $this->connection->leftPush($queue, $payload));
+        return $this->synchronize(fn(): bool => $this->connection->leftPush($queue, $payload));
     }
 
     public function leftPop(string $queue, int $timeout): string|false
     {
-        return $this->synchronize(fn() => $this->connection->leftPop($queue, $timeout));
+        return $this->synchronize(fn(): string|false => $this->connection->leftPop($queue, $timeout));
     }
 
     public function listRemove(string $queue, string $key): bool
     {
-        return $this->synchronize(fn() => $this->connection->listRemove($queue, $key));
+        return $this->synchronize(fn(): bool => $this->connection->listRemove($queue, $key));
     }
 
     public function listSize(string $key): int
     {
-        return $this->synchronize(fn() => $this->connection->listSize($key));
+        return $this->synchronize(fn(): int => $this->connection->listSize($key));
     }
 
     public function listRange(string $key, int $total, int $offset): array
     {
-        return $this->synchronize(fn() => $this->connection->listRange($key, $total, $offset));
+        return $this->synchronize(fn(): array => $this->connection->listRange($key, $total, $offset));
     }
 
     public function remove(string $key): bool
     {
-        return $this->synchronize(fn() => $this->connection->remove($key));
+        return $this->synchronize(fn(): bool => $this->connection->remove($key));
     }
 
     public function set(string $key, string $value, int $ttl = 0): bool
     {
-        return $this->synchronize(fn() => $this->connection->set($key, $value, $ttl));
+        return $this->synchronize(fn(): bool => $this->connection->set($key, $value, $ttl));
     }
 
     public function get(string $key): array|string|null
     {
-        return $this->synchronize(fn() => $this->connection->get($key));
+        return $this->synchronize(fn(): string|array|null => $this->connection->get($key));
     }
 
     public function setArray(string $key, array $value, int $ttl = 0): bool
     {
-        return $this->synchronize(fn() => $this->connection->setArray($key, $value, $ttl));
+        return $this->synchronize(fn(): bool => $this->connection->setArray($key, $value, $ttl));
     }
 
     public function increment(string $key): int
     {
-        return $this->synchronize(fn() => $this->connection->increment($key));
+        return $this->synchronize(fn(): int => $this->connection->increment($key));
     }
 
     public function decrement(string $key): int
     {
-        return $this->synchronize(fn() => $this->connection->decrement($key));
+        return $this->synchronize(fn(): int => $this->connection->decrement($key));
     }
 
     public function ping(): bool
     {
-        return $this->synchronize(fn() => $this->connection->ping());
+        return $this->synchronize(fn(): bool => $this->connection->ping());
     }
 
     public function close(): void

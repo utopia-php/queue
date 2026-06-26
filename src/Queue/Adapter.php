@@ -24,13 +24,11 @@ abstract class Adapter
 
     /**
      * Starts the Server.
-     * @return self
      */
     abstract public function start(): self;
 
     /**
      * Stops the Server.
-     * @return self
      */
     abstract public function stop(): self;
 
@@ -47,7 +45,7 @@ abstract class Adapter
         while (!$this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
-            if ($message === null) {
+            if (!$message instanceof \Utopia\Queue\Message) {
                 continue;
             }
 
@@ -91,15 +89,11 @@ abstract class Adapter
 
     /**
      * Is called when a Worker starts.
-     * @param callable $callback
-     * @return self
      */
     abstract public function workerStart(callable $callback): self;
 
     /**
      * Is called when a Worker stops.
-     * @param callable $callback
-     * @return self
      */
     abstract public function workerStop(callable $callback): self;
 }

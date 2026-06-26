@@ -11,7 +11,7 @@ class Message
 
     public function __construct(array $array = [])
     {
-        if (empty($array)) {
+        if ($array === []) {
             return;
         }
 

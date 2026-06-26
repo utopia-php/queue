@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Utopia\Queue;
 
 readonly class Queue
@@ -9,7 +11,7 @@ readonly class Queue
         public string $namespace = 'utopia-queue',
         public int $jobTtl = 0,
     ) {
-        if (empty($this->name)) {
+        if ($this->name === '' || $this->name === '0') {
             throw new \InvalidArgumentException('Cannot create queue with empty name.');
         }
     }

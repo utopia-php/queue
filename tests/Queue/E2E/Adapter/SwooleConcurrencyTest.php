@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
@@ -7,7 +9,7 @@ use Utopia\Queue\Adapter\Swoole;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Queue\Queue;
 
-class SwooleConcurrencyTest extends TestCase
+final class SwooleConcurrencyTest extends TestCase
 {
     private const string QUEUE = 'concurrency';
     private const string NAMESPACE = 'tests';
@@ -44,7 +46,7 @@ class SwooleConcurrencyTest extends TestCase
         $maxActive = 0;
         $processed = 0;
 
-        \Swoole\Coroutine\run(function () use ($broker, $queue, $messages, $maxCoroutines, &$active, &$maxActive, &$processed) {
+        \Swoole\Coroutine\run(function () use ($broker, $queue, $messages, $maxCoroutines, &$active, &$maxActive, &$processed): void {
             for ($i = 0; $i < $messages; $i++) {
                 $broker->enqueue($queue, ['n' => $i]);
             }
@@ -52,7 +54,7 @@ class SwooleConcurrencyTest extends TestCase
             $adapter = new Swoole($broker, 1, self::QUEUE, self::NAMESPACE, maxCoroutines: $maxCoroutines);
 
             $adapter->consume(
-                function () use ($adapter, $messages, &$active, &$maxActive, &$processed) {
+                function () use ($adapter, $messages, &$active, &$maxActive, &$processed): void {
                     $active++;
                     $maxActive = max($maxActive, $active);
                     \Swoole\Coroutine::sleep(0.02);
@@ -62,8 +64,8 @@ class SwooleConcurrencyTest extends TestCase
                         $adapter->stop();
                     }
                 },
-                fn() => null,
-                fn() => null,
+                fn(): null => null,
+                fn(): null => null,
             );
         });
 

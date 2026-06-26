@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Utopia\Queue;
 
 function handleRequest(Queue\Message $job, ?string $aliasValue = null): void
@@ -7,7 +9,7 @@ function handleRequest(Queue\Message $job, ?string $aliasValue = null): void
     $type = $job->getPayload()['type'];
     $value = $job->getPayload()['value'] ?? null;
 
-    if (empty($job->getTimestamp())) {
+    if ($job->getTimestamp() === 0) {
         throw new Exception();
     }
 
@@ -27,7 +29,7 @@ function handleRequest(Queue\Message $job, ?string $aliasValue = null): void
         case 'test_array':
             assert(is_array($value));
             assert(count($value) === 3);
-            assert(empty(array_diff([1, 2, 3], $value)));
+            assert(array_diff([1, 2, 3], $value) === []);
 
             break;
         case 'test_assoc':

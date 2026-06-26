@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use Utopia\Queue\Broker\Redis;
@@ -7,7 +9,7 @@ use Utopia\Queue\Connection\RedisCluster;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
 
-class SwooleRedisClusterTest extends Base
+final class SwooleRedisClusterTest extends Base
 {
     private function getConnection(): RedisCluster
     {

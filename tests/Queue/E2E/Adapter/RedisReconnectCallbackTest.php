@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
@@ -7,7 +9,7 @@ use Utopia\Queue\Broker\Redis as RedisBroker;
 use Utopia\Queue\Connection;
 use Utopia\Queue\Queue;
 
-class RedisReconnectCallbackTest extends TestCase
+final class RedisReconnectCallbackTest extends TestCase
 {
     public function testReconnectCallbackReceivesAttemptContext(): void
     {
@@ -49,7 +51,7 @@ class RedisReconnectCallbackTest extends TestCase
         $broker = new RedisBroker($connection, $connection);
         $calls = [];
 
-        $broker->setReconnectCallback(fn() => null);
+        $broker->setReconnectCallback(fn(): null => null);
         $broker->setReconnectSuccessCallback(function (Queue $queue, int $attempts) use (&$calls, $broker): void {
             $calls[] = [
                 'queue' => $queue,
@@ -183,6 +185,7 @@ class FailingRedisConnection implements Connection
 
 class RecoveringRedisConnection extends FailingRedisConnection
 {
+    #[\Override]
     public function rightPopArray(string $queue, int $timeout): array|false
     {
         $this->popAttempts++;

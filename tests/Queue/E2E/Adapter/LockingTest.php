@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -9,7 +11,7 @@ use Utopia\Lock\Mutex;
 use Utopia\Queue\Connection;
 use Utopia\Queue\Connection\Locking;
 
-class LockingTest extends TestCase
+final class LockingTest extends TestCase
 {
     /**
      * Every method must run its inner call exactly once, wrapped in a single
@@ -79,7 +81,7 @@ class LockingTest extends TestCase
     {
         $locking = new Locking(new RecordingConnection(new Recorder()));
 
-        $lock = (new \ReflectionProperty(Locking::class, 'lock'))->getValue($locking);
+        $lock = new \ReflectionProperty(Locking::class, 'lock')->getValue($locking);
 
         $this->assertInstanceOf(Mutex::class, $lock);
     }
@@ -93,7 +95,7 @@ class LockingTest extends TestCase
     {
         $declared = array_map(
             static fn(\ReflectionMethod $method): string => $method->getName(),
-            (new \ReflectionClass(Connection::class))->getMethods(),
+            new \ReflectionClass(Connection::class)->getMethods(),
         );
 
         $covered = array_map(
