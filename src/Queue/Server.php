@@ -16,8 +16,6 @@ class Server
 {
     /**
      * Job
-     *
-     * @var Job
      */
     protected Job $job;
 
@@ -62,7 +60,6 @@ class Server
 
     /**
      * Creates an instance of a Queue server.
-     * @param Adapter $adapter
      */
     public function __construct(protected Adapter $adapter)
     {
@@ -177,7 +174,6 @@ class Server
 
     /**
      * Shutdown Hooks
-     * @return Hook
      */
     public function shutdown(): Hook
     {
@@ -189,14 +185,13 @@ class Server
 
     /**
      * Stops the Queue server.
-     * @return self
      */
     public function stop(): self
     {
         try {
             $this->adapter->stop();
         } catch (Throwable $error) {
-            $this->resources()->set('error', fn() => $error);
+            $this->resources()->set('error', fn(): \Throwable => $error);
             foreach ($this->errorHooks as $hook) {
                 $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
@@ -206,8 +201,6 @@ class Server
 
     /**
      * Init Hooks
-     *
-     * @return Hook
      */
     public function init(): Hook
     {
@@ -219,13 +212,12 @@ class Server
 
     /**
      * Starts the Queue Server
-     * @return self
      */
     public function start(): self
     {
         try {
-            $this->adapter->workerStart(function (string $workerId) {
-                $this->resources()->set('workerId', fn() => $workerId);
+            $this->adapter->workerStart(function (string $workerId): void {
+                $this->resources()->set('workerId', fn(): string => $workerId);
 
                 foreach ($this->workerStartHooks as $hook) {
                     $hook->getAction()(...$this->getArguments($this->resources(), $hook));
@@ -239,7 +231,7 @@ class Server
                                 = microtime(true) - $message->getTimestamp();
                             $this->jobWaitTime->record($waitDuration);
 
-                            $this->context()->set('message', fn() => $message);
+                            $this->context()->set('message', fn(): \Utopia\Queue\Message => $message);
 
                             if ($this->job->getHook()) {
                                 foreach ($this->initHooks as $hook) {
@@ -283,8 +275,8 @@ class Server
                             $this->processDuration->record($processDuration);
                         }
                     },
-                    function (Message $message) {
-                        $this->context()->set('message', fn() => $message);
+                    function (Message $message): void {
+                        $this->context()->set('message', fn(): \Utopia\Queue\Message => $message);
 
                         if ($this->job->getHook()) {
                             foreach ($this->shutdownHooks as $hook) {
@@ -314,10 +306,10 @@ class Server
                             }
                         }
                     },
-                    function (?Message $message, Throwable $th) {
-                        $this->context()->set('error', fn() => $th);
-                        if ($message !== null) {
-                            $this->context()->set('message', fn() => $message);
+                    function (?Message $message, Throwable $th): void {
+                        $this->context()->set('error', fn(): \Throwable => $th);
+                        if ($message instanceof \Utopia\Queue\Message) {
+                            $this->context()->set('message', fn(): \Utopia\Queue\Message => $message);
                         }
 
                         foreach ($this->errorHooks as $hook) {
@@ -327,15 +319,15 @@ class Server
                 );
             });
 
-            $this->adapter->workerStop(function (string $workerId) {
-                $this->resources()->set('workerId', fn() => $workerId);
+            $this->adapter->workerStop(function (string $workerId): void {
+                $this->resources()->set('workerId', fn(): string => $workerId);
 
                 try {
                     // Call user-defined workerStop hooks
                     foreach ($this->workerStopHooks as $hook) {
                         try {
                             $hook->getAction()(...$this->getArguments($this->resources(), $hook));
-                        } catch (Throwable $e) {
+                        } catch (Throwable) {
                         }
                     }
                 } finally {
@@ -346,7 +338,7 @@ class Server
 
             $this->adapter->start();
         } catch (Throwable $error) {
-            $this->resources()->set('error', fn() => $error);
+            $this->resources()->set('error', fn(): \Throwable => $error);
             foreach ($this->errorHooks as $hook) {
                 $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
@@ -356,7 +348,6 @@ class Server
 
     /**
      * Is called when a Worker starts.
-     * @return Hook
      */
     public function workerStart(): Hook
     {
@@ -368,7 +359,6 @@ class Server
 
     /**
      * Returns Worker starts hooks.
-     * @return array
      */
     public function getWorkerStart(): array
     {
@@ -377,7 +367,6 @@ class Server
 
     /**
      * Is called when a Worker stops.
-     * @return Hook
      */
     public function workerStop(): Hook
     {
@@ -389,7 +378,6 @@ class Server
 
     /**
      * Returns Worker stops hooks.
-     * @return array
      */
     public function getWorkerStop(): array
     {
@@ -398,11 +386,6 @@ class Server
 
     /**
      * Get Arguments
-     *
-     * @param Container $context
-     * @param Hook $hook
-     * @param array $payload
-     * @return array
      */
     protected function getArguments(Container $context, Hook $hook, array $payload = []): array
     {
@@ -428,7 +411,7 @@ class Server
             $arguments[$param['order']] = $value;
         }
 
-        foreach ($hook->getInjections() as $key => $injection) {
+        foreach ($hook->getInjections() as $injection) {
             $arguments[$injection['order']] = $context->get(
                 $injection['name'],
             );
@@ -446,14 +429,9 @@ class Server
      *
      * Creates an validator instance and validate given value with given rules.
      *
-     * @param string $key
-     * @param array $param
-     * @param mixed $value
-     * @param Container $context
      *
      * @throws Exception
      *
-     * @return void
      */
     protected function validate(string $key, array $param, mixed $value, Container $context): void
     {
@@ -487,7 +465,6 @@ class Server
 
     /**
      * Register hook. Will be executed when error occurs.
-     * @return Hook
      */
     public function error(): Hook
     {

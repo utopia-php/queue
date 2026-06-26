@@ -9,24 +9,9 @@ class Redis implements Connection
     protected const int CONNECT_MAX_ATTEMPTS = 5;
     protected const int CONNECT_BACKOFF_MS = 100;
     protected const int CONNECT_MAX_BACKOFF_MS = 3_000;
-
-    protected string $host;
-    protected int $port;
-    protected ?string $user;
-    protected ?string $password;
-    protected float $connectTimeout;
-    protected float $readTimeout;
     protected ?\Redis $redis = null;
 
-    public function __construct(string $host, int $port = 6379, ?string $user = null, ?string $password = null, float $connectTimeout = -1, float $readTimeout = -1)
-    {
-        $this->host = $host;
-        $this->port = $port;
-        $this->user = $user;
-        $this->password = $password;
-        $this->connectTimeout = $connectTimeout;
-        $this->readTimeout = $readTimeout;
-    }
+    public function __construct(protected string $host, protected int $port = 6379, protected ?string $user = null, protected ?string $password = null, protected float $connectTimeout = -1, protected float $readTimeout = -1) {}
 
     public function rightPopLeftPushArray(string $queue, string $destination, int $timeout): array|false
     {
@@ -50,22 +35,22 @@ class Redis implements Connection
     }
     public function rightPushArray(string $queue, array $value): bool
     {
-        return !!$this->getRedis()->rPush($queue, json_encode($value));
+        return (bool) $this->getRedis()->rPush($queue, json_encode($value));
     }
 
     public function rightPush(string $queue, string $value): bool
     {
-        return !!$this->getRedis()->rPush($queue, $value);
+        return (bool) $this->getRedis()->rPush($queue, $value);
     }
 
     public function leftPushArray(string $queue, array $value): bool
     {
-        return !!$this->getRedis()->lPush($queue, json_encode($value));
+        return (bool) $this->getRedis()->lPush($queue, json_encode($value));
     }
 
     public function leftPush(string $queue, string $value): bool
     {
-        return !!$this->getRedis()->lPush($queue, $value);
+        return (bool) $this->getRedis()->lPush($queue, $value);
     }
 
     /** @phpstan-impure */
@@ -99,7 +84,7 @@ class Redis implements Connection
             return false;
         }
 
-        return json_decode($response[1], true) ?? false;
+        return json_decode((string) $response[1], true) ?? false;
     }
 
     public function leftPop(string $queue, int $timeout): string|false
@@ -115,12 +100,12 @@ class Redis implements Connection
 
     public function listRemove(string $queue, string $key): bool
     {
-        return !!$this->getRedis()->lRem($queue, $key, 1);
+        return (bool) $this->getRedis()->lRem($queue, $key, 1);
     }
 
     public function remove(string $key): bool
     {
-        return !!$this->getRedis()->del($key);
+        return (bool) $this->getRedis()->del($key);
     }
 
     public function setArray(string $key, array $value, int $ttl = 0): bool
@@ -160,9 +145,8 @@ class Redis implements Connection
     {
         $start = $offset;
         $end = $start + $total - 1;
-        $results = $this->getRedis()->lRange($key, $start, $end);
 
-        return $results;
+        return $this->getRedis()->lRange($key, $start, $end);
     }
 
     public function ping(): bool
@@ -171,7 +155,7 @@ class Redis implements Connection
             $this->getRedis()->ping();
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return false;
         }
     }
@@ -188,7 +172,7 @@ class Redis implements Connection
 
     protected function getRedis(): \Redis
     {
-        if ($this->redis) {
+        if ($this->redis instanceof \Redis) {
             return $this->redis;
         }
 
@@ -221,7 +205,7 @@ class Redis implements Connection
                             self::CONNECT_MAX_ATTEMPTS,
                             $e->getMessage(),
                         ),
-                        (int) $e->getCode(),
+                        $e->getCode(),
                         $e,
                     );
                 }

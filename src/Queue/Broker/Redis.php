@@ -20,11 +20,11 @@ class Redis implements Publisher, Consumer
     /**
      * @var (callable(Queue, \Throwable, int, int): void)|null
      */
-    private $reconnectCallback = null;
+    private $reconnectCallback;
     /**
      * @var (callable(Queue, int): void)|null
      */
-    private $reconnectSuccessCallback = null;
+    private $reconnectSuccessCallback;
 
     public function __construct(
         // Blocking receive loop + claim writes (single caller).

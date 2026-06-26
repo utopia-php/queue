@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Utopia\Queue;
 
 use Utopia\Servers\Hook;
@@ -8,8 +10,6 @@ class Job extends Hook
 {
     /**
      * Whether to use hook
-     *
-     * @var bool
      */
     protected bool $hook = true;
 
@@ -17,9 +17,7 @@ class Job extends Hook
      * Set hook status
      * When set false, hooks for this route will be skipped.
      *
-     * @param boolean $hook
      *
-     * @return static
      */
     public function hook(bool $hook = true): static
     {
@@ -30,8 +28,6 @@ class Job extends Hook
 
     /**
      * Get hook status
-     *
-     * @return bool
      */
     public function getHook(): bool
     {

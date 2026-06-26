@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\E2E\Adapter;
 
 use Utopia\Pools\Adapter\Stack as Stack;
@@ -10,13 +12,11 @@ use Utopia\Queue\Connection\Redis;
 use Utopia\Queue\Publisher;
 use Utopia\Queue\Queue;
 
-class PoolTest extends Base
+final class PoolTest extends Base
 {
     protected function getPublisher(): Publisher
     {
-        $pool = new UtopiaPool(new Stack(), 'redis', 1, function () {
-            return new RedisBroker(new Redis('127.0.0.1', 16379), new Redis('127.0.0.1', 16379));
-        });
+        $pool = new UtopiaPool(new Stack(), 'redis', 1, fn(): \Utopia\Queue\Broker\Redis => new RedisBroker(new Redis('127.0.0.1', 16379), new Redis('127.0.0.1', 16379)));
 
         return new Pool($pool, $pool);
     }

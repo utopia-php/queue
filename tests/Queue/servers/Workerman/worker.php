@@ -31,15 +31,15 @@ $server->job()
 $server
     ->error()
     ->inject('error')
-    ->action(function ($th) {
+    ->action(function ($th): void {
         echo $th->getMessage() . PHP_EOL;
     });
 
-$server->workerStart()->action(function () {
+$server->workerStart()->action(function (): void {
     echo 'Worker Started' . PHP_EOL;
 });
 
-$server->workerStop()->action(function () {
+$server->workerStop()->action(function (): void {
     echo 'Worker Stopped' . PHP_EOL;
 });
 

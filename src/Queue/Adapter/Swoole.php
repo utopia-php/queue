@@ -45,9 +45,9 @@ class Swoole extends Adapter
 
         Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
 
-        Coroutine\run(function () {
-            Process::signal(SIGTERM, fn() => $this->stop());
-            Process::signal(SIGINT, fn() => $this->stop());
+        Coroutine\run(function (): void {
+            Process::signal(SIGTERM, fn(): \Utopia\Queue\Adapter\Swoole => $this->stop());
+            Process::signal(SIGINT, fn(): \Utopia\Queue\Adapter\Swoole => $this->stop());
             Process::signal(SIGCHLD, fn() => $this->reap());
 
             while (\count($this->workers) > 0) {
@@ -60,11 +60,11 @@ class Swoole extends Adapter
 
     protected function spawnWorker(int $workerId): void
     {
-        $process = new Process(function () use ($workerId) {
+        $process = new Process(function () use ($workerId): void {
             Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
 
-            Coroutine\run(function () use ($workerId) {
-                Process::signal(SIGTERM, function () {
+            Coroutine\run(function () use ($workerId): void {
+                Process::signal(SIGTERM, function (): void {
                     $this->stopped = true;
                     $this->consumer->close();
                 });
@@ -88,6 +88,7 @@ class Swoole extends Adapter
      * channel caps concurrency at $maxCoroutines: push() blocks the loop while
      * the pool is full.
      */
+    #[\Override]
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         $this->stopped = false;
@@ -97,14 +98,14 @@ class Swoole extends Adapter
         while (!$this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
-            if ($message === null) {
+            if (!$message instanceof \Utopia\Queue\Message) {
                 continue;
             }
 
             $slots->push(true);
             $waitGroup->add();
 
-            Coroutine::create(function () use ($message, $messageCallback, $successCallback, $errorCallback, $slots, $waitGroup) {
+            Coroutine::create(function () use ($message, $messageCallback, $successCallback, $errorCallback, $slots, $waitGroup): void {
                 try {
                     $this->process($message, $messageCallback, $successCallback, $errorCallback);
                 } catch (\Throwable $error) {
@@ -120,6 +121,7 @@ class Swoole extends Adapter
         $waitGroup->wait();
     }
 
+    #[\Override]
     public function context(): Container
     {
         // Each message runs in its own coroutine, so the container is created
@@ -142,7 +144,7 @@ class Swoole extends Adapter
     {
         $this->stopped = true;
 
-        foreach ($this->workers as $pid => $process) {
+        foreach (array_keys($this->workers) as $pid) {
             Process::kill($pid, SIGTERM);
         }
 
