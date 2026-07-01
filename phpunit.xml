@@ -6,6 +6,7 @@
         >
     <testsuites>
         <testsuite name="unit">
+            <file>./tests/Queue/E2E/Adapter/KubernetesJobAdapterTest.php</file>
             <file>./tests/Queue/E2E/Adapter/LockingTest.php</file>
             <file>./tests/Queue/E2E/Adapter/RedisReconnectCallbackTest.php</file>
             <file>./tests/Queue/E2E/Adapter/ServerTelemetryTest.php</file>
