@@ -12,6 +12,11 @@ KIND_VERSION='v0.30.0'
 KIND_SHA256='517ab7fc89ddeed5fa65abf71530d90648d9638ef0c4cde22c2c11f8097b8889'
 KUBECTL_VERSION='v1.31.4'
 KUBECTL_SHA256='298e19e9c6c17199011404278f0ff8168a7eca4217edad9097af577023a5620f'
+HELM_VERSION='v3.16.4'
+HELM_SHA256='fc307327959aa38ed8f9f7e66d45492bb022a66c3e5da6063958254b9767d179'
+
+# Only tear down a cluster this script created, never a pre-existing one.
+KEDA_CREATED_CLUSTER=0
 
 keda_verify() {
     # $1 = file, $2 = expected sha256
@@ -35,12 +40,16 @@ keda_up() {
         chmod +x "$KEDA_TOOLS/kubectl"
     fi
     if ! command -v helm > /dev/null 2>&1; then
-        echo "installing helm..."
-        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        echo "installing helm $HELM_VERSION..."
+        curl -fsSL -o "$KEDA_TOOLS/helm.tar.gz" "https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz"
+        keda_verify "$KEDA_TOOLS/helm.tar.gz" "$HELM_SHA256"
+        tar -xz -C "$KEDA_TOOLS" --strip-components=1 -f "$KEDA_TOOLS/helm.tar.gz" linux-amd64/helm
+        rm -f "$KEDA_TOOLS/helm.tar.gz"
     fi
 
     if ! kind get clusters 2> /dev/null | grep -qx "$KIND_CLUSTER"; then
         kind create cluster --name "$KIND_CLUSTER" --wait 120s
+        KEDA_CREATED_CLUSTER=1
     fi
     kind get kubeconfig --name "$KIND_CLUSTER" > "$KUBECONFIG_FILE"
     export KUBECONFIG="$KUBECONFIG_FILE"
@@ -59,6 +68,8 @@ keda_up() {
 }
 
 keda_down() {
-    kind delete cluster --name "$KIND_CLUSTER" > /dev/null 2>&1 || true
+    if [ "$KEDA_CREATED_CLUSTER" = "1" ]; then
+        kind delete cluster --name "$KIND_CLUSTER" > /dev/null 2>&1 || true
+    fi
     rm -f "$KUBECONFIG_FILE"
 }
