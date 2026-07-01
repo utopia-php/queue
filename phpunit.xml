@@ -12,6 +12,7 @@
             <file>./tests/Queue/E2E/Adapter/SwooleConcurrencyTest.php</file>
         </testsuite>
         <testsuite name="e2e">
+            <file>./tests/Queue/E2E/Adapter/KedaTest.php</file>
             <file>./tests/Queue/E2E/Adapter/PoolTest.php</file>
             <file>./tests/Queue/E2E/Adapter/SwooleTest.php</file>
             <file>./tests/Queue/E2E/Adapter/SwooleRedisClusterTest.php</file>
