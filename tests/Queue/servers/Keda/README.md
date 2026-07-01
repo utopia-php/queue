@@ -14,8 +14,12 @@ variable.
   Kubernetes involvement.
 - A KEDA `ScaledJob` (`k8s.yaml`) watches the queue's Redis list length
   (`{namespace}.queue.{name}`) and spawns worker Jobs, up to `maxReplicaCount`.
-- Each worker (`worker.php`) drains the queue with the same Redis broker
-  (`receive` → handle → `commit`) and exits, so the Job completes.
+- Each worker (`worker.php`) runs the `Utopia\Queue\Adapter\KubernetesJob`
+  adapter: a run-to-completion adapter that drains the queue with the same Redis
+  broker (`receive` → handle → `commit`) and returns, so the Job completes.
+
+The only library code the approach needs is that adapter (`src/Queue/Adapter/KubernetesJob.php`,
+covered by `KubernetesJobAdapterTest`); everything else is deployment config.
 
 ## Run it
 
