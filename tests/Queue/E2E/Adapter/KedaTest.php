@@ -19,6 +19,7 @@ final class KedaTest extends TestCase
 {
     private const string NAMESPACE = 'utopia-queue-keda';
     private const string QUEUE_KEY = 'utopia-queue.queue.keda';
+    private const string FAILED_KEY = 'utopia-queue.failed.keda';
     private const int TIMEOUT = 180;
 
     protected function setUp(): void
@@ -42,6 +43,12 @@ final class KedaTest extends TestCase
         return (int) $this->redis('LLEN', self::QUEUE_KEY);
     }
 
+    /** @phpstan-impure reads live Redis state, so the value changes between calls */
+    private function failedLength(): int
+    {
+        return (int) $this->redis('LLEN', self::FAILED_KEY);
+    }
+
     private function jobCount(): int
     {
         $out = shell_exec('kubectl get jobs -n ' . self::NAMESPACE . ' --no-headers 2>/dev/null');
@@ -54,6 +61,9 @@ final class KedaTest extends TestCase
 
     private function enqueue(array $payload): void
     {
+        // Mirrors Redis::enqueue()'s envelope. The in-cluster Redis isn't exposed
+        // to the host, so we push via kubectl rather than the broker directly;
+        // keep this in sync if the envelope shape changes.
         $message = json_encode([
             'pid' => uniqid(more_entropy: true),
             'queue' => 'keda',
@@ -84,6 +94,9 @@ final class KedaTest extends TestCase
         }
 
         $this->assertSame(0, $this->queueLength(), 'KEDA-spawned workers should drain the queue');
+        // receive() pops from the main list before handling, so a drained main
+        // queue alone doesn't prove success — assert nothing landed in .failed.*.
+        $this->assertSame(0, $this->failedLength(), 'no messages should have failed');
         $this->assertGreaterThanOrEqual(1, $this->jobCount(), 'KEDA should have spawned at least one worker Job');
     }
 }

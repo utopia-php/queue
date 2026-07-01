@@ -45,3 +45,14 @@ Kubernetes Jobs — which is why it's the recommended path.
 > Note: the ScaledJob trigger `address` must be the Redis Service FQDN
 > (`redis.<namespace>.svc.cluster.local:6379`) — KEDA evaluates triggers from the
 > `keda` namespace, so a short name won't resolve to the workload's namespace.
+
+## Crash recovery
+
+`receive()` claims a message by atomically popping it from the main queue into
+the broker's processing list before the worker handles it. If a worker pod is
+hard-killed (OOM, node eviction) after the claim but before `commit`/`reject`,
+that message is stranded in the processing list — it's no longer in the main
+queue, so KEDA won't spawn a Job for it, and `backoffLimit` can't help (a new pod
+only drains the main queue). Production deployments should run a periodic reaper
+(`Publisher::retry()`) to requeue stale processing entries. This POC does not
+configure one.

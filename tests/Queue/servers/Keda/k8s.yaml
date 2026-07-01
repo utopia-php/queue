@@ -36,8 +36,9 @@ spec:
     - port: 6379
       targetPort: 6379
 ---
-# KEDA spawns one worker Job per pending message (capped at maxReplicaCount).
-# The Job pulls from Redis and exits — no payload is carried on the Job.
+# KEDA scales worker Jobs off the Redis queue depth (up to maxReplicaCount);
+# each Job pulls from Redis and drains messages until the queue is empty, then
+# exits. No payload is carried on any Kubernetes object.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
@@ -51,6 +52,12 @@ spec:
   jobTargetRef:
     parallelism: 1
     completions: 1
+    # The worker always exits 0 (it rejects failed messages and continues), so
+    # backoffLimit rarely fires. Note: if a pod is hard-killed after receive()
+    # claims a message but before commit/reject, that message is stranded in the
+    # broker's processing list (not the main queue), so KEDA won't re-trigger it;
+    # production needs a periodic reaper (Publisher::retry) to requeue stale
+    # processing entries. See servers/Keda/README.md.
     backoffLimit: 0
     template:
       spec:
