@@ -33,13 +33,13 @@
         "test:e2e": "tests/e2e.sh"
     },
     "require": {
-        "php": ">=8.4",
+        "php": ">=8.5",
         "utopia-php/di": "^0.3",
         "utopia-php/lock": "^0.2",
         "utopia-php/servers": "^0.4",
         "utopia-php/pools": "^1.0",
         "utopia-php/telemetry": "^0.4",
-        "utopia-php/validators": "^0.2"
+        "utopia-php/validators": "0.3.*"
     },
     "require-dev": {
         "ext-redis": "*",
