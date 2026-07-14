@@ -3,7 +3,7 @@
 namespace Utopia\Queue\Adapter;
 
 use Swoole\Coroutine;
-use Swoole\Coroutine\System;
+use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Message;
@@ -16,6 +16,14 @@ use Utopia\Queue\Message;
  *
  * Producers still enqueue with any Publisher (e.g. the Redis broker); this only
  * changes how the messages are consumed.
+ *
+ * With Swoole loaded, the whole worker lifecycle runs inside one coroutine
+ * scheduler: timers and signal watchers registered by workerStart hooks must be
+ * created and cleared within the same scheduler, or Coroutine\run never returns
+ * and the Job never completes. SIGTERM/SIGINT trigger stop() so pod termination
+ * finishes the in-flight message instead of stranding it in the processing
+ * list (pcntl conflicts with Swoole's signal handling, so Process::signal is
+ * used; without Swoole, pcntl when available).
  */
 class KubernetesJob extends Adapter
 {
@@ -27,14 +35,26 @@ class KubernetesJob extends Adapter
 
     public function start(): self
     {
-        try {
-            foreach ($this->onWorkerStart as $callback) {
-                $callback('0');
+        if (!\extension_loaded('swoole') || Coroutine::getCid() >= 0) {
+            $this->lifecycle();
+
+            return $this;
+        }
+
+        Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
+
+        $error = null;
+
+        Coroutine\run(function () use (&$error): void {
+            try {
+                $this->lifecycle();
+            } catch (\Throwable $thrown) {
+                $error = $thrown;
             }
-        } finally {
-            foreach ($this->onWorkerStop as $callback) {
-                $callback('0');
-            }
+        });
+
+        if ($error instanceof \Throwable) {
+            throw $error;
         }
 
         return $this;
@@ -58,12 +78,6 @@ class KubernetesJob extends Adapter
      * Drain the queue, then return. Processes messages until a receive() times
      * out (the queue is empty) or stop() is called, so the Job completes rather
      * than blocking forever like the long-running adapters.
-     *
-     * SIGTERM/SIGINT trigger stop() so pod termination finishes the in-flight
-     * message instead of stranding it in the processing list. With Swoole the
-     * drain runs inside a coroutine scheduler and a sibling coroutine waits on
-     * the signals (pcntl conflicts with Swoole's signal handling); without
-     * Swoole, pcntl is used when available.
      */
     #[\Override]
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
@@ -71,7 +85,15 @@ class KubernetesJob extends Adapter
         $this->stopped = false;
 
         if (\extension_loaded('swoole')) {
-            $this->consumeCoroutine($messageCallback, $successCallback, $errorCallback);
+            Process::signal(SIGTERM, fn(): \Utopia\Queue\Adapter\KubernetesJob => $this->stop());
+            Process::signal(SIGINT, fn(): \Utopia\Queue\Adapter\KubernetesJob => $this->stop());
+
+            try {
+                $this->drain($messageCallback, $successCallback, $errorCallback);
+            } finally {
+                Process::signal(SIGTERM, null);
+                Process::signal(SIGINT, null);
+            }
 
             return;
         }
@@ -85,46 +107,25 @@ class KubernetesJob extends Adapter
         $this->drain($messageCallback, $successCallback, $errorCallback);
     }
 
-    protected function consumeCoroutine(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    protected function lifecycle(): void
     {
-        Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
-
-        $error = null;
-
-        Coroutine\run(function () use (&$error, $messageCallback, $successCallback, $errorCallback): void {
-            $signals = [];
-            foreach ([SIGTERM, SIGINT] as $signal) {
-                $signals[] = Coroutine::create(function () use ($signal): void {
-                    if (System::waitSignal($signal) === true) {
-                        $this->stop();
-                    }
-                });
+        try {
+            foreach ($this->onWorkerStart as $callback) {
+                $callback('0');
             }
-
-            try {
-                $this->drain($messageCallback, $successCallback, $errorCallback);
-            } catch (\Throwable $thrown) {
-                $error = $thrown;
-            } finally {
-                foreach ($signals as $cid) {
-                    if (Coroutine::exists($cid)) {
-                        Coroutine::cancel($cid);
-                    }
-                }
+        } finally {
+            foreach ($this->onWorkerStop as $callback) {
+                $callback('0');
             }
-        });
-
-        if ($error instanceof \Throwable) {
-            throw $error;
         }
     }
 
     protected function drain(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
-        while (! $this->isStopped()) {
+        while (!$this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
-            if (! $message instanceof Message) {
+            if (!$message instanceof Message) {
                 break;
             }
 
