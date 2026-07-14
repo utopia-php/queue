@@ -92,19 +92,10 @@ class Redis implements Publisher, Consumer
         $pid = $message->getPid();
 
         // Claim: store the job, mark it processing, bump received stats.
-        try {
-            $this->receive->setArray("{$queue->namespace}.jobs.{$queue->name}.{$pid}", $nextMessage, $queue->jobTtl);
-            $this->receive->leftPush("{$queue->namespace}.processing.{$queue->name}", $pid);
-            $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.total");
-            $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.processing");
-        } catch (\Throwable) {
-            try {
-                $this->receive->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $nextMessage);
-            } catch (\Throwable) {
-            }
-
-            return null;
-        }
+        $this->receive->setArray("{$queue->namespace}.jobs.{$queue->name}.{$pid}", $nextMessage, $queue->jobTtl);
+        $this->receive->leftPush("{$queue->namespace}.processing.{$queue->name}", $pid);
+        $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.total");
+        $this->receive->increment("{$queue->namespace}.stats.{$queue->name}.processing");
 
         return $message;
     }
