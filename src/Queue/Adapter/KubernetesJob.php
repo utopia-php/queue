@@ -2,6 +2,8 @@
 
 namespace Utopia\Queue\Adapter;
 
+use Swoole\Coroutine;
+use Swoole\Coroutine\System;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Message;
@@ -56,20 +58,73 @@ class KubernetesJob extends Adapter
      * Drain the queue, then return. Processes messages until a receive() times
      * out (the queue is empty) or stop() is called, so the Job completes rather
      * than blocking forever like the long-running adapters.
+     *
+     * SIGTERM/SIGINT trigger stop() so pod termination finishes the in-flight
+     * message instead of stranding it in the processing list. With Swoole the
+     * drain runs inside a coroutine scheduler and a sibling coroutine waits on
+     * the signals (pcntl conflicts with Swoole's signal handling); without
+     * Swoole, pcntl is used when available.
      */
     #[\Override]
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         $this->stopped = false;
 
-        pcntl_async_signals(true);
-        pcntl_signal(SIGTERM, $this->stop(...));
-        pcntl_signal(SIGINT, $this->stop(...));
+        if (\extension_loaded('swoole')) {
+            $this->consumeCoroutine($messageCallback, $successCallback, $errorCallback);
 
-        while (!$this->isStopped()) {
+            return;
+        }
+
+        if (\function_exists('pcntl_async_signals')) {
+            pcntl_async_signals(true);
+            pcntl_signal(SIGTERM, $this->stop(...));
+            pcntl_signal(SIGINT, $this->stop(...));
+        }
+
+        $this->drain($messageCallback, $successCallback, $errorCallback);
+    }
+
+    protected function consumeCoroutine(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        Coroutine::set(['hook_flags' => SWOOLE_HOOK_ALL]);
+
+        $error = null;
+
+        Coroutine\run(function () use (&$error, $messageCallback, $successCallback, $errorCallback): void {
+            $signals = [];
+            foreach ([SIGTERM, SIGINT] as $signal) {
+                $signals[] = Coroutine::create(function () use ($signal): void {
+                    if (System::waitSignal($signal) === true) {
+                        $this->stop();
+                    }
+                });
+            }
+
+            try {
+                $this->drain($messageCallback, $successCallback, $errorCallback);
+            } catch (\Throwable $thrown) {
+                $error = $thrown;
+            } finally {
+                foreach ($signals as $cid) {
+                    if (Coroutine::exists($cid)) {
+                        Coroutine::cancel($cid);
+                    }
+                }
+            }
+        });
+
+        if ($error instanceof \Throwable) {
+            throw $error;
+        }
+    }
+
+    protected function drain(callable $messageCallback, callable $successCallback, callable $errorCallback): void
+    {
+        while (! $this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
 
-            if (!$message instanceof Message) {
+            if (! $message instanceof Message) {
                 break;
             }
 
