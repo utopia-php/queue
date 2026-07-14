@@ -25,12 +25,14 @@ class KubernetesJob extends Adapter
 
     public function start(): self
     {
-        foreach ($this->onWorkerStart as $callback) {
-            $callback('0');
-        }
-
-        foreach ($this->onWorkerStop as $callback) {
-            $callback('0');
+        try {
+            foreach ($this->onWorkerStart as $callback) {
+                $callback('0');
+            }
+        } finally {
+            foreach ($this->onWorkerStop as $callback) {
+                $callback('0');
+            }
         }
 
         return $this;
@@ -44,6 +46,12 @@ class KubernetesJob extends Adapter
         return $this;
     }
 
+    #[\Override]
+    public function runsToCompletion(): bool
+    {
+        return true;
+    }
+
     /**
      * Drain the queue, then return. Processes messages until a receive() times
      * out (the queue is empty) or stop() is called, so the Job completes rather
@@ -53,6 +61,10 @@ class KubernetesJob extends Adapter
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         $this->stopped = false;
+
+        pcntl_async_signals(true);
+        pcntl_signal(SIGTERM, $this->stop(...));
+        pcntl_signal(SIGINT, $this->stop(...));
 
         while (!$this->isStopped()) {
             $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);

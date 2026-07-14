@@ -82,6 +82,11 @@ abstract class Adapter
         return $this->resources;
     }
 
+    public function runsToCompletion(): bool
+    {
+        return false;
+    }
+
     public function context(): Container
     {
         return $this->context ??= new Container($this->resources());

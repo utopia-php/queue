@@ -342,6 +342,10 @@ class Server
             foreach ($this->errorHooks as $hook) {
                 $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
+
+            if ($this->adapter->runsToCompletion()) {
+                throw $error;
+            }
         }
         return $this;
     }
