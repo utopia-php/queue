@@ -35,8 +35,20 @@ class KubernetesJob extends Adapter
 
     public function start(): self
     {
+        $lifecycle = function (): void {
+            try {
+                foreach ($this->onWorkerStart as $callback) {
+                    $callback('0');
+                }
+            } finally {
+                foreach ($this->onWorkerStop as $callback) {
+                    $callback('0');
+                }
+            }
+        };
+
         if (!\extension_loaded('swoole') || Coroutine::getCid() >= 0) {
-            $this->lifecycle();
+            $lifecycle();
 
             return $this;
         }
@@ -45,9 +57,9 @@ class KubernetesJob extends Adapter
 
         $error = null;
 
-        Coroutine\run(function () use (&$error): void {
+        Coroutine\run(function () use (&$error, $lifecycle): void {
             try {
-                $this->lifecycle();
+                $lifecycle();
             } catch (\Throwable $thrown) {
                 $error = $thrown;
             }
@@ -84,53 +96,33 @@ class KubernetesJob extends Adapter
     {
         $this->stopped = false;
 
-        if (\extension_loaded('swoole')) {
+        $swoole = \extension_loaded('swoole');
+
+        if ($swoole) {
             Process::signal(SIGTERM, fn(): \Utopia\Queue\Adapter\KubernetesJob => $this->stop());
             Process::signal(SIGINT, fn(): \Utopia\Queue\Adapter\KubernetesJob => $this->stop());
-
-            try {
-                $this->drain($messageCallback, $successCallback, $errorCallback);
-            } finally {
-                Process::signal(SIGTERM, null);
-                Process::signal(SIGINT, null);
-            }
-
-            return;
-        }
-
-        if (\function_exists('pcntl_async_signals')) {
+        } elseif (\function_exists('pcntl_async_signals')) {
             pcntl_async_signals(true);
             pcntl_signal(SIGTERM, $this->stop(...));
             pcntl_signal(SIGINT, $this->stop(...));
         }
 
-        $this->drain($messageCallback, $successCallback, $errorCallback);
-    }
-
-    protected function lifecycle(): void
-    {
         try {
-            foreach ($this->onWorkerStart as $callback) {
-                $callback('0');
+            while (!$this->isStopped()) {
+                $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
+
+                if (!$message instanceof Message) {
+                    break;
+                }
+
+                $this->context = new Container($this->resources());
+                $this->process($message, $messageCallback, $successCallback, $errorCallback);
             }
         } finally {
-            foreach ($this->onWorkerStop as $callback) {
-                $callback('0');
+            if ($swoole) {
+                Process::signal(SIGTERM, null);
+                Process::signal(SIGINT, null);
             }
-        }
-    }
-
-    protected function drain(callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
-        while (!$this->isStopped()) {
-            $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
-
-            if (!$message instanceof Message) {
-                break;
-            }
-
-            $this->context = new Container($this->resources());
-            $this->process($message, $messageCallback, $successCallback, $errorCallback);
         }
     }
 
