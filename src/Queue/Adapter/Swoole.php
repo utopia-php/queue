@@ -96,7 +96,7 @@ class Swoole extends Adapter
         $waitGroup = new WaitGroup();
 
         while (!$this->isStopped()) {
-            $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
+            $message = $this->nextMessage($errorCallback);
 
             if (!$message instanceof \Utopia\Queue\Message) {
                 continue;

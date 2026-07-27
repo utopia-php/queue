@@ -8,6 +8,12 @@ abstract class Adapter
 {
     protected const int RECEIVE_TIMEOUT = 2;
 
+    /**
+     * Pause before asking again after the broker failed to answer, so an
+     * unreachable broker is retried at a steady rate rather than in a tight loop.
+     */
+    protected const int RECEIVE_BACKOFF = 1;
+
     public Queue $queue;
     protected ?Container $context = null;
     protected bool $stopped = false;
@@ -38,19 +44,52 @@ abstract class Adapter
         return $this->stopped;
     }
 
+    /**
+     * @param callable(Message): void $messageCallback
+     * @param callable(Message): void $successCallback
+     * @param callable(?Message, \Throwable): void $errorCallback Receives null when
+     *        the failure was in obtaining a message rather than handling one.
+     */
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
     {
         $this->stopped = false;
 
         while (!$this->isStopped()) {
-            $message = $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
+            $message = $this->nextMessage($errorCallback);
 
-            if (!$message instanceof \Utopia\Queue\Message) {
+            if (!$message instanceof Message) {
                 continue;
             }
 
             $this->context = new Container($this->resources());
             $this->process($message, $messageCallback, $successCallback, $errorCallback);
+        }
+    }
+
+    /**
+     * Never throws: a broker that cannot be reached is reported to
+     * $errorCallback and retried after RECEIVE_BACKOFF. Losing the worker to a
+     * transient outage is worse than waiting for the broker to come back.
+     *
+     * $errorCallback takes a nullable message for exactly this case — the
+     * failure is in obtaining one, so there is none to report alongside it.
+     *
+     * @param callable(?Message, \Throwable): void $errorCallback
+     */
+    protected function nextMessage(callable $errorCallback): ?Message
+    {
+        try {
+            return $this->consumer->receive($this->queue, static::RECEIVE_TIMEOUT);
+        } catch (\Throwable $error) {
+            // A reporting hook that throws must not cost the worker either.
+            try {
+                $errorCallback(null, $error);
+            } catch (\Throwable) {
+            }
+
+            sleep(static::RECEIVE_BACKOFF);
+
+            return null;
         }
     }
 
