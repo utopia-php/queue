@@ -16,7 +16,7 @@ final class PoolTest extends Base
 {
     protected function getPublisher(): Publisher
     {
-        $pool = new UtopiaPool(new Stack(), 'redis', 1, fn(): \Utopia\Queue\Broker\Redis => new RedisBroker(new Redis('127.0.0.1', 16379), new Redis('127.0.0.1', 16379)));
+        $pool = new UtopiaPool(new Stack(), 'redis', 1, fn(): \Utopia\Queue\Broker\Redis => new RedisBroker(new Redis('127.0.0.1', 16379), new Redis('127.0.0.1', 16379)), timeout: 0.0);
 
         return new Pool($pool, $pool);
     }
