@@ -48,7 +48,8 @@
     },
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
-        "workerman/workerman": "Needed to support Workerman."
+        "workerman/workerman": "Needed to support Workerman.",
+        "ext-pcntl": "Fallback for Adapter\\KubernetesJob graceful shutdown when Swoole is unavailable."
     },
     "config": {
         "allow-plugins": {

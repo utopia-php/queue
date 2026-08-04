@@ -342,6 +342,8 @@ class Server
             foreach ($this->errorHooks as $hook) {
                 $hook->getAction()(...$this->getArguments($this->resources(), $hook));
             }
+
+            throw $error;
         }
         return $this;
     }
