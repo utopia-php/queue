@@ -62,6 +62,18 @@ class KubernetesJob extends Adapter
                 $lifecycle();
             } catch (\Throwable $thrown) {
                 $error = $thrown;
+            } finally {
+                // Message handling can leave background coroutines parked on
+                // reads that never return (connection-pool keepalives, cache
+                // multiplexer readers, event-bus subscribers). Coroutine\run
+                // waits for every coroutine, so without cancelling them here a
+                // finished worker never exits and the Job hangs until its
+                // deadline instead of completing.
+                foreach (Coroutine::listCoroutines() as $cid) {
+                    if ($cid !== Coroutine::getCid()) {
+                        Coroutine::cancel($cid);
+                    }
+                }
             }
         });
 

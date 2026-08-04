@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\E2E\Adapter;
 
 use PHPUnit\Framework\TestCase;
+use Swoole\Coroutine;
+use Swoole\Coroutine\Channel;
 use Utopia\Queue\Adapter\KubernetesJob;
 use Utopia\Queue\Broker\Redis;
 use Utopia\Queue\Message;
@@ -81,5 +83,25 @@ final class KubernetesJobAdapterTest extends TestCase
         $this->assertSame(1, $succeeded, 'the drain continues past a failing message');
         $this->assertSame(0, $broker->getQueueSize($queue), 'the main queue is drained');
         $this->assertSame(1, $broker->getQueueSize($queue, failedJobs: true), 'the failed message lands on the failed queue');
+    }
+
+    public function testCancelsStragglerCoroutinesSoTheWorkerExits(): void
+    {
+        $connection = new InMemoryConnection();
+        $broker = new Redis($connection, $connection);
+
+        $adapter = new KubernetesJob($broker, 1, self::QUEUE, self::NAMESPACE);
+        $adapter->workerStart(function () use ($adapter): void {
+            Coroutine::create(function (): void {
+                new Channel(1)->pop(5.0);
+            });
+            $adapter->consume(fn(): null => null, fn(): null => null, fn(): null => null);
+        });
+
+        $startedAt = microtime(true);
+        $adapter->start();
+        $elapsed = microtime(true) - $startedAt;
+
+        $this->assertLessThan(2.0, $elapsed, 'a coroutine parked on a read that never returns must be cancelled, not awaited');
     }
 }
