@@ -9,6 +9,7 @@
             <file>./tests/Queue/E2E/Adapter/ConsumerResilienceTest.php</file>
             <file>./tests/Queue/E2E/Adapter/KubernetesJobAdapterTest.php</file>
             <file>./tests/Queue/E2E/Adapter/LockingTest.php</file>
+            <file>./tests/Queue/E2E/Adapter/RedisBrokerRecoveryTest.php</file>
             <file>./tests/Queue/E2E/Adapter/RedisReconnectCallbackTest.php</file>
             <file>./tests/Queue/E2E/Adapter/ServerTelemetryTest.php</file>
             <file>./tests/Queue/E2E/Adapter/SwooleConcurrencyTest.php</file>

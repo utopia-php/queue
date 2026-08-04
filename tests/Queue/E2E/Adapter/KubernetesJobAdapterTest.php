@@ -85,6 +85,36 @@ final class KubernetesJobAdapterTest extends TestCase
         $this->assertSame(1, $broker->getQueueSize($queue, failedJobs: true), 'the failed message lands on the failed queue');
     }
 
+    public function testProcessesEachMessageInAFreshCoroutine(): void
+    {
+        $connection = new InMemoryConnection();
+        $broker = new Redis($connection, $connection);
+        $queue = new Queue(self::QUEUE, self::NAMESPACE);
+
+        $broker->enqueue($queue, ['n' => 1]);
+        $broker->enqueue($queue, ['n' => 2]);
+
+        $lifecycleCid = null;
+        $handlerCids = [];
+
+        $adapter = new KubernetesJob($broker, 1, self::QUEUE, self::NAMESPACE);
+        $adapter->workerStart(function () use ($adapter, &$lifecycleCid, &$handlerCids): void {
+            $lifecycleCid = Coroutine::getCid();
+            $adapter->consume(
+                function () use (&$handlerCids): void {
+                    $handlerCids[] = Coroutine::getCid();
+                },
+                fn(): null => null,
+                fn(): null => null,
+            );
+        });
+        $adapter->start();
+
+        $this->assertCount(2, $handlerCids, 'both messages are processed');
+        $this->assertNotContains($lifecycleCid, $handlerCids, 'handlers must not share the drain loop coroutine stack');
+        $this->assertSame(array_unique($handlerCids), $handlerCids, 'each message gets its own coroutine');
+    }
+
     public function testCancelsStragglerCoroutinesSoTheWorkerExits(): void
     {
         $connection = new InMemoryConnection();

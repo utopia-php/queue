@@ -3,6 +3,7 @@
 namespace Utopia\Queue\Adapter;
 
 use Swoole\Coroutine;
+use Swoole\Coroutine\WaitGroup;
 use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
@@ -127,7 +128,27 @@ class KubernetesJob extends Adapter
                 }
 
                 $this->context = new Container($this->resources());
-                $this->process($message, $messageCallback, $successCallback, $errorCallback);
+
+                // One child coroutine per message, awaited before the next
+                // receive: sequential like the rest of the drain, but each
+                // handler gets a fresh coroutine stack, exactly as the Swoole
+                // adapter's per-message coroutines provide. Running handlers
+                // inline reused the lifecycle coroutine's stack, and deeply
+                // recursive handlers overflowed it — a segfault with no PHP
+                // trace, the message stranded in the processing list.
+                if ($swoole && Coroutine::getCid() >= 0) {
+                    $waitGroup = new WaitGroup(1);
+                    Coroutine::create(function () use ($waitGroup, $message, $messageCallback, $successCallback, $errorCallback): void {
+                        try {
+                            $this->process($message, $messageCallback, $successCallback, $errorCallback);
+                        } finally {
+                            $waitGroup->done();
+                        }
+                    });
+                    $waitGroup->wait();
+                } else {
+                    $this->process($message, $messageCallback, $successCallback, $errorCallback);
+                }
             }
         } finally {
             if ($swoole) {

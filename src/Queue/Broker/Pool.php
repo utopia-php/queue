@@ -20,9 +20,18 @@ readonly class Pool implements Publisher, Consumer
         return $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
     }
 
-    public function retry(Queue $queue, ?int $limit = null): void
+    public function retry(Queue $queue, ?int $limit = null, ?int $maxAttempts = null, ?int $newerThan = null): void
     {
         $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
+    }
+
+    /**
+     * {@see Redis::reap()} — requires the pooled publisher to be a broker that
+     * implements it.
+     */
+    public function reap(Queue $queue, int $olderThan = 90000, ?int $limit = null, ?int $maxAttempts = null, ?int $newerThan = null): int
+    {
+        return $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
     }
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int

@@ -8,6 +8,7 @@ class Message
     protected string $queue;
     protected int $timestamp;
     protected array $payload;
+    protected int $attempts = 0;
 
     public function __construct(array $array = [])
     {
@@ -19,6 +20,7 @@ class Message
         $this->queue = $array['queue'];
         $this->timestamp = $array['timestamp'];
         $this->payload = $array['payload'] ?? [];
+        $this->attempts = $array['attempts'] ?? 0;
     }
 
     public function setPid(string $pid): self
@@ -69,6 +71,21 @@ class Message
         return $this->payload;
     }
 
+    /**
+     * Times this message has been requeued after a failed or stranded run.
+     */
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+
+    public function setAttempts(int $attempts): self
+    {
+        $this->attempts = $attempts;
+
+        return $this;
+    }
+
     public function asArray(): array
     {
         return [
@@ -76,6 +93,7 @@ class Message
             'queue' => $this->queue,
             'timestamp' => $this->timestamp,
             'payload' => $this->payload ?? null,
+            'attempts' => $this->attempts,
         ];
     }
 }
