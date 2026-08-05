@@ -84,7 +84,8 @@ abstract class Adapter
             // A reporting hook that throws must not cost the worker either.
             try {
                 $errorCallback(null, $error);
-            } catch (\Throwable) {
+            } catch (\Throwable $reportFailure) {
+                $this->reportUnreported($error, $reportFailure);
             }
 
             sleep(static::RECEIVE_BACKOFF);
@@ -111,9 +112,46 @@ abstract class Adapter
             }
             try {
                 $errorCallback($message, $error);
-            } catch (\Throwable) {
+            } catch (\Throwable $reportFailure) {
+                $this->reportUnreported($error, $reportFailure, $message);
             }
         }
+    }
+
+    /**
+     * Last-resort trace for a failure whose reporting hook also failed.
+     *
+     * A hook typically needs resources of its own — a database handle to
+     * resolve the message's project, say — so the very outages that fail a
+     * message also fail the report of it, and the message is then rejected
+     * with nothing written anywhere. Production lost whole batches this way,
+     * visible only as messages appearing on the failed list. Stderr is the one
+     * sink that needs nothing to be working.
+     */
+    protected function reportUnreported(\Throwable $error, \Throwable $reportFailure, ?Message $message = null): void
+    {
+        try {
+            fwrite($this->trace(), \sprintf(
+                "[queue] %s failed and its error report failed too: %s (%s:%d) | report: %s\n",
+                $message instanceof Message ? "message {$message->getPid()}" : 'receive',
+                $error->getMessage(),
+                $error->getFile(),
+                $error->getLine(),
+                $reportFailure->getMessage(),
+            ));
+        } catch (\Throwable) {
+        }
+    }
+
+    /**
+     * Where {@see self::reportUnreported()} writes. Overridable so a caller can
+     * route the trace somewhere it will be retained, and so it can be asserted.
+     *
+     * @return resource
+     */
+    protected function trace(): mixed
+    {
+        return \defined('STDERR') ? STDERR : fopen('php://stderr', 'w');
     }
 
     public function resources(): Container

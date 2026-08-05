@@ -98,4 +98,47 @@ final class ConsumerResilienceTest extends TestCase
         $this->assertSame(['broker unreachable', 'broker unreachable'], $reported, 'each failure was reported');
         $this->assertSame([null, null], $reportedMessages, 'reported without a message, since none was obtained');
     }
+
+
+    public function testAFailedErrorReportStillLeavesATrace(): void
+    {
+        $connection = new InMemoryConnection();
+        $broker = new Redis($connection, $connection);
+        $queue = new Queue(self::QUEUE, self::NAMESPACE);
+        $broker->enqueue($queue, ['n' => 1]);
+
+        $adapter = new class ($broker, 1, self::QUEUE, self::NAMESPACE) extends Swoole {
+            /** @var resource */
+            public $sink;
+
+            public function drain(callable $messageCallback, callable $errorCallback): void
+            {
+                $message = $this->consumer->receive($this->queue, 0);
+                $this->process($message, $messageCallback, fn(): null => null, $errorCallback);
+            }
+
+            #[\Override]
+            protected function trace(): mixed
+            {
+                return $this->sink;
+            }
+        };
+        $adapter->sink = fopen('php://memory', 'a+');
+
+        \Swoole\Coroutine\run(function () use ($adapter): void {
+            $adapter->drain(
+                fn() => throw new \RuntimeException('the database is gone'),
+                // The reporting hook needs the same resources the handler did,
+                // so the outage that failed the message fails its report too.
+                fn() => throw new \RuntimeException('reporting needs the database too'),
+            );
+        });
+
+        rewind($adapter->sink);
+        $trace = stream_get_contents($adapter->sink);
+
+        $this->assertStringContainsString('the database is gone', (string) $trace, 'the original failure must reach a sink that needs nothing working');
+        $this->assertStringContainsString('reporting needs the database too', (string) $trace, 'the reporting failure is named too, so the gap is obvious');
+        $this->assertSame(1, $broker->getQueueSize($queue, failedJobs: true), 'the message is still rejected exactly once');
+    }
 }
