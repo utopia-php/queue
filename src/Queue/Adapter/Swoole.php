@@ -87,6 +87,12 @@ class Swoole extends Adapter
      * Receive on one loop, process each message on its own coroutine. The
      * channel caps concurrency at $maxCoroutines: push() blocks the loop while
      * the pool is full.
+     *
+     * A slot is reserved before the receive, never after: a message popped with
+     * no capacity to run it would sit captive in this loop — out of the broker,
+     * unprocessed, invisible to every idle sibling consumer — for as long as the
+     * in-flight handlers hold the pool. Blocking without a message leaves it in
+     * the broker for whichever consumer frees up first.
      */
     #[\Override]
     public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
@@ -96,13 +102,15 @@ class Swoole extends Adapter
         $waitGroup = new WaitGroup();
 
         while (!$this->isStopped()) {
+            $slots->push(true);
+
             $message = $this->nextMessage($errorCallback);
 
             if (!$message instanceof \Utopia\Queue\Message) {
+                $slots->pop();
                 continue;
             }
 
-            $slots->push(true);
             $waitGroup->add();
 
             Coroutine::create(function () use ($message, $messageCallback, $successCallback, $errorCallback, $slots, $waitGroup): void {

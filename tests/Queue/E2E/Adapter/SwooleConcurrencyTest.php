@@ -31,6 +31,50 @@ final class SwooleConcurrencyTest extends TestCase
     }
 
     /**
+     * A message the consumer has no free slot to run must stay in the broker,
+     * where an idle sibling consumer can take it. Receiving it first and then
+     * waiting for a slot held it captive in the consume loop for as long as the
+     * in-flight handler ran — unprocessed, invisible, and lost outright on a
+     * non-graceful stop. A dedicated-database update sat exactly there for the
+     * length of a 22-minute edge rebuild while a second worker process idled,
+     * leaving the database stuck `scaling` past every test deadline.
+     */
+    public function testMessageWithoutFreeSlotStaysInBroker(): void
+    {
+        $connection = new InMemoryConnection();
+        $broker = new Redis($connection, $connection);
+        $queue = new Queue(self::QUEUE, self::NAMESPACE);
+
+        $processed = 0;
+        $pendingDuringFirstMessage = null;
+
+        \Swoole\Coroutine\run(function () use ($broker, $queue, &$processed, &$pendingDuringFirstMessage): void {
+            $broker->enqueue($queue, ['n' => 0]);
+            $broker->enqueue($queue, ['n' => 1]);
+
+            $adapter = new Swoole($broker, 1, self::QUEUE, self::NAMESPACE, maxCoroutines: 1);
+
+            $adapter->consume(
+                function () use ($adapter, $broker, $queue, &$processed, &$pendingDuringFirstMessage): void {
+                    if ($processed === 0) {
+                        \Swoole\Coroutine::sleep(0.1);
+                        $pendingDuringFirstMessage = $broker->getQueueSize($queue);
+                    }
+
+                    if (++$processed === 2) {
+                        $adapter->stop();
+                    }
+                },
+                fn(): null => null,
+                fn(): null => null,
+            );
+        });
+
+        $this->assertSame(2, $processed);
+        $this->assertSame(1, $pendingDuringFirstMessage, 'the second message must wait in the broker, not in the consume loop');
+    }
+
+    /**
      * Run the consume loop until $messages are processed; return the count and
      * the peak concurrency observed.
      *
