@@ -16,6 +16,55 @@ use Utopia\Telemetry\Adapter\Test as TestTelemetry;
 
 final class ServerTelemetryTest extends TestCase
 {
+    public function testRecordsJobWaitTimeAsMonotonicWhenPublisherClockRunsAhead(): void
+    {
+        // A publisher whose clock runs ahead of this consumer's stamps a
+        // timestamp in the consumer's future. Every recorded wait has to stay
+        // >= 0, or the cumulative histogram sum decreases and a Prometheus
+        // reader takes the drop for a counter reset.
+        $consumer = new ServerTelemetryMultiMessageConsumer([
+            new Message([
+                'pid' => 'skewed-pid',
+                'queue' => 'emails',
+                'timestamp' => time() + 60,
+                'payload' => [],
+            ]),
+            new Message([
+                'pid' => 'normal-pid',
+                'queue' => 'emails',
+                'timestamp' => time() - 1,
+                'payload' => [],
+            ]),
+        ]);
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $telemetry = new TestTelemetry();
+
+        $server = new Server($adapter);
+        $server->setTelemetry($telemetry);
+        $server
+            ->job()
+            ->inject('message')
+            ->action(fn(Message $message): null => null);
+
+        $server->start();
+
+        /** @var object{values: array<int, float|int>} $histogram */
+        $histogram = $telemetry->histograms['messaging.process.wait.duration'];
+
+        $this->assertCount(2, $histogram->values);
+        $this->assertEqualsWithDelta(0.0, $histogram->values[0], PHP_FLOAT_EPSILON);
+        $this->assertGreaterThan(0.0, $histogram->values[1]);
+
+        // The property that matters downstream: the sum a cumulative exporter
+        // publishes never goes backwards, whatever the two clocks say.
+        $sum = 0.0;
+        foreach ($histogram->values as $value) {
+            $previous = $sum;
+            $sum += $value;
+            $this->assertGreaterThanOrEqual($previous, $sum);
+        }
+    }
+
     public function testRecordsQueueDepth(): void
     {
         $consumer = new ServerTelemetryPublisherConsumer([3, 2]);

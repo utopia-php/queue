@@ -227,8 +227,19 @@ class Server
                     function (Message $message) {
                         $receivedAtTimestamp = microtime(true);
                         try {
-                            $waitDuration
-                                = microtime(true) - $message->getTimestamp();
+                            // The enqueue timestamp comes from the publisher's
+                            // clock and this from the consumer's, so on an idle
+                            // queue a few milliseconds of skew between the two
+                            // hosts yields a negative duration. Recording it
+                            // decrements a cumulative histogram sum, which every
+                            // Prometheus reader takes for a counter reset and
+                            // re-attributes the process's whole lifetime sum to
+                            // one interval — one -20ms sample paged a two-hour
+                            // queue wait on a queue that was empty throughout.
+                            $waitDuration = max(
+                                0.0,
+                                microtime(true) - $message->getTimestamp(),
+                            );
                             $this->jobWaitTime->record($waitDuration);
 
                             $this->context()->set('message', fn(): \Utopia\Queue\Message => $message);
