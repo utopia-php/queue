@@ -35,7 +35,7 @@
     "require": {
         "php": ">=8.5",
         "utopia-php/di": "^0.3",
-        "utopia-php/lock": "^0.2",
+        "utopia-php/lock": "^0.3",
         "utopia-php/servers": "^0.4",
         "utopia-php/pools": "^2.0",
         "utopia-php/telemetry": "^0.4",
