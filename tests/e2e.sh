@@ -10,9 +10,10 @@ cd "$(dirname "$0")/.."
 php tests/Queue/servers/Swoole/worker.php & SWOOLE=$!
 php tests/Queue/servers/SwooleRedisCluster/worker.php & CLUSTER=$!
 php tests/Queue/servers/Workerman/worker.php start & WORKERMAN=$!
+php tests/Queue/servers/Nats/worker.php & NATS=$!
 
 cleanup() {
-    kill -INT "$SWOOLE" "$CLUSTER" "$WORKERMAN" 2> /dev/null || true
+    kill -INT "$SWOOLE" "$CLUSTER" "$WORKERMAN" "$NATS" 2> /dev/null || true
     wait 2> /dev/null || true
     keda_down
 }

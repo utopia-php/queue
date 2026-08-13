@@ -73,6 +73,30 @@ $client->enqueue([
 ]);
 ```
 
+## NATS JetStream broker
+
+`Broker\Nats` runs the queue on [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream) instead of Redis, giving durable, server-persisted jobs and native at-least-once redelivery. It implements the same `Publisher` + `Consumer` interfaces as `Broker\Redis`, so it drops into the same `Server` and adapter setup.
+
+```php
+use Utopia\NATS\Connection;
+use Utopia\Queue\Broker\Nats;
+use Utopia\Queue\Queue;
+
+// Pass a Closure so each forked worker / pooled lease resolves its own connection —
+// a NATS connection is single-owner and must not be shared across coroutines.
+$broker = new Nats(
+    fn (): Connection => Connection::connect('nats://127.0.0.1:4222'),
+    ackWait: 30.0,   // redelivery window if a worker dies before commit()
+    maxDeliver: 5,   // delivery attempts before a message is dead-lettered
+);
+
+$broker->enqueue(new Queue('my-queue'), ['type' => 'test_number', 'value' => 123]);
+```
+
+Each queue is a WorkQueue-retention stream (a message is removed once acknowledged) with a companion dead stream. `commit()` acknowledges a message, `reject()` schedules redelivery until `maxDeliver` and then dead-letters, `retry()` re-drives the dead stream onto the queue, and `getQueueSize()` reports pending (consumer `num_pending`) or failed (dead stream) counts. `reap()` is a no-op — redelivery after `ackWait` reclaims jobs stranded by a dead worker. Requires [`utopia-php/nats`](https://github.com/utopia-php/nats).
+
+> A NATS connection is single-owner. Run one message at a time per connection (the Swoole adapter with `maxCoroutines: 1`) or lease one connection per coroutine via `Broker\Pool` / `Utopia\Pools`.
+
 ## System requirements
 
 Utopia Framework requires PHP 8.0 or later. We recommend using the latest PHP version whenever possible.

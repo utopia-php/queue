@@ -9,6 +9,17 @@ services:
       timeout: 3s
       retries: 15
 
+  nats:
+    image: nats:2.11-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "14225:4222"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8222/healthz"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
   redis-cluster:
     image: grokzen/redis-cluster:7.0.10
     environment:

@@ -44,12 +44,14 @@
     "require-dev": {
         "ext-redis": "*",
         "swoole/ide-helper": "4.8.8",
+        "utopia-php/nats": "^1.0.0",
         "workerman/workerman": "^4.0"
     },
     "suggest": {
         "ext-swoole": "Needed to support Swoole.",
         "workerman/workerman": "Needed to support Workerman.",
-        "ext-pcntl": "Fallback for Adapter\\KubernetesJob graceful shutdown when Swoole is unavailable."
+        "ext-pcntl": "Fallback for Adapter\\KubernetesJob graceful shutdown when Swoole is unavailable.",
+        "utopia-php/nats": "Needed to support the NATS JetStream broker (Broker\\Nats)."
     },
     "config": {
         "allow-plugins": {
