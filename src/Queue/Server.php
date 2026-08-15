@@ -15,6 +15,43 @@ use Utopia\Validator;
 class Server
 {
     /**
+     * Bucket boundaries for the duration histograms, in seconds.
+     *
+     * A queue spans a wider range than a web request: a job can be picked up
+     * in milliseconds or sit behind an hour of backlog. The OpenTelemetry
+     * defaults stop at 10 seconds, which puts every observation of a slow
+     * queue in the overflow bucket and makes every quantile read exactly 10.
+     *
+     * @var list<float|int>
+     */
+    private const array DURATION_BUCKETS = [
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
+        1,
+        2.5,
+        5,
+        7.5,
+        10,
+        20,
+        30,
+        60,
+        120,
+        300,
+        600,
+        1200,
+        1800,
+        3600,
+        7200,
+    ];
+
+    /**
      * Job
      */
     protected Job $job;
@@ -103,24 +140,7 @@ class Server
             'messaging.process.wait.duration',
             's',
             null,
-            [
-                'ExplicitBucketBoundaries' => [
-                    0.005,
-                    0.01,
-                    0.025,
-                    0.05,
-                    0.075,
-                    0.1,
-                    0.25,
-                    0.5,
-                    0.75,
-                    1,
-                    2.5,
-                    5,
-                    7.5,
-                    10,
-                ],
-            ],
+            ['ExplicitBucketBoundaries' => self::DURATION_BUCKETS],
         );
 
         // https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/#metric-messagingprocessduration
@@ -128,24 +148,7 @@ class Server
             'messaging.process.duration',
             's',
             null,
-            [
-                'ExplicitBucketBoundaries' => [
-                    0.005,
-                    0.01,
-                    0.025,
-                    0.05,
-                    0.075,
-                    0.1,
-                    0.25,
-                    0.5,
-                    0.75,
-                    1,
-                    2.5,
-                    5,
-                    7.5,
-                    10,
-                ],
-            ],
+            ['ExplicitBucketBoundaries' => self::DURATION_BUCKETS],
         );
 
         $this->queueDepth = $telemetry->createObservableGauge(
