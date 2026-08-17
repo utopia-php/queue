@@ -67,7 +67,7 @@ final class ServerTelemetryTest extends TestCase
 
     public function testRecordsQueueDepth(): void
     {
-        $consumer = new ServerTelemetryPublisherConsumer([3, 2]);
+        $consumer = new ServerTelemetryPublisherConsumer([3, 2], [1, 0]);
         $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
         $telemetry = new TestTelemetry();
 
@@ -83,6 +83,10 @@ final class ServerTelemetryTest extends TestCase
         $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
         $this->assertSame([3], $this->collectObservations($telemetry, 'messaging.queue.depth'));
         $this->assertSame([2], $this->collectObservations($telemetry, 'messaging.queue.depth'));
+
+        $this->assertArrayHasKey('messaging.queue.failed.depth', $telemetry->observableGauges);
+        $this->assertSame([1], $this->collectObservations($telemetry, 'messaging.queue.failed.depth'));
+        $this->assertSame([0], $this->collectObservations($telemetry, 'messaging.queue.failed.depth'));
     }
 
     public function testSkipsQueueDepthWhenConsumerCannotReportSize(): void
@@ -102,6 +106,7 @@ final class ServerTelemetryTest extends TestCase
 
         $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
         $this->assertSame([], $this->collectObservations($telemetry, 'messaging.queue.depth'));
+        $this->assertSame([], $this->collectObservations($telemetry, 'messaging.queue.failed.depth'));
     }
 
     public function testSkipsQueueDepthWhenConsumerCannotReadSize(): void
@@ -121,6 +126,7 @@ final class ServerTelemetryTest extends TestCase
 
         $this->assertArrayHasKey('messaging.queue.depth', $telemetry->observableGauges);
         $this->assertSame([], $this->collectObservations($telemetry, 'messaging.queue.depth'));
+        $this->assertSame([], $this->collectObservations($telemetry, 'messaging.queue.failed.depth'));
         $this->assertArrayNotHasKey('messaging.queue.depth.errors', $telemetry->counters);
     }
 
@@ -330,8 +336,9 @@ final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer imp
 {
     /**
      * @param int[] $queueSizes
+     * @param int[] $failedQueueSizes
      */
-    public function __construct(private array $queueSizes) {}
+    public function __construct(private array $queueSizes, private array $failedQueueSizes = []) {}
 
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
@@ -342,6 +349,10 @@ final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer imp
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {
+        if ($failedJobs) {
+            return array_shift($this->failedQueueSizes) ?? 0;
+        }
+
         return array_shift($this->queueSizes) ?? 0;
     }
 }

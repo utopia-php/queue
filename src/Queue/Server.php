@@ -9,7 +9,6 @@ use Utopia\Servers\Hook;
 use Utopia\Telemetry\Adapter as Telemetry;
 use Utopia\Telemetry\Adapter\None as NoTelemetry;
 use Utopia\Telemetry\Histogram;
-use Utopia\Telemetry\ObservableGauge;
 use Utopia\Validator;
 
 class Server
@@ -93,7 +92,6 @@ class Server
 
     private Histogram $jobWaitTime;
     private Histogram $processDuration;
-    private ObservableGauge $queueDepth;
 
     /**
      * Creates an instance of a Queue server.
@@ -151,19 +149,36 @@ class Server
             ['ExplicitBucketBoundaries' => self::DURATION_BUCKETS],
         );
 
-        $this->queueDepth = $telemetry->createObservableGauge(
+        $this->createDepthGauge(
+            $telemetry,
             'messaging.queue.depth',
-            '{message}',
             'Number of pending messages in the queue.',
+            failedJobs: false,
         );
 
-        $this->queueDepth->observe(function (callable $observe): void {
+        $this->createDepthGauge(
+            $telemetry,
+            'messaging.queue.failed.depth',
+            'Number of messages in the failed queue.',
+            failedJobs: true,
+        );
+    }
+
+    private function createDepthGauge(
+        Telemetry $telemetry,
+        string $name,
+        string $description,
+        bool $failedJobs,
+    ): void {
+        $gauge = $telemetry->createObservableGauge($name, '{message}', $description);
+
+        $gauge->observe(function (callable $observe) use ($failedJobs): void {
             if (!$this->adapter->consumer instanceof Publisher) {
                 return;
             }
 
             try {
-                $size = $this->adapter->consumer->getQueueSize($this->adapter->queue);
+                $size = $this->adapter->consumer->getQueueSize($this->adapter->queue, $failedJobs);
             } catch (Throwable) {
                 return;
             }
