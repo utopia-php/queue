@@ -201,6 +201,63 @@ final class NatsBrokerTest extends TestCase
         $this->broker->commit($dotted, $message);
     }
 
+    public function testUsesIdiomaticStreamAndSubjectNames(): void
+    {
+        // Q_<UPPER-NAME> stream (mirrors NATS's own KV_/OBJ_) + q.<lower-name>.<class>
+        // subjects; the namespace is not folded in.
+        $name = 'audits-' . substr(md5(uniqid('', true)), 0, 6);
+        $this->broker->enqueue(new Queue($name), ['ok' => 1]);
+
+        $js = Connection::connect(getenv('NATS_URL') ?: 'nats://127.0.0.1:14225')->jetStream();
+        $info = $js->getStreamInfo('Q_' . strtoupper($name));
+        $this->assertSame('Q_' . strtoupper($name), $info->config->name);
+        $this->assertContains('q.' . strtolower($name) . '.normal', $info->config->subjects);
+        $this->assertContains('q.' . strtolower($name) . '.priority', $info->config->subjects);
+    }
+
+    public function testCollidingQueueNamesFailLoud(): void
+    {
+        // Dropping the namespace means two names that sanitise to the same stream would
+        // silently share it; the guard turns that into a loud error instead. "c.<s>" and
+        // "c_<s>" both map to stream Q_C_<S>.
+        $suffix = substr(md5(uniqid('', true)), 0, 6);
+        $this->broker->enqueue(new Queue("c.{$suffix}"), ['ok' => 1]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->broker->enqueue(new Queue("c_{$suffix}"), ['ok' => 1]);
+    }
+
+    public function testCollidingQueueNamesFailAcrossInstances(): void
+    {
+        // The guard reads the owning identity from the stream's metadata, so it holds
+        // even when the colliding queues are provisioned by *separate* broker instances
+        // (the real deployment: producer pool + worker are different processes).
+        $url = getenv('NATS_URL') ?: 'nats://127.0.0.1:14225';
+        $suffix = substr(md5(uniqid('', true)), 0, 6);
+        $a = new Nats(Connection::connect($url));
+        $b = new Nats(Connection::connect($url));
+
+        $a->enqueue(new Queue("x.{$suffix}"), ['ok' => 1]); // stamps identity on Q_X_<S>
+        try {
+            $b->enqueue(new Queue("x_{$suffix}"), ['ok' => 1]); // same stream, different identity, other instance
+            $this->fail('expected a cross-instance collision to throw');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('already belongs', $e->getMessage());
+        } finally {
+            $a->close();
+            $b->close();
+        }
+    }
+
+    public function testOverlongQueueNameFailsLoud(): void
+    {
+        // Readable names are unbounded, so a very long queue name would exceed
+        // JetStream's 255-byte stream-name limit; fail clearly rather than let the
+        // server reject the create.
+        $this->expectException(\RuntimeException::class);
+        $this->broker->enqueue(new Queue('q' . str_repeat('a', 300)), ['x' => 1]);
+    }
+
     public function testJobTtlExpiresUnackedMessages(): void
     {
         // jobTtl maps to the stream's MaxAge: an unconsumed message expires.
