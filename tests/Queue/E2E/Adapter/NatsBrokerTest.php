@@ -356,7 +356,7 @@ final class NatsBrokerTest extends TestCase
 
         $broker->close();
 
-        $this->assertNull($error, 'getQueueSize collided with the consume connection: ' . ($error?->getMessage() ?? ''));
+        $this->assertNotInstanceOf(\Throwable::class, $error, 'getQueueSize collided with the consume connection: ' . ($error?->getMessage() ?? ''));
         $this->assertCount(3, $sizes, 'depth gauge ran to completion without crashing the worker');
     }
 }
