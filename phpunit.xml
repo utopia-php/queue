@@ -6,6 +6,7 @@
         >
     <testsuites>
         <testsuite name="unit">
+            <directory>./tests/Queue/Unit</directory>
             <file>./tests/Queue/E2E/Adapter/ConsumerResilienceTest.php</file>
             <file>./tests/Queue/E2E/Adapter/KubernetesJobAdapterTest.php</file>
             <file>./tests/Queue/E2E/Adapter/LockingTest.php</file>

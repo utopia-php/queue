@@ -13,10 +13,10 @@ $consumer = new Redis(
     receive: new RedisConnection('127.0.0.1', 16379),
     commands: new RedisConnection('127.0.0.1', 16379),
 );
-$adapter = new Workerman($consumer, 12, 'wokerman');
+$adapter = new Workerman($consumer, 12);
 $server = new Queue\Server($adapter);
 
-$server->job()
+$server->job('wokerman')
     ->inject('message')
     ->param(
         key: 'aliasValue',

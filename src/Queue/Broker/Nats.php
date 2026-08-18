@@ -73,7 +73,7 @@ class Nats implements Publisher, Consumer
      * NOT safe to share across concurrent coroutines. Pass a Closure factory rather
      * than a live Connection when the consumer forks or reconnects per worker (each
      * worker resolves its own connection), and run at most one message at a time per
-     * connection (e.g. Swoole adapter with maxCoroutines: 1) or lease one connection
+     * connection (e.g. `job('…', 1)`) or lease one connection
      * per coroutine from a pool.
      *
      * commit()/reject() correlate the JetStream acknowledgement to a message through an

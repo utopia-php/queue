@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4e7a76c51806d47ec64f0ddda08a068b",
+    "content-hash": "48fcf431f2ec70d608c9cdc7940b5461",
     "packages": [
         {
             "name": "brick/math",
@@ -2031,22 +2031,22 @@
         },
         {
             "name": "utopia-php/servers",
-            "version": "0.4.7",
+            "version": "0.4.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/servers.git",
-                "reference": "18572544b1da5af415e5abbd59ba00af29e37de7"
+                "reference": "ab718ee3f3ac6020b9c2988e7304e5099d124b7b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/servers/zipball/18572544b1da5af415e5abbd59ba00af29e37de7",
-                "reference": "18572544b1da5af415e5abbd59ba00af29e37de7",
+                "url": "https://api.github.com/repos/utopia-php/servers/zipball/ab718ee3f3ac6020b9c2988e7304e5099d124b7b",
+                "reference": "ab718ee3f3ac6020b9c2988e7304e5099d124b7b",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.5",
                 "utopia-php/di": "^0.3",
-                "utopia-php/validators": "^0.4"
+                "utopia-php/validators": "^0.5"
             },
             "type": "library",
             "autoload": {
@@ -2074,9 +2074,9 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/servers/issues",
-                "source": "https://github.com/utopia-php/servers/tree/0.4.7"
+                "source": "https://github.com/utopia-php/servers/tree/0.4.8"
             },
-            "time": "2026-08-10T04:51:03+00:00"
+            "time": "2026-08-14T06:49:12+00:00"
         },
         {
             "name": "utopia-php/telemetry",
@@ -2131,16 +2131,16 @@
         },
         {
             "name": "utopia-php/validators",
-            "version": "0.4.2",
+            "version": "0.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/utopia-php/validators.git",
-                "reference": "a5b7b78b789e5af0a30f96da8355bbf48fb56699"
+                "reference": "ea6c1ad13019c8a088866cf422c232928de5a25e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/utopia-php/validators/zipball/a5b7b78b789e5af0a30f96da8355bbf48fb56699",
-                "reference": "a5b7b78b789e5af0a30f96da8355bbf48fb56699",
+                "url": "https://api.github.com/repos/utopia-php/validators/zipball/ea6c1ad13019c8a088866cf422c232928de5a25e",
+                "reference": "ea6c1ad13019c8a088866cf422c232928de5a25e",
                 "shasum": ""
             },
             "require": {
@@ -2165,9 +2165,9 @@
             ],
             "support": {
                 "issues": "https://github.com/utopia-php/validators/issues",
-                "source": "https://github.com/utopia-php/validators/tree/0.4.2"
+                "source": "https://github.com/utopia-php/validators/tree/0.5.0"
             },
-            "time": "2026-08-11T07:43:49+00:00"
+            "time": "2026-08-14T05:12:07+00:00"
         }
     ],
     "packages-dev": [
@@ -2212,6 +2212,52 @@
                 }
             ],
             "time": "2022-03-17T18:24:39+00:00"
+        },
+        {
+            "name": "utopia-php/nats",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/utopia-php/nats.git",
+                "reference": "c3f41074d8a6842bd311d75bfb92188dbc9392a4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/utopia-php/nats/zipball/c3f41074d8a6842bd311d75bfb92188dbc9392a4",
+                "reference": "c3f41074d8a6842bd311d75bfb92188dbc9392a4",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": ">=8.1"
+            },
+            "suggest": {
+                "ext-sodium": "Required for NKey and JWT credential authentication",
+                "ext-swoole": "Required for the coroutine-native SwooleTransport"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Utopia\\NATS\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "description": "Modern PHP client for NATS messaging system",
+            "keywords": [
+                "jetstream",
+                "messaging",
+                "nats",
+                "pubsub",
+                "queue"
+            ],
+            "support": {
+                "issues": "https://github.com/utopia-php/nats/issues",
+                "source": "https://github.com/utopia-php/nats/tree/1.0.0"
+            },
+            "time": "2026-08-11T13:48:51+00:00"
         },
         {
             "name": "workerman/workerman",

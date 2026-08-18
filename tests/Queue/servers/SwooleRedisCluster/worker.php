@@ -18,10 +18,10 @@ $consumer = new Redis(
     receive: new RedisCluster($nodes),
     commands: new RedisCluster($nodes),
 );
-$adapter = new Swoole($consumer, 12, 'swoole-redis-cluster');
+$adapter = new Swoole($consumer, 12);
 $server = new Server($adapter);
 
-$server->job()
+$server->job('swoole-redis-cluster')
     ->inject('message')
     ->param(
         key: 'aliasValue',

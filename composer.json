@@ -25,7 +25,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\E2E\\": "tests/Queue/E2E"
+            "Tests\\E2E\\": "tests/Queue/E2E",
+            "Tests\\Unit\\": "tests/Queue/Unit"
         }
     },
     "scripts": {

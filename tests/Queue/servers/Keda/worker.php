@@ -17,10 +17,10 @@ use Utopia\Queue\Server;
  */
 $connection = new RedisConnection(getenv('REDIS_HOST') ?: 'redis', 6379);
 $broker = new RedisBroker($connection, $connection);
-$adapter = new KubernetesJob($broker, 1, getenv('QUEUE_NAME') ?: 'keda', getenv('QUEUE_NAMESPACE') ?: 'utopia-queue');
+$adapter = new KubernetesJob($broker, 1, getenv('QUEUE_NAMESPACE') ?: 'utopia-queue');
 
 $server = new Server($adapter);
-$server->job()
+$server->job(getenv('QUEUE_NAME') ?: 'keda')
     ->inject('message')
     ->action(fn(Message $message) => handleRequest($message));
 $server->error()

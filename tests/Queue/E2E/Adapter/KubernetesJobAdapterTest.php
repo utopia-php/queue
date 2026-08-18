@@ -25,8 +25,8 @@ final class KubernetesJobAdapterTest extends TestCase
 
     private function server(Redis $broker, callable $action): Server
     {
-        $server = new Server(new KubernetesJob($broker, 1, self::QUEUE, self::NAMESPACE));
-        $server->job()->inject('message')->action($action);
+        $server = new Server(new KubernetesJob($broker, 1, self::NAMESPACE));
+        $server->job(self::QUEUE)->inject('message')->action($action);
 
         return $server;
     }
@@ -97,8 +97,8 @@ final class KubernetesJobAdapterTest extends TestCase
         $lifecycleCid = null;
         $handlerCids = [];
 
-        $adapter = new KubernetesJob($broker, 1, self::QUEUE, self::NAMESPACE);
-        $adapter->workerStart(function () use ($adapter, &$lifecycleCid, &$handlerCids): void {
+        $adapter = new KubernetesJob($broker, 1, self::NAMESPACE);
+        $adapter->workerStart(function () use ($adapter, $queue, &$lifecycleCid, &$handlerCids): void {
             $lifecycleCid = Coroutine::getCid();
             $adapter->consume(
                 function () use (&$handlerCids): void {
@@ -106,6 +106,9 @@ final class KubernetesJobAdapterTest extends TestCase
                 },
                 fn(): null => null,
                 fn(): null => null,
+                [
+                    ['queue' => $queue, 'maxCoroutines' => 1],
+                ],
             );
         });
         $adapter->start();
@@ -120,12 +123,20 @@ final class KubernetesJobAdapterTest extends TestCase
         $connection = new InMemoryConnection();
         $broker = new Redis($connection, $connection);
 
-        $adapter = new KubernetesJob($broker, 1, self::QUEUE, self::NAMESPACE);
-        $adapter->workerStart(function () use ($adapter): void {
+        $queue = new Queue(self::QUEUE, self::NAMESPACE);
+        $adapter = new KubernetesJob($broker, 1, self::NAMESPACE);
+        $adapter->workerStart(function () use ($adapter, $queue): void {
             Coroutine::create(function (): void {
                 new Channel(1)->pop(5.0);
             });
-            $adapter->consume(fn(): null => null, fn(): null => null, fn(): null => null);
+            $adapter->consume(
+                fn(): null => null,
+                fn(): null => null,
+                fn(): null => null,
+                [
+                    ['queue' => $queue, 'maxCoroutines' => 1],
+                ],
+            );
         });
 
         $startedAt = microtime(true);

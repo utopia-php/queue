@@ -15,10 +15,10 @@ $consumer = new Redis(
     receive: new RedisConnection('127.0.0.1', 16379),
     commands: new Locking(new RedisConnection('127.0.0.1', 16379)),
 );
-$adapter = new Swoole($consumer, 12, 'swoole', maxCoroutines: 5);
+$adapter = new Swoole($consumer, 12);
 $server = new Server($adapter);
 
-$server->job()
+$server->job('swoole', 5)
     ->inject('message')
     ->param(
         key: 'aliasValue',

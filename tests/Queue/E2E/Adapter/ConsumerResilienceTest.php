@@ -75,7 +75,7 @@ final class ConsumerResilienceTest extends TestCase
         \Swoole\Coroutine\run(function () use ($broker, $flaky, $queue, &$processed, &$reported, &$reportedMessages): void {
             $broker->enqueue($queue, ['n' => 1]);
 
-            $adapter = new class ($flaky, 1, self::QUEUE, self::NAMESPACE) extends Swoole {
+            $adapter = new class ($flaky, 1, self::NAMESPACE) extends Swoole {
                 // Keep the test quick; the production pause is RECEIVE_BACKOFF seconds.
                 protected const int RECEIVE_BACKOFF = 0;
             };
@@ -90,6 +90,9 @@ final class ConsumerResilienceTest extends TestCase
                     $reported[] = $error->getMessage();
                     $reportedMessages[] = $message;
                 },
+                [
+                    ['queue' => $queue, 'maxCoroutines' => 1],
+                ],
             );
         });
 
@@ -107,13 +110,14 @@ final class ConsumerResilienceTest extends TestCase
         $queue = new Queue(self::QUEUE, self::NAMESPACE);
         $broker->enqueue($queue, ['n' => 1]);
 
-        $adapter = new class ($broker, 1, self::QUEUE, self::NAMESPACE) extends Swoole {
+        $adapter = new class ($broker, 1, self::NAMESPACE) extends Swoole {
             /** @var resource */
             public $sink;
 
-            public function drain(callable $messageCallback, callable $errorCallback): void
+            public function drain(Queue $queue, callable $messageCallback, callable $errorCallback): void
             {
-                $message = $this->consumer->receive($this->queue, 0);
+                $message = $this->consumer->receive($queue, 0);
+                $this->queue = $queue;
                 $this->process($message, $messageCallback, fn(): null => null, $errorCallback);
             }
 
@@ -125,8 +129,9 @@ final class ConsumerResilienceTest extends TestCase
         };
         $adapter->sink = fopen('php://memory', 'a+');
 
-        \Swoole\Coroutine\run(function () use ($adapter): void {
+        \Swoole\Coroutine\run(function () use ($adapter, $queue): void {
             $adapter->drain(
+                $queue,
                 fn() => throw new \RuntimeException('the database is gone'),
                 // The reporting hook needs the same resources the handler did,
                 // so the outage that failed the message fails its report too.

@@ -36,13 +36,13 @@ final class ServerTelemetryTest extends TestCase
                 'payload' => [],
             ]),
         ]);
-        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'appwrite');
         $telemetry = new TestTelemetry();
 
         $server = new Server($adapter);
         $server->setTelemetry($telemetry);
         $server
-            ->job()
+            ->job('emails')
             ->inject('message')
             ->action(fn(Message $message): null => null);
 
@@ -68,13 +68,13 @@ final class ServerTelemetryTest extends TestCase
     public function testRecordsQueueDepth(): void
     {
         $consumer = new ServerTelemetryPublisherConsumer([3, 2], [1, 0]);
-        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'appwrite');
         $telemetry = new TestTelemetry();
 
         $server = new Server($adapter);
         $server->setTelemetry($telemetry);
         $server
-            ->job()
+            ->job('emails')
             ->inject('message')
             ->action(fn(Message $message): null => null);
 
@@ -92,13 +92,13 @@ final class ServerTelemetryTest extends TestCase
     public function testSkipsQueueDepthWhenConsumerCannotReportSize(): void
     {
         $consumer = new ServerTelemetryConsumer();
-        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'appwrite');
         $telemetry = new TestTelemetry();
 
         $server = new Server($adapter);
         $server->setTelemetry($telemetry);
         $server
-            ->job()
+            ->job('emails')
             ->inject('message')
             ->action(fn(Message $message): null => null);
 
@@ -112,13 +112,13 @@ final class ServerTelemetryTest extends TestCase
     public function testSkipsQueueDepthWhenConsumerCannotReadSize(): void
     {
         $consumer = new ServerTelemetryFailingPublisherConsumer();
-        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'appwrite');
         $telemetry = new TestTelemetry();
 
         $server = new Server($adapter);
         $server->setTelemetry($telemetry);
         $server
-            ->job()
+            ->job('emails')
             ->inject('message')
             ->action(fn(Message $message): null => null);
 
@@ -133,7 +133,7 @@ final class ServerTelemetryTest extends TestCase
     public function testInjectsAdapterResourcesAndContext(): void
     {
         $consumer = new ServerTelemetryConsumer();
-        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'appwrite');
         $server = new Server($adapter);
         $injections = [];
 
@@ -147,7 +147,7 @@ final class ServerTelemetryTest extends TestCase
             });
 
         $server
-            ->job()
+            ->job('emails')
             ->inject('message')
             ->inject('resourceValue')
             ->inject('contextValue')
@@ -176,7 +176,7 @@ final class ServerTelemetryTest extends TestCase
                 'payload' => [],
             ]),
         ]);
-        $adapter = new ServerTelemetryAdapter($consumer, 1, 'emails', 'appwrite');
+        $adapter = new ServerTelemetryAdapter($consumer, 1, 'appwrite');
         $server = new Server($adapter);
         $contextValues = [];
 
@@ -190,7 +190,7 @@ final class ServerTelemetryTest extends TestCase
             });
 
         $server
-            ->job()
+            ->job('emails')
             ->action(function () use ($server, &$contextValues): void {
                 $contextValues[] = $server->context()->has('contextValue')
                     ? $server->context()->get('contextValue')
@@ -236,11 +236,10 @@ final class ServerTelemetryAdapter extends Adapter
     public function __construct(
         Consumer $consumer,
         int $workerNum,
-        string $queue,
         string $namespace = 'utopia-queue',
         Container $resources = new Container(),
     ) {
-        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
+        parent::__construct($consumer, $workerNum, $namespace, $resources);
     }
 
     public function start(): self
@@ -263,11 +262,19 @@ final class ServerTelemetryAdapter extends Adapter
 
     /** Drain every message the consumer offers, then return (bounded for tests). */
     #[\Override]
-    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
-        while (($message = $this->consumer->receive($this->queue, 0)) instanceof \Utopia\Queue\Message) {
-            $this->context = new Container($this->resources());
-            $this->process($message, $messageCallback, $successCallback, $errorCallback);
+    public function consume(
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+        array $queues,
+    ): void {
+        foreach ($queues as $spec) {
+            $queue = $spec['queue'];
+            $this->queue = $queue;
+            while (($message = $this->consumer->receive($queue, 0)) instanceof Message) {
+                $this->context = new Container($this->resources());
+                $this->process($message, $messageCallback, $successCallback, $errorCallback);
+            }
         }
     }
 

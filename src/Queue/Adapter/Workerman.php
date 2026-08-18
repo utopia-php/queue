@@ -12,13 +12,12 @@ class Workerman extends Adapter
     protected Worker $worker;
 
     public function __construct(
-        Consumer $consumer,
+        Consumer|callable $consumer,
         int $workerNum,
-        string $queue,
         string $namespace = 'utopia-queue',
         Container $resources = new Container(),
     ) {
-        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
+        parent::__construct($consumer, $workerNum, $namespace, $resources);
 
         $this->worker = new Worker();
         $this->worker->count = $workerNum;
@@ -44,6 +43,7 @@ class Workerman extends Adapter
 
         return $this;
     }
+
     public function workerStop(callable $callback): self
     {
         $this->worker->onWorkerStop = function ($worker) use ($callback): void {

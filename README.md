@@ -25,23 +25,24 @@ Init in your application:
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-// Create a worker using the Swoole adapter
 use Utopia\Queue;
+use Utopia\Queue\Consumer;
 use Utopia\Queue\Message;
 
-$connection = new Queue\Connection\Redis('redis');
+$createConsumer = static function (): Consumer {
+    return new Queue\Broker\Redis(
+        receive: new Queue\Connection\Redis('redis'),
+        commands: new Queue\Connection\Redis('redis'),
+    );
+};
 
-if ($connection->ping()) {
-    var_dump('Connection is ready.');
-} else {
-    var_dump('Connection is not ready.');
-}
-
-$adapter = new Queue\Adapter\Swoole($connection, 12, 'my-queue');
+// Adapter is transport only (process count + namespace). Queue and concurrency
+// are defined on job().
+$adapter = new Queue\Adapter\Swoole($createConsumer, workerNum: 12);
 $server = new Queue\Server($adapter);
 
 $server
-    ->job()
+    ->job('my-queue', 1)
     ->inject('message')
     ->action(function (Message $message) {
         var_dump($message);
@@ -62,14 +63,14 @@ $server
 
 $server->start();
 
-
-// Enqueue messages to the worker using the Redis adapter
-$connection = new Redis('redis', 6379);
-$client = new Client('my-queue', $connection);
-
-$client->enqueue([
+// Publish with the same broker API
+$publisher = new Queue\Broker\Redis(
+    receive: new Queue\Connection\Redis('redis'),
+    commands: new Queue\Connection\Redis('redis'),
+);
+$publisher->enqueue(new Queue\Queue('my-queue'), [
     'type' => 'test_number',
-    'value' => 123
+    'value' => 123,
 ]);
 ```
 
@@ -95,11 +96,57 @@ $broker->enqueue(new Queue('my-queue'), ['type' => 'test_number', 'value' => 123
 
 Each queue is a WorkQueue-retention stream (a message is removed once acknowledged) with a companion dead stream. `commit()` acknowledges a message, `reject()` schedules redelivery until `maxDeliver` and then dead-letters, `retry()` re-drives the dead stream onto the queue, and `getQueueSize()` reports pending (consumer `num_pending`) or failed (dead stream) counts. `reap()` is a no-op — redelivery after `ackWait` reclaims jobs stranded by a dead worker. Requires [`utopia-php/nats`](https://github.com/utopia-php/nats).
 
-> A NATS connection is single-owner. Run one message at a time per connection (the Swoole adapter with `maxCoroutines: 1`) or lease one connection per coroutine via `Broker\Pool` / `Utopia\Pools`.
+> A NATS connection is single-owner. Run one message at a time per connection (`job('…', 1)`) or lease one connection per coroutine via `Broker\Pool` / `Utopia\Pools`.
+
+## Multiple queues in one process
+
+Call `job($queue, $maxCoroutines)` once per queue. The adapter stays the same — only the jobs change. Each job gets its own consume loop and concurrency cap, so `v1-functions` at 8 does not share a pool with `database_db_main` at 1.
+
+```php
+use Utopia\Queue;
+use Utopia\Queue\Consumer;
+use Utopia\Queue\Message;
+
+$createConsumer = static function (): Consumer {
+    return new Queue\Broker\Redis(
+        receive: new Queue\Connection\Redis('redis'),
+        commands: new Queue\Connection\Redis('redis'),
+    );
+};
+
+$adapter = new Queue\Adapter\Swoole($createConsumer, workerNum: 1);
+$server = new Queue\Server($adapter);
+
+$server
+    ->job('v1-functions', 8)
+    ->inject('message')
+    ->action(function (Message $message) {
+        // Handle a functions job
+    });
+
+$server
+    ->job('database_db_main', 1)
+    ->inject('message')
+    ->action(function (Message $message) {
+        // Handle a databases job
+    });
+
+// Each consume loop calls the factory so blocking receive does not share a connection.
+
+$server->error()->inject('error')->action(function ($error) {
+    echo $error->getMessage() . PHP_EOL;
+});
+
+$server->start();
+```
+
+Publishers are unchanged: enqueue to each queue by name (`$publisher->enqueue(new Queue('v1-functions'), $payload)`, etc.).
+
+With [`utopia-php/platform`](https://github.com/utopia-php/platform), pass `workers` and `jobs` (`queue` / `maxCoroutines` per action) into `Platform::init(Service::TYPE_WORKER, …)`.
 
 ## System requirements
 
-Utopia Framework requires PHP 8.0 or later. We recommend using the latest PHP version whenever possible.
+Utopia Queue requires PHP 8.5 or later and recommends the latest PHP version whenever possible.
 
 ## Copyright and license
 

@@ -10,17 +10,17 @@ use Utopia\Queue\Server;
 use Utopia\Validator\Text;
 
 // A Closure factory so each forked worker process resolves its OWN NATS connection
-// (the socket is single-owner and must not be shared across a fork). maxCoroutines: 1
+// (the socket is single-owner and must not be shared across a fork). job(..., 1)
 // keeps one message in flight per connection, avoiding concurrent use of the shared
 // read pump.
 $consumer = new Nats(
     fn(): Connection => Connection::connect('nats://127.0.0.1:14225'),
     maxDeliver: 3,
 );
-$adapter = new Swoole($consumer, 12, 'nats', maxCoroutines: 1);
+$adapter = new Swoole($consumer, 12);
 $server = new Server($adapter);
 
-$server->job()
+$server->job('nats', 1)
     ->inject('message')
     ->param(
         key: 'aliasValue',

@@ -9,6 +9,8 @@ use Swoole\Process;
 use Utopia\DI\Container;
 use Utopia\Queue\Adapter;
 use Utopia\Queue\Consumer;
+use Utopia\Queue\Message;
+use Utopia\Queue\Queue;
 
 class Swoole extends Adapter
 {
@@ -23,18 +25,16 @@ class Swoole extends Adapter
     /** @var callable[] */
     protected array $onWorkerStop = [];
 
-    protected int $maxCoroutines;
+    /** @var Consumer[] */
+    protected array $consumers = [];
 
     public function __construct(
-        Consumer $consumer,
+        Consumer|callable $consumer,
         int $workerNum,
-        string $queue,
         string $namespace = 'utopia-queue',
-        int $maxCoroutines = 1,
         Container $resources = new Container(),
     ) {
-        parent::__construct($consumer, $workerNum, $queue, $namespace, $resources);
-        $this->maxCoroutines = max(1, $maxCoroutines);
+        parent::__construct($consumer, $workerNum, $namespace, $resources);
     }
 
     public function start(): self
@@ -67,6 +67,12 @@ class Swoole extends Adapter
                 Process::signal(SIGTERM, function (): void {
                     $this->stopped = true;
                     $this->consumer->close();
+                    foreach ($this->consumers as $consumer) {
+                        try {
+                            $consumer->close();
+                        } catch (\Throwable) {
+                        }
+                    }
                 });
 
                 foreach ($this->onWorkerStart as $callback) {
@@ -84,21 +90,82 @@ class Swoole extends Adapter
     }
 
     /**
-     * Receive on one loop, process each message on its own coroutine. The
-     * channel caps concurrency at $maxCoroutines: push() blocks the loop while
-     * the pool is full.
-     *
-     * A slot is reserved before the receive, never after: a message popped with
-     * no capacity to run it would sit captive in this loop — out of the broker,
-     * unprocessed, invisible to every idle sibling consumer — for as long as the
-     * in-flight handlers hold the pool. Blocking without a message leaves it in
-     * the broker for whichever consumer frees up first.
+     * @param array<int, array{queue: Queue, maxCoroutines: int, consumer?: Consumer}> $queues
      */
     #[\Override]
-    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
+    public function consume(
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+        array $queues,
+    ): void {
         $this->stopped = false;
-        $slots = new Channel($this->maxCoroutines);
+
+        if ($queues === []) {
+            throw new \LogicException('At least one queue is required');
+        }
+
+        // Single queue: same hot path as pre-multi-queue main — bind
+        // $this->queue/$this->consumer and keep the Coroutine::create capture
+        // list identical (no per-message queue/consumer args).
+        if (\count($queues) === 1) {
+            $spec = $queues[0];
+            $previousConsumer = $this->consumer;
+            $this->queue = $spec['queue'];
+            $this->consumer = $spec['consumer'] ?? $this->consumer;
+            if ($this->consumer !== $previousConsumer) {
+                $this->consumers[] = $this->consumer;
+            }
+
+            try {
+                $this->consumeBound($spec['maxCoroutines'], $messageCallback, $successCallback, $errorCallback);
+            } finally {
+                $this->consumer = $previousConsumer;
+            }
+
+            return;
+        }
+
+        // Independent loop per queue so each cap is isolated (a databases loop
+        // at maxCoroutines=1 cannot share a pool with functions=8).
+        $waitGroup = new WaitGroup();
+
+        foreach ($queues as $spec) {
+            $waitGroup->add();
+            Coroutine::create(function () use ($spec, $messageCallback, $successCallback, $errorCallback, $waitGroup): void {
+                try {
+                    $this->run(
+                        $spec['queue'],
+                        $spec['maxCoroutines'],
+                        $messageCallback,
+                        $successCallback,
+                        $errorCallback,
+                        $spec['consumer'] ?? $this->consumer,
+                    );
+                } finally {
+                    $waitGroup->done();
+                }
+            });
+        }
+
+        $waitGroup->wait();
+    }
+
+    /**
+     * Receive on one loop with `$this->queue` / `$this->consumer` already bound.
+     * Structure matches origin/main's Swoole::consume body.
+     *
+     * @param callable(Message): void $messageCallback
+     * @param callable(Message): void $successCallback
+     * @param callable(?Message, \Throwable): void $errorCallback
+     */
+    protected function consumeBound(
+        int $maxCoroutines,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+    ): void {
+        $slots = new Channel($maxCoroutines);
         $waitGroup = new WaitGroup();
 
         while (!$this->isStopped()) {
@@ -106,7 +173,7 @@ class Swoole extends Adapter
 
             $message = $this->nextMessage($errorCallback);
 
-            if (!$message instanceof \Utopia\Queue\Message) {
+            if (!$message instanceof Message) {
                 $slots->pop();
                 continue;
             }
@@ -118,6 +185,60 @@ class Swoole extends Adapter
                     $this->process($message, $messageCallback, $successCallback, $errorCallback);
                 } catch (\Throwable $error) {
                     // process() is total; net for a stray throw so it isn't lost
+                    error_log('Uncaught error while processing queue message: ' . $error->getMessage());
+                } finally {
+                    $waitGroup->done();
+                    $slots->pop();
+                }
+            });
+        }
+
+        $waitGroup->wait();
+    }
+
+    /**
+     * Concurrent multi-queue loop: queue/consumer stay on the stack so sibling
+     * loops do not race `$this->queue`.
+     *
+     * A slot is reserved before the receive, never after: a message popped with
+     * no capacity to run it would sit captive in this loop — out of the broker,
+     * unprocessed, invisible to every idle sibling consumer — for as long as the
+     * in-flight handlers hold the pool. Blocking without a message leaves it in
+     * the broker for whichever consumer frees up first.
+     */
+    #[\Override]
+    protected function run(
+        Queue $queue,
+        int $maxCoroutines,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+        Consumer $consumer,
+    ): void {
+        if ($consumer !== $this->consumer) {
+            $this->consumers[] = $consumer;
+        }
+
+        $slots = new Channel($maxCoroutines);
+        $waitGroup = new WaitGroup();
+
+        while (!$this->isStopped()) {
+            $slots->push(true);
+
+            $message = $this->nextMessageFrom($errorCallback, $queue, $consumer);
+
+            if (!$message instanceof Message) {
+                $slots->pop();
+                continue;
+            }
+
+            $waitGroup->add();
+
+            Coroutine::create(function () use ($message, $messageCallback, $successCallback, $errorCallback, $slots, $waitGroup, $queue, $consumer): void {
+                try {
+                    $this->processFrom($message, $messageCallback, $successCallback, $errorCallback, $queue, $consumer);
+                } catch (\Throwable $error) {
+                    // processFrom() is total; net for a stray throw so it isn't lost
                     error_log('Uncaught error while processing queue message: ' . $error->getMessage());
                 } finally {
                     $waitGroup->done();
@@ -150,6 +271,11 @@ class Swoole extends Adapter
 
     public function stop(): self
     {
+        // Flip the flag only — same as main. Closing consumers here races with
+        // in-flight commit/reject after the handler that called stop(), and is
+        // unnecessary to end the loop (the next receive returns and isStopped
+        // is checked). SIGTERM still closes every consumer so a blocking
+        // receive unblocks on worker shutdown.
         $this->stopped = true;
 
         foreach (array_keys($this->workers) as $pid) {

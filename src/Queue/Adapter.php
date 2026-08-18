@@ -14,18 +14,81 @@ abstract class Adapter
      */
     protected const int RECEIVE_BACKOFF = 1;
 
+    /**
+     * Active queue for the sequential / single-loop hot path. Concurrent
+     * multi-queue loops pass Queue explicitly via {@see nextMessageFrom()} /
+     * {@see processFrom()} so they do not race this property. Bound by
+     * consume() / run() before the first receive.
+     */
     public Queue $queue;
+
     protected ?Container $context = null;
     protected bool $stopped = false;
 
+    public Consumer $consumer;
+
+    /**
+     * @var callable(string): Consumer
+     */
+    protected $consumerFactory;
+
+    protected bool $sharedConsumer = false;
+
+    /**
+     * Prefer a callable factory so each consume loop gets its own receive
+     * connection. A bare Consumer is OK for single-queue only.
+     *
+     * @param Consumer|callable $consumer Consumer instance, `(string $queue): Consumer`,
+     *        or a zero-arg factory that returns a Consumer
+     * @param int $workerNum Process/worker count for pool adapters (Swoole/Workerman)
+     * @param string $namespace Broker key prefix shared by every job on this adapter
+     */
     public function __construct(
-        public Consumer $consumer,
+        Consumer|callable $consumer,
         public int $workerNum,
-        string $queue,
         public string $namespace = 'utopia-queue',
         protected Container $resources = new Container(),
     ) {
-        $this->queue = new Queue($queue, $namespace);
+        if ($consumer instanceof Consumer) {
+            $this->consumer = $consumer;
+            $this->consumerFactory = static fn(string $queue): Consumer => $consumer;
+            $this->sharedConsumer = true;
+        } else {
+            $this->consumerFactory = self::normalizeFactory($consumer);
+            $this->consumer = ($this->consumerFactory)('');
+            $this->sharedConsumer = false;
+        }
+    }
+
+    /**
+     * Invoke the adapter's consumer factory for a queue.
+     */
+    public function createConsumer(string $queue = ''): Consumer
+    {
+        return ($this->consumerFactory)($queue);
+    }
+
+    /**
+     * True when the adapter was constructed with a bare shared Consumer.
+     */
+    public function sharesConsumer(): bool
+    {
+        return $this->sharedConsumer;
+    }
+
+    /**
+     * @return callable(string): Consumer
+     */
+    protected static function normalizeFactory(callable $factory): callable
+    {
+        $closure = $factory instanceof \Closure ? $factory : \Closure::fromCallable($factory);
+        $reflection = new \ReflectionFunction($closure);
+
+        if ($reflection->getNumberOfRequiredParameters() === 0) {
+            return static fn(string $queue): Consumer => $factory();
+        }
+
+        return $closure;
     }
 
     /**
@@ -49,20 +112,72 @@ abstract class Adapter
      * @param callable(Message): void $successCallback
      * @param callable(?Message, \Throwable): void $errorCallback Receives null when
      *        the failure was in obtaining a message rather than handling one.
+     * @param array<int, array{queue: Queue, maxCoroutines: int, consumer?: Consumer}> $queues
+     *        Queue identity and concurrency come from Server::job(); sequential
+     *        adapters run specs one after another, Swoole runs independent loops.
      */
-    public function consume(callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
+    public function consume(
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+        array $queues,
+    ): void {
         $this->stopped = false;
 
-        while (!$this->isStopped()) {
-            $message = $this->nextMessage($errorCallback);
+        if ($queues === []) {
+            throw new \LogicException('At least one queue is required');
+        }
 
-            if (!$message instanceof Message) {
-                continue;
+        foreach ($queues as $spec) {
+            $this->run(
+                $spec['queue'],
+                $spec['maxCoroutines'],
+                $messageCallback,
+                $successCallback,
+                $errorCallback,
+                $spec['consumer'] ?? $this->consumer,
+            );
+        }
+    }
+
+    /**
+     * One-queue loop. `$maxCoroutines` is accepted for adapter parity; the
+     * sequential fallback processes one message at a time (effective cap 1).
+     *
+     * Binds `$this->queue` / `$this->consumer` for the duration so the hot
+     * path matches pre-multi-queue (no per-message queue/consumer args).
+     *
+     * @param callable(Message): void $messageCallback
+     * @param callable(Message): void $successCallback
+     * @param callable(?Message, \Throwable): void $errorCallback
+     */
+    protected function run(
+        Queue $queue,
+        int $maxCoroutines,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+        Consumer $consumer,
+    ): void {
+        unset($maxCoroutines);
+
+        $previousConsumer = $this->consumer;
+        $this->queue = $queue;
+        $this->consumer = $consumer;
+
+        try {
+            while (!$this->isStopped()) {
+                $message = $this->nextMessage($errorCallback);
+
+                if (!$message instanceof Message) {
+                    continue;
+                }
+
+                $this->context = new Container($this->resources());
+                $this->process($message, $messageCallback, $successCallback, $errorCallback);
             }
-
-            $this->context = new Container($this->resources());
-            $this->process($message, $messageCallback, $successCallback, $errorCallback);
+        } finally {
+            $this->consumer = $previousConsumer;
         }
     }
 
@@ -95,12 +210,39 @@ abstract class Adapter
     }
 
     /**
+     * Concurrent multi-queue variant: queue/consumer are explicit so loops do
+     * not race {@see $queue} / {@see $consumer}.
+     *
+     * @param callable(?Message, \Throwable): void $errorCallback
+     */
+    protected function nextMessageFrom(callable $errorCallback, Queue $queue, Consumer $consumer): ?Message
+    {
+        try {
+            return $consumer->receive($queue, static::RECEIVE_TIMEOUT);
+        } catch (\Throwable $error) {
+            try {
+                $errorCallback(null, $error);
+            } catch (\Throwable $reportFailure) {
+                $this->reportUnreported($error, $reportFailure);
+            }
+
+            sleep(static::RECEIVE_BACKOFF);
+
+            return null;
+        }
+    }
+
+    /**
      * Never throws: a failed handler is rejected and reported to $errorCallback;
      * a failing reject or callback is swallowed rather than left to escape (and
      * be lost on a coroutine).
      */
-    protected function process(Message $message, callable $messageCallback, callable $successCallback, callable $errorCallback): void
-    {
+    protected function process(
+        Message $message,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+    ): void {
         try {
             $messageCallback($message);
             $this->consumer->commit($this->queue, $message);
@@ -108,6 +250,34 @@ abstract class Adapter
         } catch (\Throwable $error) {
             try {
                 $this->consumer->reject($this->queue, $message);
+            } catch (\Throwable) {
+            }
+            try {
+                $errorCallback($message, $error);
+            } catch (\Throwable $reportFailure) {
+                $this->reportUnreported($error, $reportFailure, $message);
+            }
+        }
+    }
+
+    /**
+     * Concurrent multi-queue variant of {@see process()}.
+     */
+    protected function processFrom(
+        Message $message,
+        callable $messageCallback,
+        callable $successCallback,
+        callable $errorCallback,
+        Queue $queue,
+        Consumer $consumer,
+    ): void {
+        try {
+            $messageCallback($message);
+            $consumer->commit($queue, $message);
+            $successCallback($message);
+        } catch (\Throwable $error) {
+            try {
+                $consumer->reject($queue, $message);
             } catch (\Throwable) {
             }
             try {
