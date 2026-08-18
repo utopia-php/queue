@@ -292,8 +292,16 @@ final class NatsBrokerTest extends TestCase
         $this->assertInstanceOf(Message::class, $broker->receive($queue, 2)); // delivery 2 == maxDeliver
         sleep(2);                                                              // advisory fires
 
-        $broker->receive($queue, 1);                                          // pump: read the advisory
-        $this->assertSame(1, $broker->getQueueSize($queue, true), 'stuck message moved to the dead stream');
+        // Dead-lettering happens on the consume path (receive() drains the max-deliveries
+        // advisory); getQueueSize() is a passive observer and never drains. Advisory
+        // delivery is asynchronous, so pump receive() until the message lands on the dead
+        // stream rather than assuming a single poll catches it.
+        $deadLettered = false;
+        for ($i = 0; $i < 10 && !$deadLettered; $i++) {
+            $broker->receive($queue, 1);
+            $deadLettered = $broker->getQueueSize($queue, true) === 1;
+        }
+        $this->assertTrue($deadLettered, 'stuck message moved to the dead stream');
         $this->assertSame(0, $broker->getQueueSize($queue), 'work queue empty after terminal dead-letter');
 
         $broker->close();
