@@ -68,6 +68,17 @@ class Nats implements Publisher, Consumer
     private ?NatsConnection $connection = null;
     private ?JetStream $js = null;
 
+    // A second connection reserved for passive management reads (getQueueSize). Those
+    // run from the telemetry/health coroutine, NOT the consume coroutine, and a NATS
+    // socket cannot be read by two coroutines at once — Swoole aborts the process with
+    // "Socket#N has already been bound to another coroutine". Keeping these reads off the
+    // consume connection is the fix; see controlConnection().
+    private ?NatsConnection $controlConnection = null;
+    private ?JetStream $controlJs = null;
+
+    /** @var array<string, array<string, NatsConsumer>> control-connection consumer handles, [stream][durable] */
+    private array $controlConsumers = [];
+
     /**
      * A NATS Connection is single-owner (one socket, one shared read pump), so it is
      * NOT safe to share across concurrent coroutines. Pass a Closure factory rather
@@ -98,6 +109,34 @@ class Nats implements Publisher, Consumer
     private function js(): JetStream
     {
         return $this->js ??= $this->connection()->jetStream();
+    }
+
+    /**
+     * The connection for passive management reads (getQueueSize), separate from the
+     * consume connection so a telemetry/health coroutine never reads the same socket
+     * the consume loop is blocked on. Requires the Closure factory to open a second
+     * connection; a broker built from a live Connection (publisher-only use, where no
+     * concurrent consume loop exists) falls back to the single connection.
+     */
+    private function controlConnection(): NatsConnection
+    {
+        if ($this->controlConnection instanceof NatsConnection) {
+            return $this->controlConnection;
+        }
+
+        return $this->controlConnection = $this->source instanceof \Closure
+            ? ($this->source)()
+            : $this->connection();
+    }
+
+    private function controlJs(): JetStream
+    {
+        return $this->controlJs ??= $this->controlConnection()->jetStream();
+    }
+
+    private function controlConsumer(string $stream, string $durable): NatsConsumer
+    {
+        return $this->controlConsumers[$stream][$durable] ??= $this->controlJs()->getConsumer($stream, $durable);
     }
 
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
@@ -214,24 +253,39 @@ class Nats implements Publisher, Consumer
         return 0;
     }
 
+    /**
+     * Queue depth, read on the control connection so it is safe to call from a
+     * telemetry/health coroutine while another coroutine is in receive() on this same
+     * broker. It is a passive observer: it does NOT provision (ensure()) or drain dead
+     * letters — the consume loop owns those — and reports 0 for a queue whose streams
+     * do not exist yet, matching Broker\Redis's empty-list semantics.
+     */
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
     {
-        $this->ensure($queue);
-        $key = $this->identity($queue);
-        $this->drainDeadLetters($queue, $key);
+        $stream = $this->workStream($queue);
 
-        if ($failedJobs) {
-            return $this->js()->getStreamInfo($this->deadStream($queue))->state->messages;
+        try {
+            if ($failedJobs) {
+                return $this->controlJs()->getStreamInfo($this->deadStream($queue))->state->messages;
+            }
+
+            return $this->controlConsumer($stream, self::CONSUMER_NORMAL)->info(true)->numPending
+                + $this->controlConsumer($stream, self::CONSUMER_PRIORITY)->info(true)->numPending;
+        } catch (JetStreamException $e) {
+            if ($e->apiError?->code === 404) {
+                return 0; // stream/consumer not provisioned yet — nothing enqueued
+            }
+            throw $e;
         }
-
-        return $this->consumers[$key]['normal']->info(true)->numPending
-            + $this->consumers[$key]['priority']->info(true)->numPending;
     }
 
     public function close(): void
     {
-        if ($this->connection instanceof NatsConnection) {
-            $this->connection->close();
+        $this->connection?->close();
+
+        // Only when it is a distinct socket; a publisher-only broker reuses the one connection.
+        if ($this->controlConnection instanceof NatsConnection && $this->controlConnection !== $this->connection) {
+            $this->controlConnection->close();
         }
     }
 
@@ -297,8 +351,8 @@ class Nats implements Publisher, Consumer
 
         // Best-effort terminal dead-lettering for the crash-loop case: a worker that
         // dies (never reject()s) is redelivered by AckWait until maxDeliver, after which
-        // JetStream stops delivering and emits this advisory. We drain it in receive()/
-        // getQueueSize() and move the stuck message to the dead stream. Caveat: core
+        // JetStream stops delivering and emits this advisory. We drain it in receive()
+        // and move the stuck message to the dead stream. Caveat: core
         // advisories are ephemeral, so a message that exhausts while no broker is
         // subscribed stays as pending backlog (still visible) rather than dead-lettered.
         $this->advisories[$key] = $this->connection()->subscribe(
