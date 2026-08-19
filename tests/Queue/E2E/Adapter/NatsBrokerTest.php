@@ -292,10 +292,79 @@ final class NatsBrokerTest extends TestCase
         $this->assertInstanceOf(Message::class, $broker->receive($queue, 2)); // delivery 2 == maxDeliver
         sleep(2);                                                              // advisory fires
 
-        $broker->receive($queue, 1);                                          // pump: read the advisory
-        $this->assertSame(1, $broker->getQueueSize($queue, true), 'stuck message moved to the dead stream');
+        // Dead-lettering happens on the consume path (receive() drains the max-deliveries
+        // advisory); getQueueSize() is a passive observer and never drains. Advisory
+        // delivery is asynchronous, so pump receive() until the message lands on the dead
+        // stream rather than assuming a single poll catches it.
+        $deadLettered = false;
+        for ($i = 0; $i < 10 && !$deadLettered; $i++) {
+            $broker->receive($queue, 1);
+            $deadLettered = $broker->getQueueSize($queue, true) === 1;
+        }
+        $this->assertTrue($deadLettered, 'stuck message moved to the dead stream');
         $this->assertSame(0, $broker->getQueueSize($queue), 'work queue empty after terminal dead-letter');
 
         $broker->close();
+    }
+
+    /**
+     * getQueueSize() must be safe to call while another coroutine is blocked in
+     * receive() on the SAME broker — the shape the Swoole worker runs, where the
+     * OpenTelemetry depth gauge fires getQueueSize() on a timer coroutine while the
+     * consume loop is mid-fetch. Both once shared one NATS socket, and Swoole aborts
+     * the process with "Socket#N has already been bound to another coroutine". Reverting
+     * the control-connection split makes this crash. Regression for the fra1-staging
+     * worker-stats-usage crash-loop.
+     */
+    public function testGetQueueSizeIsSafeDuringConcurrentReceive(): void
+    {
+        $url = getenv('NATS_URL') ?: 'nats://127.0.0.1:14225';
+        // Closure factory: each broker owns its consume connection AND opens a distinct
+        // control connection — the isolation getQueueSize relies on under coroutines.
+        $broker = new Nats(fn(): Connection => Connection::connect($url), ackWait: 2.0, maxDeliver: 3);
+        $queue = new Queue('t_' . substr(md5(uniqid('', true)), 0, 8));
+
+        $error = null;
+        $sizes = [];
+
+        \Swoole\Coroutine\run(function () use ($broker, $queue, &$error, &$sizes): void {
+            $broker->enqueue($queue, ['n' => 1]); // provisions streams + consumers
+
+            $wg = new \Swoole\Coroutine\WaitGroup();
+
+            // Consume loop: drains the one message, then blocks ~3s reading the socket.
+            $wg->add();
+            \Swoole\Coroutine::create(function () use ($broker, $queue, $wg, &$error): void {
+                try {
+                    $broker->receive($queue, 1);
+                    $broker->receive($queue, 3);
+                } catch (\Throwable $e) {
+                    $error ??= $e;
+                }
+                $wg->done();
+            });
+
+            // Telemetry gauge: reads depth while the consume loop is mid-fetch.
+            $wg->add();
+            \Swoole\Coroutine::create(function () use ($broker, $queue, $wg, &$error, &$sizes): void {
+                \Swoole\Coroutine::sleep(0.5); // let the consume loop enter its blocking read
+                try {
+                    for ($i = 0; $i < 3; $i++) {
+                        $sizes[] = $broker->getQueueSize($queue);
+                        \Swoole\Coroutine::sleep(0.3);
+                    }
+                } catch (\Throwable $e) {
+                    $error ??= $e;
+                }
+                $wg->done();
+            });
+
+            $wg->wait();
+        });
+
+        $broker->close();
+
+        $this->assertNotInstanceOf(\Throwable::class, $error, 'getQueueSize collided with the consume connection: ' . ($error?->getMessage() ?? ''));
+        $this->assertCount(3, $sizes, 'depth gauge ran to completion without crashing the worker');
     }
 }
