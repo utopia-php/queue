@@ -352,6 +352,11 @@ final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer imp
         return true;
     }
 
+    public function enqueueMany(Queue $queue, array $payloads, bool $priority = false): bool
+    {
+        return true;
+    }
+
     public function retry(Queue $queue, ?int $limit = null): void {}
 
     public function getQueueSize(Queue $queue, bool $failedJobs = false): int
@@ -367,6 +372,11 @@ final class ServerTelemetryPublisherConsumer extends ServerTelemetryConsumer imp
 final class ServerTelemetryFailingPublisherConsumer extends ServerTelemetryConsumer implements Publisher
 {
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
+    {
+        return true;
+    }
+
+    public function enqueueMany(Queue $queue, array $payloads, bool $priority = false): bool
     {
         return true;
     }

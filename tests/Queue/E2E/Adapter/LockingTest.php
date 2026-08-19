@@ -115,9 +115,11 @@ final class LockingTest extends TestCase
     public static function operationProvider(): iterable
     {
         yield 'rightPushArray' => ['rightPushArray', ['queue', ['a' => 1]], true];
+        yield 'rightPushMany' => ['rightPushMany', ['queue', ['{"a":1}', '{"b":2}']], true];
         yield 'rightPopArray' => ['rightPopArray', ['queue', 5], ['popped' => 'right']];
         yield 'rightPopLeftPushArray' => ['rightPopLeftPushArray', ['queue', 'dest', 5], ['rpoplpush' => true]];
         yield 'leftPushArray' => ['leftPushArray', ['queue', ['a' => 1]], true];
+        yield 'leftPushMany' => ['leftPushMany', ['queue', ['{"a":1}', '{"b":2}']], true];
         yield 'leftPopArray' => ['leftPopArray', ['queue', 5], ['popped' => 'left']];
         yield 'rightPush' => ['rightPush', ['queue', 'value'], true];
         yield 'rightPop' => ['rightPop', ['queue', 5], 'right-pop'];
@@ -216,6 +218,20 @@ class RecordingConnection implements Connection
     public function leftPushArray(string $queue, array $payload): bool
     {
         $this->record('leftPushArray', [$queue, $payload]);
+
+        return true;
+    }
+
+    public function leftPushMany(string $queue, array $payloads): bool
+    {
+        $this->record('leftPushMany', [$queue, $payloads]);
+
+        return true;
+    }
+
+    public function rightPushMany(string $queue, array $payloads): bool
+    {
+        $this->record('rightPushMany', [$queue, $payloads]);
 
         return true;
     }
@@ -441,4 +457,14 @@ class ThrowingConnection implements Connection
     }
 
     public function close(): void {}
+    public function leftPushMany(string $queue, array $payloads): bool
+    {
+        return true;
+    }
+
+    public function rightPushMany(string $queue, array $payloads): bool
+    {
+        return true;
+    }
+
 }

@@ -157,16 +157,44 @@ class Redis implements Publisher, Consumer
 
     public function enqueue(Queue $queue, array $payload, bool $priority = false): bool
     {
-        $payload = [
+        $key = "{$queue->namespace}.queue.{$queue->name}";
+        $envelope = $this->envelope($queue, $payload);
+
+        return $priority
+            ? $this->commands->rightPushArray($key, $envelope)
+            : $this->commands->leftPushArray($key, $envelope);
+    }
+
+    public function enqueueMany(Queue $queue, array $payloads, bool $priority = false): bool
+    {
+        if ($payloads === []) {
+            return true;
+        }
+
+        $encoded = [];
+        foreach ($payloads as $payload) {
+            $encoded[] = (string) json_encode($this->envelope($queue, $payload));
+        }
+
+        $key = "{$queue->namespace}.queue.{$queue->name}";
+
+        return $priority
+            ? $this->commands->rightPushMany($key, $encoded)
+            : $this->commands->leftPushMany($key, $encoded);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function envelope(Queue $queue, array $payload): array
+    {
+        return [
             'pid' => uniqid(more_entropy: true),
             'queue' => $queue->name,
             'timestamp' => time(),
             'payload' => $payload,
         ];
-        if ($priority) {
-            return $this->commands->rightPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
-        }
-        return $this->commands->leftPushArray("{$queue->namespace}.queue.{$queue->name}", $payload);
     }
 
     /**

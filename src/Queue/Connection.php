@@ -7,9 +7,23 @@ namespace Utopia\Queue;
 interface Connection
 {
     public function rightPushArray(string $queue, array $payload): bool;
+
+    /**
+     * Push several already-encoded payloads in one command.
+     *
+     * @param list<string> $payloads
+     */
+    public function rightPushMany(string $queue, array $payloads): bool;
     public function rightPopArray(string $queue, int $timeout): array|false;
     public function rightPopLeftPushArray(string $queue, string $destination, int $timeout): array|false;
     public function leftPushArray(string $queue, array $payload): bool;
+
+    /**
+     * Push several already-encoded payloads in one command.
+     *
+     * @param list<string> $payloads
+     */
+    public function leftPushMany(string $queue, array $payloads): bool;
     public function leftPopArray(string $queue, int $timeout): array|false;
     public function rightPush(string $queue, string $payload): bool;
     public function rightPop(string $queue, int $timeout): string|false;

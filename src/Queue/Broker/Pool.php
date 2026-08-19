@@ -20,6 +20,11 @@ readonly class Pool implements Publisher, Consumer
         return $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
     }
 
+    public function enqueueMany(Queue $queue, array $payloads, bool $priority = false): bool
+    {
+        return $this->delegate($this->publisher, __FUNCTION__, \func_get_args());
+    }
+
     public function retry(Queue $queue, ?int $limit = null, ?int $maxAttempts = null, ?int $newerThan = null): void
     {
         $this->delegate($this->publisher, __FUNCTION__, \func_get_args());

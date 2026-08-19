@@ -143,18 +143,44 @@ class Nats implements Publisher, Consumer
     {
         $this->ensure($queue);
 
-        // Match the Redis broker's message shape so Message round-trips identically.
-        $message = [
+        $subject = $priority ? $this->prioritySubject($queue) : $this->workSubject($queue);
+        $this->js()->publish($subject, (string) json_encode($this->envelope($queue, $payload)));
+
+        return true;
+    }
+
+    public function enqueueMany(Queue $queue, array $payloads, bool $priority = false): bool
+    {
+        if ($payloads === []) {
+            return true;
+        }
+
+        $this->ensure($queue);
+
+        // JetStream publishes one subject at a time, so the saving here is the
+        // stream check and the connection checkout rather than the round trips.
+        $subject = $priority ? $this->prioritySubject($queue) : $this->workSubject($queue);
+        foreach ($payloads as $payload) {
+            $this->js()->publish($subject, (string) json_encode($this->envelope($queue, $payload)));
+        }
+
+        return true;
+    }
+
+    /**
+     * Match the Redis broker's message shape so Message round-trips identically.
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function envelope(Queue $queue, array $payload): array
+    {
+        return [
             'pid' => uniqid('', true),
             'queue' => $queue->name,
             'timestamp' => time(),
             'payload' => $payload,
         ];
-
-        $subject = $priority ? $this->prioritySubject($queue) : $this->workSubject($queue);
-        $this->js()->publish($subject, (string) json_encode($message));
-
-        return true;
     }
 
     public function receive(Queue $queue, int $timeout): ?Message

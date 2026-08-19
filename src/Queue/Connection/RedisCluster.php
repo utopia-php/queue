@@ -53,6 +53,24 @@ class RedisCluster implements Connection
         return (bool) $this->getRedis()->lPush($queue, $value);
     }
 
+    public function leftPushMany(string $queue, array $payloads): bool
+    {
+        if ($payloads === []) {
+            return true;
+        }
+
+        return (bool) $this->getRedis()->lPush($queue, ...$payloads);
+    }
+
+    public function rightPushMany(string $queue, array $payloads): bool
+    {
+        if ($payloads === []) {
+            return true;
+        }
+
+        return (bool) $this->getRedis()->rPush($queue, ...$payloads);
+    }
+
     /** @phpstan-impure */
     public function rightPopArray(string $queue, int $timeout): array|false
     {

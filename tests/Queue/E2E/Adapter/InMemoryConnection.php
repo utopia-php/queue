@@ -54,6 +54,24 @@ class InMemoryConnection implements Connection
         return true;
     }
 
+    public function leftPushMany(string $queue, array $payloads): bool
+    {
+        foreach ($payloads as $payload) {
+            $this->leftPush($queue, $payload);
+        }
+
+        return true;
+    }
+
+    public function rightPushMany(string $queue, array $payloads): bool
+    {
+        foreach ($payloads as $payload) {
+            $this->rightPush($queue, $payload);
+        }
+
+        return true;
+    }
+
     public function leftPopArray(string $queue, int $timeout): array|false
     {
         $value = $this->pop($queue, fromTail: false);

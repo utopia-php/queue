@@ -100,6 +100,16 @@ class FailingRedisConnection implements Connection
         return true;
     }
 
+    public function leftPushMany(string $queue, array $payloads): bool
+    {
+        return true;
+    }
+
+    public function rightPushMany(string $queue, array $payloads): bool
+    {
+        return true;
+    }
+
     public function leftPopArray(string $queue, int $timeout): array|false
     {
         return false;

@@ -59,6 +59,16 @@ class Locking implements Connection
         return $this->synchronize(fn(): bool => $this->connection->leftPushArray($queue, $payload));
     }
 
+    public function leftPushMany(string $queue, array $payloads): bool
+    {
+        return $this->synchronize(fn(): bool => $this->connection->leftPushMany($queue, $payloads));
+    }
+
+    public function rightPushMany(string $queue, array $payloads): bool
+    {
+        return $this->synchronize(fn(): bool => $this->connection->rightPushMany($queue, $payloads));
+    }
+
     public function leftPopArray(string $queue, int $timeout): array|false
     {
         return $this->synchronize(fn(): array|false => $this->connection->leftPopArray($queue, $timeout));
