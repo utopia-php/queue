@@ -202,6 +202,11 @@ class Redis implements Connection
             try {
                 $redis->connect($this->host, $this->port, $connectTimeout);
 
+                if (!empty($this->password)) {
+                    // ACL form when a username is configured, plain password otherwise.
+                    $redis->auth(!empty($this->user) ? [$this->user, $this->password] : $this->password);
+                }
+
                 if ($this->readTimeout >= 0) {
                     $redis->setOption(\Redis::OPT_READ_TIMEOUT, $this->readTimeout);
                 }
