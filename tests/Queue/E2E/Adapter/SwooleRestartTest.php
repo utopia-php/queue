@@ -123,10 +123,16 @@ final class SwooleRestartTest extends TestCase
         $ready = $this->waitFor('ready', 3);
         $this->events = [];
         $this->publish(0, 'slow');
+        $this->publish(0, 'slow');
         $this->waitFor('started', 1);
         $this->assertTrue(proc_terminate($this->process, $signal));
         $this->waitFor('exited', 1);
+        // The job in flight finishes; the one behind it stays put. Before the
+        // stop flag was re-checked after the slot came free, the loop went
+        // straight back to receive and pulled it, and a job accepted after
+        // SIGTERM is one more the grace period has to cover.
         $this->assertCount(1, array_filter($this->events, fn(array $e): bool => $e['event'] === 'processed'));
+        $this->assertSame(1, $this->queued(0), 'A message published behind the in-flight job must still be on the queue after the drain');
         $this->assertCount(3, array_filter($this->events, fn(array $e): bool => $e['event'] === 'stopped'));
         $this->assertCount(0, array_filter($this->events, fn(array $e): bool => $e['event'] === 'ready'));
         foreach ($ready as $worker) {
@@ -152,6 +158,14 @@ final class SwooleRestartTest extends TestCase
     {
         $broker = new Redis(new Connection('127.0.0.1', 16379), new Connection('127.0.0.1', 16379));
         $this->assertTrue($broker->publish(new Queue('worker-' . $worker, $this->namespace), ['mode' => $mode]));
+    }
+
+    private function queued(int $worker): int
+    {
+        $redis = new \Redis();
+        $redis->connect('127.0.0.1', 16379);
+
+        return (int) $redis->lLen($this->namespace . '.queue.worker-' . $worker);
     }
 
     private function waitFor(string $event, int $count): array
