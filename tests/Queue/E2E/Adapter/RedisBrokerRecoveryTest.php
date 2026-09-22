@@ -91,6 +91,62 @@ final class RedisBrokerRecoveryTest extends RedisTestCase
         $this->assertSame(0, $this->broker->getQueueSize($this->queue));
     }
 
+    public function testReapClearsAnOwnedClaimWhosePayloadIsGone(): void
+    {
+        // A payload can go missing under a live ownership record: a settle
+        // running in another worker deletes the job key while this sweep sits
+        // between its owner read and its payload read, and maxmemory eviction
+        // reaches claimed payloads because they are stored without a TTL.
+        // Either way the claim is unrecoverable, and a sweep that fails on it
+        // never reaches the claims behind it.
+        $this->broker->publish($this->queue, ['n' => 1]);
+        $claimed = $this->broker->receive($this->queue, 0)[0] ?? null;
+        $this->assertInstanceOf(\Utopia\Queue\Message::class, $claimed);
+        $this->expire('.claims.*');
+        $this->redis->del($this->namespace . '.jobs.recovery.' . $claimed->getPid());
+
+        $requeued = $this->broker->reap($this->queue, olderThan: 0);
+
+        $this->assertSame(0, $requeued, 'there is no payload left to requeue');
+        $this->assertSame(0, $this->processingSize(), 'the unrecoverable claim is cleared');
+        $this->assertSame(1, $this->deadSize(), 'the delivery is parked for a human');
+        $this->assertSame(0, $this->broker->getQueueSize($this->queue));
+        $this->assertSame(0, $this->redis->exists($this->namespace . '.owners.recovery.' . $claimed->getPid()), 'the ownership record goes with it');
+        $this->assertSame('0', (string) $this->redis->get($this->namespace . '.stats.recovery.processing'), 'the processing counter is settled');
+    }
+
+    public function testReapKeepsSweepingPastAClaimWhosePayloadIsGone(): void
+    {
+        $this->broker->publish($this->queue, ['n' => 1]);
+        $this->broker->publish($this->queue, ['n' => 2]);
+        $claimed = $this->broker->receive($this->queue, 0, 2);
+        $this->assertCount(2, $claimed);
+        $this->expire('.claims.*');
+        $this->redis->del($this->namespace . '.jobs.recovery.' . $claimed[0]->getPid());
+
+        $requeued = $this->broker->reap($this->queue, olderThan: 0);
+
+        $this->assertSame(1, $requeued, 'the claim behind the broken one is still recovered');
+        $this->assertSame(0, $this->processingSize());
+        $this->assertSame(1, $this->broker->getQueueSize($this->queue));
+    }
+
+    public function testAHeartbeatedClaimWithoutItsPayloadIsLeftAlone(): void
+    {
+        // Ownership plus a live heartbeat means a worker is still on it; the
+        // missing payload is its problem to settle, not the sweep's to take.
+        $this->broker->publish($this->queue, ['n' => 1]);
+        $claimed = $this->broker->receive($this->queue, 0)[0] ?? null;
+        $this->assertInstanceOf(\Utopia\Queue\Message::class, $claimed);
+        $this->redis->del($this->namespace . '.jobs.recovery.' . $claimed->getPid());
+
+        $requeued = $this->broker->reap($this->queue, olderThan: 0);
+
+        $this->assertSame(0, $requeued);
+        $this->assertSame(1, $this->processingSize(), 'the live claim keeps its worker');
+        $this->assertSame(0, $this->deadSize());
+    }
+
     public function testReapParksExhaustedClaimsOnTheDeadQueue(): void
     {
         $this->broker->publish($this->queue, ['n' => 1]);

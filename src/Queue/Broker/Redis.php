@@ -450,23 +450,30 @@ class Redis implements Synchronous, Consumer
 
             $ownerKey = "{$queue->namespace}.owners.{$queue->name}.{$pid}";
             $owner = $this->commands->get($ownerKey);
-            // Only legacy payloads expire while processing.
             $job = $this->getJob($queue, $pid);
-            if ($job === false) {
-                if (\is_string($owner)) {
-                    throw new \RuntimeException('Queue delivery payload is missing');
-                }
+
+            // Legacy claims carry no ownership record, so a payload that is
+            // gone leaves nothing to reclaim atomically: drop the entry.
+            if ($job === false && !\is_string($owner)) {
                 $this->commands->listRemove($processing, $pid);
                 continue;
             }
 
-            if ($job->getTimestamp() > $cutoff
-                || \is_string($this->commands->get("{$queue->namespace}.claims.{$queue->name}.{$pid}"))) {
+            // An owned claim can lose its payload too -- a settle in another
+            // worker lands between the reads above, or maxmemory evicts a job
+            // key, which is held without a TTL. Neither is worth failing the
+            // sweep over: the claim cannot be requeued without its payload, so
+            // it is parked like an exhausted one and the sweep moves on. The
+            // script still refuses claims a live heartbeat says are in hand.
+            if ($job !== false
+                && ($job->getTimestamp() > $cutoff
+                    || \is_string($this->commands->get("{$queue->namespace}.claims.{$queue->name}.{$pid}")))) {
                 $retained++;
                 continue;
             }
 
-            $dead = ($maxAttempts !== null && $job->getAttempts() >= $maxAttempts)
+            $dead = $job === false
+                || ($maxAttempts !== null && $job->getAttempts() >= $maxAttempts)
                 || ($newerThan !== null && $job->getTimestamp() < $now - $newerThan);
             $moved = $this->script($this->commands, 'reclaim', [
                 $ownerKey, "{$queue->namespace}.claims.{$queue->name}.{$pid}",

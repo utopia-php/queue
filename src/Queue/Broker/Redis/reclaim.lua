@@ -8,7 +8,9 @@ end
 local counter = redis.call('GET', KEYS[5])
 if counter and not string.match(counter, '^%-?%d+$') then return redis.error_reply('Invalid queue counter') end
 if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] or redis.call('EXISTS', KEYS[2]) == 1 then return 0 end
-if redis.call('EXISTS', KEYS[3]) == 0 then return 0 end
+-- Requeueing replays a payload read before this call; a payload that has since
+-- gone means someone else settled the claim. Parking needs no payload at all.
+if ARGV[3] ~= '' and redis.call('EXISTS', KEYS[3]) == 0 then return 0 end
 if redis.call('LREM', KEYS[4], 1, ARGV[2]) == 0 then return 0 end
 redis.call('DEL', KEYS[1], KEYS[2])
 redis.call('DECR', KEYS[5])
