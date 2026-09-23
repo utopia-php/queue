@@ -74,6 +74,27 @@ $publisher->publish(new Queue\Queue('my-queue'), [
 ]);
 ```
 
+## Middleware
+
+`middleware()` wraps jobs the way HTTP middleware wraps a route. The action injects `next` and calls it to run the rest of the chain and then the job. Middleware matches groups the same way `init()` does, runs after the init hooks, and the first one registered is the outermost.
+
+```php
+$server
+    ->middleware()
+    ->groups(['functions'])
+    ->inject('message')
+    ->inject('next')
+    ->action(function (Message $message, callable $next) use ($billing) {
+        if ($billing->refuses($message->getPayload()['project'] ?? [])) {
+            return; // handled: the broker commits the message
+        }
+
+        return $next();
+    });
+```
+
+Returning without calling `next` ends the message as handled, the same as a job that finished. That is the difference from an init hook, which can only stop a job by throwing. A throw is rejected, and on Redis a rejected payload stays on the failed list until `retry()` sweeps it. Use middleware for work that should end on purpose, such as a refused tenant or a duplicate. A middleware that throws is a failure like any other.
+
 ## NATS JetStream broker
 
 `Broker\Nats` runs the queue on [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream) instead of Redis, giving durable, server-persisted jobs and native at-least-once redelivery. It implements the same `Publisher\Synchronous` + `Consumer` interfaces as `Broker\Redis`, so it drops into the same `Server` and adapter setup.

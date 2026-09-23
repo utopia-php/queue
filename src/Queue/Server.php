@@ -92,6 +92,13 @@ class Server
     protected array $initHooks = [];
 
     /**
+     * Hooks that wrap the job, outermost first
+     *
+     * @var array<Hook>
+     */
+    protected array $middlewareHooks = [];
+
+    /**
      * Hooks that will run after running job
      *
      * @var array<Hook>
@@ -194,6 +201,36 @@ class Server
     protected function jobFor(Message $message): Job
     {
         return $this->jobs[$message->getQueue()] ?? $this->job;
+    }
+
+    /**
+     * The hooks that apply to a job, in run order: global ones first (when the
+     * job opts into hooks), then those of each of its groups.
+     *
+     * @param array<Hook> $hooks
+     * @return list<Hook>
+     */
+    private function hooksFor(Job $job, array $hooks): array
+    {
+        $matched = [];
+
+        if ($job->getHook()) {
+            foreach ($hooks as $hook) {
+                if (\in_array('*', $hook->getGroups())) {
+                    $matched[] = $hook;
+                }
+            }
+        }
+
+        foreach ($job->getGroups() as $group) {
+            foreach ($hooks as $hook) {
+                if (\in_array($group, $hook->getGroups())) {
+                    $matched[] = $hook;
+                }
+            }
+        }
+
+        return $matched;
     }
 
     /**
@@ -324,6 +361,38 @@ class Server
     }
 
     /**
+     * Middleware Hooks
+     *
+     * Wrap the job the way HTTP middleware wraps a route. The action injects
+     * `next` and calls it to run the rest of the chain and then the job:
+     *
+     *     $server->middleware()
+     *         ->groups(['functions'])
+     *         ->inject('next')
+     *         ->action(function (callable $next) {
+     *             if ($refused) {
+     *                 return; // handled: the broker commits the message
+     *             }
+     *             return $next();
+     *         });
+     *
+     * Returning without calling `next` is an outcome, not a failure. An init
+     * hook can only stop a job by throwing, and a throw is rejected, which on
+     * the Redis broker keeps the payload on the failed list for the retry
+     * sweep. Middleware is for work that should end here on purpose: a refused
+     * tenant, a duplicate, a message for a resource that no longer exists.
+     *
+     * Middleware runs after the init hooks and matches groups the same way.
+     */
+    public function middleware(): Hook
+    {
+        $hook = new Hook();
+        $hook->groups(['*']);
+        $this->middlewareHooks[] = $hook;
+        return $hook;
+    }
+
+    /**
      * Starts the Queue Server
      */
     public function start(): self
@@ -357,33 +426,11 @@ class Server
 
                         $this->context()->set('message', fn(): \Utopia\Queue\Message => $message);
 
-                        if ($job->getHook()) {
-                            foreach ($this->initHooks as $hook) {
-                                if (\in_array('*', $hook->getGroups())) {
-                                    $arguments = $this->getArguments(
-                                        $this->context(),
-                                        $hook,
-                                        $message->getPayload(),
-                                    );
-                                    $hook->getAction()(...$arguments);
-                                }
-                            }
+                        foreach ($this->hooksFor($job, $this->initHooks) as $hook) {
+                            $hook->getAction()(...$this->getArguments($this->context(), $hook, $message->getPayload()));
                         }
 
-                        foreach ($job->getGroups() as $group) {
-                            foreach ($this->initHooks as $hook) {
-                                if (\in_array($group, $hook->getGroups())) {
-                                    $arguments = $this->getArguments(
-                                        $this->context(),
-                                        $hook,
-                                        $message->getPayload(),
-                                    );
-                                    $hook->getAction()(...$arguments);
-                                }
-                            }
-                        }
-
-                        return \call_user_func_array(
+                        $next = fn(): mixed => \call_user_func_array(
                             $job->getAction(),
                             $this->getArguments(
                                 $this->context(),
@@ -391,6 +438,18 @@ class Server
                                 $message->getPayload(),
                             ),
                         );
+
+                        // Built inside out, so the first middleware registered is the outermost.
+                        foreach (array_reverse($this->hooksFor($job, $this->middlewareHooks)) as $hook) {
+                            $inner = $next;
+                            $next = function () use ($hook, $inner, $message): mixed {
+                                $this->context()->set('next', fn(): \Closure => $inner);
+
+                                return $hook->getAction()(...$this->getArguments($this->context(), $hook, $message->getPayload()));
+                            };
+                        }
+
+                        return $next();
                     } finally {
                         $this->processDuration->record(microtime(true) - $receivedAtTimestamp);
                     }
